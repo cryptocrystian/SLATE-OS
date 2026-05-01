@@ -17,7 +17,7 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-primary/90 text-text-inverse hover:bg-brand-primary shadow-[0_1px_0_rgba(255,255,255,0.16)_inset,0_8px_24px_-12px_rgba(108,140,255,0.6)] hover:shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_10px_28px_-10px_rgba(108,140,255,0.7)]",
+    "bg-brand-primary text-text-inverse font-semibold ring-1 ring-inset ring-white/15 hover:bg-[color:color-mix(in_oklab,var(--color-brand-primary)_92%,white)] active:translate-y-px shadow-[0_1px_0_rgba(255,255,255,0.22)_inset,0_1px_2px_rgba(0,0,0,0.4),0_10px_28px_-10px_rgba(108,140,255,0.55)] hover:shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_2px_4px_rgba(0,0,0,0.45),0_14px_32px_-10px_rgba(108,140,255,0.7)]",
   secondary:
     "bg-bg-elevated text-text-primary border border-border-strong hover:bg-bg-panel hover:border-border-strong",
   outline:

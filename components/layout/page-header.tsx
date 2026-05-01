@@ -43,11 +43,13 @@ export function PageHeader({
           ) : null}
         </div>
         {actions ? (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div className="flex w-full flex-col items-start gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end lg:shrink-0">
+            {actions}
+          </div>
         ) : null}
       </div>
       {meta ? (
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted">
+        <div className="hidden flex-wrap items-center gap-x-6 gap-y-2 text-xs text-text-muted sm:flex">
           {meta}
         </div>
       ) : null}

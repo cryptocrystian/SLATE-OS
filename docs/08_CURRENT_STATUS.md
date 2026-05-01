@@ -1,12 +1,12 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — End of Sprint 1_
+_Last updated: 2026-05-01 — Sprint 1 polish patch_
 
 ## Sprint State
 
 | Sprint | Title | Status |
 | --- | --- | --- |
-| 1 | Visual Foundation + App Shell | ✅ Complete |
+| 1 | Visual Foundation + App Shell | ✅ Complete (audit 4.4/5, polish patch applied) |
 | 2 | Public Scorecard Flow | ⏳ Not started |
 | 3 | Lead Dashboard + Qualification | ⏳ Not started |
 | 4 | Engagement Workspace | ⏳ Not started |
@@ -64,6 +64,9 @@ Public routes (`/scorecard*`, `/apply/ai-systems-review`) and stakeholder routes
 
 - `npm run lint` — clean
 - `npm run build` — clean, all routes prerender as static
+- Sprint 1 visual UX audit captured to `docs/screenshots/sprint-1/` — 4.4/5, "Approve with fixes"
+- Polish patch landed for: mobile PageHeader CTA wrap, primary CTA emphasis, `md:grid-cols-3` metric step, meta-row hidden on `<sm`
+- Visual audit protocol authored at `docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`
 
 ## Known Constraints
 

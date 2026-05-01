@@ -66,7 +66,7 @@ export default function CommandCenterPage() {
 
       <section
         aria-label="Pipeline summary"
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
       >
         {dashboardMetrics.map((metric) => (
           <MetricCard
