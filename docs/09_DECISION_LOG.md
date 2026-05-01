@@ -64,6 +64,46 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Scorecard state in `localStorage`, not URL or server
+
+**Decision.** Scorecard answers are persisted only in `localStorage` under `slate.scorecard.v1`. The results page reads from storage and computes the score on render.
+
+**Context.** Sprint 2 explicitly rules out backend persistence. URL search params would leak self-reported business data into history and analytics. `localStorage` keeps state on-device, survives refresh, and is trivially replaceable when a real lead-capture endpoint arrives.
+
+**Tradeoffs.** Results aren't shareable via URL. Acceptable — the result is a personal diagnostic, not a public artifact. A real submission API will replace this in Sprint 3 alongside `/app/leads`.
+
+---
+
+## 2026-05-01 — Public scorecard does not use `AppShell`
+
+**Decision.** `/scorecard*` routes use `PublicAssessmentShell` (minimal SLATE mark + trust strip + footer), not the internal `AppShell`.
+
+**Context.** Per `docs/04_SLATE_UX_UI_CANON.md` website-continuity rules, the public scorecard should feel like a continuation of the marketing site, not a corner of the internal app. Sharing the AppShell would expose internal nav and break the boundary.
+
+**Tradeoffs.** Two shells to maintain instead of one. They share the same design tokens and primitives, so duplication is minimal.
+
+---
+
+## 2026-05-01 — Internal Saipien Fit Score is computed but never rendered to prospects
+
+**Decision.** `scoreScorecard()` returns a `fit` value used internally for routing/classification, but no scorecard view renders it.
+
+**Context.** `01_SLATE_PRODUCT_SPEC.md`: "Internal fit score is never shown to prospect." The scorecard surfaces three prospect-facing scores (AI Readiness, Workflow Friction, Systems Readiness) and the classification label.
+
+**Tradeoffs.** None. Fit score is reserved for the lead dashboard in Sprint 3.
+
+---
+
+## 2026-05-01 — Five result classifications with explicit boundary copy
+
+**Decision.** Result classifications are: Not AI-ready yet, Automation-ready, Quick-win candidate, Audit-ready, Strategic AI systems candidate. Every classification routes to "Apply for AI Systems Review" with classification-specific framing.
+
+**Context.** Canon requires that the free scorecard provide directional value but never cannibalize the paid AI Opportunity Sprint. Boundary copy appears in three places: landing boundary card, results disclaimer section, recommended-next-step card footer.
+
+**Tradeoffs.** Slight repetition of boundary language. Intentional — the canon flags this as a conversion-protection requirement.
+
+---
+
 ## 2026-05-01 — Root `/` redirects to `/app`
 
 **Decision.** `app/page.tsx` redirects to `/app` for now.

@@ -1,13 +1,13 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — Sprint 1 polish patch_
+_Last updated: 2026-05-01 — End of Sprint 2_
 
 ## Sprint State
 
 | Sprint | Title | Status |
 | --- | --- | --- |
 | 1 | Visual Foundation + App Shell | ✅ Complete (audit 4.4/5, polish patch applied) |
-| 2 | Public Scorecard Flow | ⏳ Not started |
+| 2 | Public Scorecard Flow | ✅ Complete |
 | 3 | Lead Dashboard + Qualification | ⏳ Not started |
 | 4 | Engagement Workspace | ⏳ Not started |
 | 5 | Intake + Findings Review | ⏳ Not started |
@@ -24,57 +24,58 @@ _Last updated: 2026-05-01 — Sprint 1 polish patch_
 - `clsx` + `tailwind-merge` (`cn()` helper)
 - Inter (sans) and JetBrains Mono (mono) via `next/font`
 - No backend, no auth, no database, no AI integration — mock data only
+- Scorecard answers persisted client-side via `localStorage`
 
 ## Implemented
 
-- `/` (redirects to `/app`)
-- `/app` Command Center dashboard with:
-  - PageHeader with eyebrow, title, supporting copy, primary + secondary actions, status meta
-  - 6 metric cards (New Scorecards, High-Fit Leads, Active Audits, Findings Needing Review, Reports in Progress, Open Proposals)
-  - Review Queue panel (5 mock items: scorecard, finding, proposal, lead, report)
-  - Active Engagements panel (4 mock engagements with stage tracker)
-  - Recent Activity timeline (6 mock events)
-  - Human-Guided AI explainer aside
-- AppShell: persistent sidebar (desktop) + mobile drawer
-- SidebarNav: SLATE mark, Operate / Deliver / System sections, active state, lock affordance for deferred routes
-- TopBar: context breadcrumb, command-menu placeholder, review queue indicator, notifications
-- Reusable primitives:
-  - `Button` (primary, secondary, outline, ghost · sm/md/lg)
-  - `Card` (base, elevated, interactive) + Header/Title/Description/Body/Footer
-  - `Badge` with 10 tones (neutral, info, success, warning, risk, critical, brand, ai, dev, studio) and optional dot
-  - `MetricCard` with tonal accent
-  - `EmptyState`
-  - `PageHeader`
-- Design tokens via CSS variables: surfaces (5 layers), borders (subtle/strong), text (5 levels), brand + practice accents, semantic statuses, shadows
-- Restrained motion (fade-up, soft pulse) and subtle radial glow background
+### Internal app (Sprint 1)
+
+- `/` redirects to `/app`
+- `/app` Command Center dashboard
+- AppShell, SidebarNav, TopBar, PageHeader
+- UI primitives: Button, Card, Badge, MetricCard, EmptyState, Input
+- Design tokens, dark theme, fonts, radial glow
+
+### Public scorecard (Sprint 2)
+
+- `/scorecard` — landing
+  - `ScorecardHero` with two-column layout: messaging + result preview card
+  - `ScorecardValueProps` — four directional reads explained
+  - `ScorecardBoundaryCard` — explicit "what this is / what it isn't" with the paid-sprint boundary
+- `/scorecard/start` — multi-step intake
+  - 8 sections (Company → Business → Friction → Systems → AI → Data → Urgency → Contact)
+  - 19 questions across 4 control types: single-choice, multi-choice (with max), 1–5 scale, text
+  - `ScorecardProgress` (sectioned progress bar with % complete and aria-progressbar)
+  - `ScorecardQuestionCard` with "why we ask" microcopy
+  - Per-section validation, back/next navigation, localStorage persistence
+- `/scorecard/results` — directional result
+  - `ScorecardResultHero` with classification name in brand color, personalized greeting
+  - Three `ScoreCard` components (AI Readiness, Workflow Friction, Systems Readiness) with band labels
+  - Top 3 likely opportunity areas, ranked, mapped from selected friction
+  - `RiskReadinessNote` derived from data sensitivity, systems maturity, AI usage
+  - `RecommendedNextStepCard` routing to `/apply/ai-systems-review`
+  - Boundary disclaimer + "restart with new answers" / "back to overview" actions
+- Mock scoring (`lib/scorecard/scoring.ts`) — categorical + scale weights → AI / Friction / Systems / internal Fit, then 5-band classification
+- `PublicAssessmentShell` — minimal public chrome (SLATE mark, trust strip, footer); deliberately not wrapped in `AppShell`
 
 ## Routes Reserved (Not Yet Built)
 
-Sidebar references these; they currently render as locked items:
-
-- `/app/leads`, `/app/leads/[id]`
-- `/app/accounts`, `/app/accounts/[id]`
-- `/app/engagements`, `/app/engagements/[id]/*`
-- `/app/audits`, `/app/proposals`, `/app/delivery`
-- `/app/library`, `/app/settings`
-
-Public routes (`/scorecard*`, `/apply/ai-systems-review`) and stakeholder routes (`/intake/[token]`, `/upload/[token]`) are not yet built — Sprint 2.
+- `/apply/ai-systems-review` — referenced from scorecard results CTA; arrives in a later sprint
+- Stakeholder intake routes (`/intake/[token]`, `/upload/[token]`)
+- Internal routes other than `/app` (Leads, Accounts, Engagements, Audits, Proposals, Delivery, Library, Settings) — render as locked in the sidebar until their sprint lands
 
 ## Verified
 
 - `npm run lint` — clean
-- `npm run build` — clean, all routes prerender as static
-- Sprint 1 visual UX audit captured to `docs/screenshots/sprint-1/` — 4.4/5, "Approve with fixes"
-- Polish patch landed for: mobile PageHeader CTA wrap, primary CTA emphasis, `md:grid-cols-3` metric step, meta-row hidden on `<sm`
-- Visual audit protocol authored at `docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`
+- `npm run build` — clean, all routes prerender as static (`/`, `/app`, `/scorecard`, `/scorecard/start`, `/scorecard/results`)
+- Sprint 2 screenshots captured at 1440 / 1024 / 390 to `docs/screenshots/sprint-2/` for landing, start, and a seeded results view
 
 ## Known Constraints
 
-- All data is mock; no persistence layer.
-- No authentication; all routes are publicly accessible during development.
-- Sidebar items beyond Overview are intentionally non-navigable until their sprint lands.
-- Icons in TopBar (search, command-menu) are visual placeholders only.
+- Scorecard state lives only in `localStorage` — no server persistence, no lead creation in the internal app yet (will arrive in Sprint 3 alongside `/app/leads`).
+- `/apply/ai-systems-review` is referenced from the results CTA but not implemented; Sprint 3 should build it or stub it cleanly.
+- The free scorecard intentionally produces directional output only. Boundary copy is enforced in three places (landing boundary card, results disclaimer, recommended-next-step card footer).
 
 ## Recommended Next Step
 
-Begin Sprint 2: Public Scorecard Flow (`/scorecard`, `/scorecard/start`, `/scorecard/results`). Reuse the design system established in Sprint 1.
+Begin Sprint 3: Lead Dashboard + Qualification (`/app/leads`, `/app/leads/[id]`). Wire scorecard completions into the lead inbox so the public-to-internal flow is end-to-end visible.

@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprint 1 (Visual Foundation + App Shell) is complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1 and 2 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 2 — Public Scorecard Flow** (`/scorecard`, `/scorecard/start`, `/scorecard/results`).
+Next planned: **Sprint 3 — Lead Dashboard + Qualification** (`/app/leads`, `/app/leads/[id]`). The public scorecard from Sprint 2 should feed the inbox built in Sprint 3.
 
 ---
 
@@ -21,32 +21,63 @@ app/
   app/
     layout.tsx             # AppShell wrapper
     page.tsx               # Command Center dashboard
+  scorecard/
+    layout.tsx             # Public metadata only
+    page.tsx               # /scorecard landing
+    start/page.tsx         # /scorecard/start (renders ScorecardStepper)
+    results/page.tsx       # /scorecard/results (renders ScorecardResultsView)
 components/
-  layout/
-    app-shell.tsx          # Persistent sidebar + top bar + main
-    sidebar-nav.tsx        # Primary nav (sectioned, with lock affordance)
-    top-bar.tsx            # Context, search/command, review queue, notifications
-    page-header.tsx        # Eyebrow / title / description / actions / meta
+  layout/                  # Internal app shell (Sprint 1)
+    app-shell.tsx
+    sidebar-nav.tsx
+    top-bar.tsx
+    page-header.tsx
   ui/
     button.tsx             # Variants: primary | secondary | outline | ghost
     card.tsx               # Card + Header/Title/Description/Body/Footer
     badge.tsx              # 10 tones, soft/outline, optional dot
-    metric-card.tsx        # Pipeline metric with tonal accent
-    empty-state.tsx        # Reusable empty state
-  slate/
-    review-queue.tsx       # Cross-engagement review inbox
-    active-engagements-panel.tsx  # Engagement list with stage tracker
-    recent-activity-panel.tsx     # Activity timeline
+    metric-card.tsx
+    empty-state.tsx
+    input.tsx              # Text/email input primitive (added in Sprint 2)
+  slate/                   # Internal /app composition
+    review-queue.tsx
+    active-engagements-panel.tsx
+    recent-activity-panel.tsx
+  scorecard/               # Public scorecard composition
+    public-assessment-shell.tsx
+    scorecard-hero.tsx     # Landing hero + result preview
+    scorecard-value-props.tsx
+    scorecard-boundary-card.tsx
+    scorecard-progress.tsx
+    scorecard-question-card.tsx (single/multi/scale/text controls)
+    scorecard-stepper.tsx  # Client orchestrator: state, persistence, validation
+    scorecard-results-view.tsx
+    scorecard-result-hero.tsx
+    score-card.tsx         # Per-dimension score with band + bar
+    opportunity-area-card.tsx
+    risk-readiness-note.tsx
+    recommended-next-step-card.tsx
 lib/
-  mock-data.ts             # Typed mock data (metrics, queue, engagements, activity)
+  mock-data.ts             # Internal /app mock data
   utils.ts                 # cn() helper
+  scorecard/
+    types.ts               # Sections, Question types, ScoreResult, etc.
+    questions.ts           # 19-question bank with dimension weights
+    scoring.ts             # Mock scoring + classification + opportunity match
+    storage.ts             # localStorage helpers (slate.scorecard.v1)
 styles/
   globals.css              # Design tokens (CSS variables) + base styles
+scripts/
+  capture-screenshots.cjs  # Sprint 1 capture
+  capture-sprint-2.cjs     # Sprint 2 capture (seeds localStorage for results)
 docs/
   00–07                    # Canon (do not drift)
-  08 CURRENT_STATUS.md     # What is built right now
-  09 DECISION_LOG.md       # Significant decisions
+  08 CURRENT_STATUS.md
+  09 DECISION_LOG.md
   10 SESSION_HANDOFF.md    # This file
+  11 VISUAL_UX_AUDIT_PROTOCOL.md
+  screenshots/sprint-1/
+  screenshots/sprint-2/
 ```
 
 ---
@@ -93,21 +124,25 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 2 — Public Scorecard Flow
+## Starting Sprint 3 — Lead Dashboard + Qualification
 
-**Goal.** First website-to-SLATE conversion asset. Routes:
+**Goal.** First internal triage surface for inbound scorecard completions. Routes:
 
-- `/scorecard` — landing
-- `/scorecard/start` — multi-step intake
-- `/scorecard/results` — directional result + diagnostic CTA
+- `/app/leads` — inbox / triage table
+- `/app/leads/[id]` — lead detail
+- (Stretch) `/apply/ai-systems-review` — currently linked from the scorecard results CTA but not yet implemented
 
-**Reuse from Sprint 1.** PageHeader, Button, Card, Badge, EmptyState, MetricCard (for score cards), design tokens, fonts, layout patterns. Do **not** wrap public routes in `AppShell` — the public surface should feel like a continuation of the marketing site, not the internal app.
+**Reuse.** Internal `AppShell`, `PageHeader`, `Card`, `Badge`, `Button`, `MetricCard`, `EmptyState`, `Input`, design tokens, fonts.
 
-**New components likely needed.** `PublicAssessmentShell`, `ScorecardStepper`, `ScorecardProgress`, `ScorecardQuestionCard`, `ConditionalQuestionGroup`, `ReadinessScoreCard`, `WorkflowFrictionCard`, `SystemsReadinessCard`, `OpportunityAreaCard`, `RecommendedNextStepCard`, `DiagnosticReviewCTA`.
+**Reuse from Sprint 2.** The full `lib/scorecard/types.ts` model — `Lead` rows in Sprint 3 should embed a `ScoreResult` snapshot per submission. Internal **Saipien Fit Score** (`fit`) is already computed by `scoreScorecard()` and is the lead-side scoring dimension that the dashboard surfaces (canon: never shown to prospects).
 
-**Boundaries.** Mock scoring logic only. The free scorecard must never produce a full roadmap, architecture, or SOW — see `docs/01_SLATE_PRODUCT_SPEC.md` and the Sprint 2 acceptance boundary.
+**New components likely needed.** `LeadFilters`, `LeadTable`, `LeadStatusChip`, `FitScoreBadge`, `RecommendedActionBadge`, `LeadProfileHeader`, `ScorecardSummaryPanel`, `InternalFitScorePanel`, `QualificationSignals`, `LeadDetailDrawer` (or full page).
 
-**End-of-sprint.** Update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` if anything material changed, and adjust this handoff if the workflow drifted.
+**Bridge from Sprint 2.** A simple submission queue can read the same `localStorage` key (`slate.scorecard.v1`) for a single demo lead. Replace with seeded mock data if multi-lead views are needed; do not introduce a backend.
+
+**Boundaries.** No backend, no auth, no email. Status changes are local-only. Internal Fit Score and qualification signals are visible to operators; never to prospects.
+
+**End-of-sprint.** Run the Visual UX Audit Protocol (`docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`), capture screenshots to `docs/screenshots/sprint-3/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 4.
 
 ---
 
