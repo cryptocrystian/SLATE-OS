@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base surfaces — layered dark, never flat black */
+    --color-bg-page: #07090d;
+    --color-bg-shell: #0a0e14;
+    --color-bg-surface: #0f141c;
+    --color-bg-elevated: #131925;
+    --color-bg-panel: #161d2b;
+
+    /* Borders */
+    --color-border-subtle: rgba(255, 255, 255, 0.06);
+    --color-border-strong: rgba(255, 255, 255, 0.12);
+
+    /* Text */
+    --color-text-primary: #e8eaef;
+    --color-text-secondary: #a3a9b6;
+    --color-text-muted: #6b7280;
+    --color-text-disabled: #4a5060;
+    --color-text-inverse: #0a0e14;
+
+    /* Brand + practice accents (restrained) */
+    --color-brand-primary: #6c8cff;
+    --color-practice-ai: #5fb8ff;
+    --color-practice-dev: #4be3c1;
+    --color-practice-studio: #f5a86a;
+
+    /* Semantic */
+    --color-status-success: #4be3c1;
+    --color-status-warning: #f5b46a;
+    --color-status-risk: #ff8e6b;
+    --color-status-critical: #ff5e6b;
+    --color-status-info: #5fb8ff;
+    --color-status-neutral: #8a93a3;
+
+    /* Effects */
+    --shadow-card:
+      0 1px 0 rgba(255, 255, 255, 0.02) inset,
+      0 1px 2px rgba(0, 0, 0, 0.4),
+      0 8px 24px -12px rgba(0, 0, 0, 0.6);
+    --shadow-elevated:
+      0 1px 0 rgba(255, 255, 255, 0.03) inset,
+      0 2px 4px rgba(0, 0, 0, 0.4),
+      0 24px 48px -24px rgba(0, 0, 0, 0.7);
+  }
+
+  html,
+  body {
+    background-color: var(--color-bg-page);
+    color: var(--color-text-primary);
+    font-feature-settings:
+      "ss01" on,
+      "cv11" on;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: rgba(108, 140, 255, 0.28);
+    color: var(--color-text-primary);
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-brand-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Scrollbar — quiet, premium */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+@layer components {
+  .surface-grid {
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 48px 48px;
+    background-position: -1px -1px;
+  }
+
+  .glow-brand {
+    box-shadow:
+      0 0 0 1px rgba(108, 140, 255, 0.2),
+      0 0 24px -4px rgba(108, 140, 255, 0.35);
+  }
+}
