@@ -73,6 +73,9 @@ function ScorecardResultPreview() {
             <span className="font-mono uppercase tracking-[0.14em]">
               Result preview
             </span>
+            <span className="rounded-full border border-border-strong bg-bg-page px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-text-muted">
+              Sample
+            </span>
           </div>
           <span className="font-mono">Audit-ready</span>
         </div>

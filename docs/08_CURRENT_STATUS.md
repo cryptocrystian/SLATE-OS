@@ -1,14 +1,14 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — End of Sprint 2_
+_Last updated: 2026-05-01 — End of Sprint 3_
 
 ## Sprint State
 
 | Sprint | Title | Status |
 | --- | --- | --- |
 | 1 | Visual Foundation + App Shell | ✅ Complete (audit 4.4/5, polish patch applied) |
-| 2 | Public Scorecard Flow | ✅ Complete |
-| 3 | Lead Dashboard + Qualification | ⏳ Not started |
+| 2 | Public Scorecard Flow | ✅ Complete (audit 4.7/5, fixes folded into Sprint 3) |
+| 3 | Lead Dashboard + Qualification | ✅ Complete |
 | 4 | Engagement Workspace | ⏳ Not started |
 | 5 | Intake + Findings Review | ⏳ Not started |
 | 6 | Opportunity Matrix + Roadmap | ⏳ Not started |
@@ -24,58 +24,76 @@ _Last updated: 2026-05-01 — End of Sprint 2_
 - `clsx` + `tailwind-merge` (`cn()` helper)
 - Inter (sans) and JetBrains Mono (mono) via `next/font`
 - No backend, no auth, no database, no AI integration — mock data only
-- Scorecard answers persisted client-side via `localStorage`
+- Scorecard answers persisted client-side via `localStorage`; lead data is seeded mock
 
 ## Implemented
 
-### Internal app (Sprint 1)
+### Internal app (Sprints 1 + 3)
 
 - `/` redirects to `/app`
-- `/app` Command Center dashboard
-- AppShell, SidebarNav, TopBar, PageHeader
+- `/app` Command Center dashboard (Sprint 1)
+- `/app/leads` Lead inbox (Sprint 3)
+  - PageHeader with eyebrow `GrowthOps · Leads`, primary `Review High-Fit Leads` + secondary `Open public scorecard`
+  - 5 pipeline metrics (New, High Fit, Needs Review, Diagnostic Requested, Nurture)
+  - Segmented filter tabs with live counts (`All / New / High Fit / Needs Review / Diagnostic Requested / Nurture / Disqualified`)
+  - Premium lead list (cards, not a CRM table) with company, contact, status chip, internal fit badge, three prospect-facing scores, recommended action, last activity
+- `/app/leads/[id]` Lead detail (Sprint 3)
+  - LeadProfileHeader with company, contact, source, status, internal fit badge
+  - Prospect-facing scorecard mirror (same `ScoreCard` primitive used on `/scorecard/results`, with new per-dimension banding)
+  - Likely opportunity areas and risk/readiness notes (reused from scorecard)
+  - Qualification signals panel (positive / watch / concern, color + icon)
+  - Right rail: Recommended Action card, Internal Saipien Fit Score panel (six dimensions, each with explanatory note), Lead Actions (mock placeholders), Source metadata, Internal notes
+  - Boundary reminder card explicitly separates directional scorecard from paid sprint findings
+- AppShell, SidebarNav (Leads now unlocked with badge `6`), TopBar, PageHeader (Sprint 1)
 - UI primitives: Button, Card, Badge, MetricCard, EmptyState, Input
-- Design tokens, dark theme, fonts, radial glow
 
-### Public scorecard (Sprint 2)
+### Public scorecard (Sprint 2 + Sprint 3 polish)
 
-- `/scorecard` — landing
-  - `ScorecardHero` with two-column layout: messaging + result preview card
-  - `ScorecardValueProps` — four directional reads explained
-  - `ScorecardBoundaryCard` — explicit "what this is / what it isn't" with the paid-sprint boundary
-- `/scorecard/start` — multi-step intake
-  - 8 sections (Company → Business → Friction → Systems → AI → Data → Urgency → Contact)
-  - 19 questions across 4 control types: single-choice, multi-choice (with max), 1–5 scale, text
-  - `ScorecardProgress` (sectioned progress bar with % complete and aria-progressbar)
-  - `ScorecardQuestionCard` with "why we ask" microcopy
-  - Per-section validation, back/next navigation, localStorage persistence
-- `/scorecard/results` — directional result
-  - `ScorecardResultHero` with classification name in brand color, personalized greeting
-  - Three `ScoreCard` components (AI Readiness, Workflow Friction, Systems Readiness) with band labels
-  - Top 3 likely opportunity areas, ranked, mapped from selected friction
-  - `RiskReadinessNote` derived from data sensitivity, systems maturity, AI usage
-  - `RecommendedNextStepCard` routing to `/apply/ai-systems-review`
-  - Boundary disclaimer + "restart with new answers" / "back to overview" actions
-- Mock scoring (`lib/scorecard/scoring.ts`) — categorical + scale weights → AI / Friction / Systems / internal Fit, then 5-band classification
-- `PublicAssessmentShell` — minimal public chrome (SLATE mark, trust strip, footer); deliberately not wrapped in `AppShell`
+- `/scorecard`, `/scorecard/start`, `/scorecard/results` (Sprint 2)
+- `/apply/ai-systems-review` premium stub (Sprint 3 polish): three-step "how this will work" walkthrough, "Application flow coming soon" notice, links back to scorecard result and overview
+- Per-dimension score banding on `/scorecard/results` and lead detail (Sprint 3 polish): friction no longer reads as "everything is great" when high
+- "Sample" tag on landing result-preview card (Sprint 3 polish)
+- `aria-hidden` on decorative HelpCircle icons in question cards (Sprint 3 polish)
+
+## Lead Data Model
+
+Mock lead model in `lib/leads/`:
+- `types.ts` — `Lead`, `LeadStatus`, `FitDimension`, `QualificationSignal`, `ProspectScores`, `FitCategory`
+- `helpers.ts` — `fitCategoryFor(score)`, status labels/tones, filter set
+- `mock-leads.ts` — six realistic leads spanning the qualification range:
+
+| Lead | Industry | Status | Internal Fit |
+| --- | --- | --- | --- |
+| Helio Health | Healthcare | High Fit | 86 (Prime) |
+| Atlas Manufacturing | Industrial | Diagnostic Requested | 84 (Prime) |
+| Cumulus Retail Group | Retail | New | 74 (Good) |
+| Northwind Logistics | Logistics | Needs Review | 71 (Good) |
+| Lattice & Co. | Professional services | Nurture | 56 (Nurture) |
+| Vertex Realty Partners | Real estate | Disqualified | 34 (Disqualify) |
+
+Each lead has six `FitDimension` entries with explanatory notes (Business Value, Budget, Pain Intensity, Technical Readiness, Buyer Readiness, Expansion), 3–4 qualification signals, three opportunity areas, risk notes, and a recommended action.
 
 ## Routes Reserved (Not Yet Built)
 
-- `/apply/ai-systems-review` — referenced from scorecard results CTA; arrives in a later sprint
-- Stakeholder intake routes (`/intake/[token]`, `/upload/[token]`)
-- Internal routes other than `/app` (Leads, Accounts, Engagements, Audits, Proposals, Delivery, Library, Settings) — render as locked in the sidebar until their sprint lands
+- `/app/accounts`, `/app/accounts/[id]`
+- `/app/engagements`, `/app/engagements/[id]/*`
+- `/app/audits`, `/app/proposals`, `/app/delivery`
+- `/app/library`, `/app/settings`
+- Stakeholder routes (`/intake/[token]`, `/upload/[token]`)
 
 ## Verified
 
 - `npm run lint` — clean
-- `npm run build` — clean, all routes prerender as static (`/`, `/app`, `/scorecard`, `/scorecard/start`, `/scorecard/results`)
-- Sprint 2 screenshots captured at 1440 / 1024 / 390 to `docs/screenshots/sprint-2/` for landing, start, and a seeded results view
+- `npm run build` — clean. 16 routes prerendered; all 6 lead detail pages SSG via `generateStaticParams`
+- Sprint 3 screenshots captured at 1440 / 1024 / 390 to `docs/screenshots/sprint-3/` for `/app/leads`, prime + nurture lead detail, `/apply/ai-systems-review`, and re-captured `/scorecard/results` showing the new per-dimension banding
 
 ## Known Constraints
 
-- Scorecard state lives only in `localStorage` — no server persistence, no lead creation in the internal app yet (will arrive in Sprint 3 alongside `/app/leads`).
-- `/apply/ai-systems-review` is referenced from the results CTA but not implemented; Sprint 3 should build it or stub it cleanly.
-- The free scorecard intentionally produces directional output only. Boundary copy is enforced in three places (landing boundary card, results disclaimer, recommended-next-step card footer).
+- Lead data is fully seeded; no scorecard-completion → lead handoff via persistence yet. The boundary copy on the leads page makes that explicit.
+- Lead Actions (Convert to Account, Start AI Opportunity Sprint, Move to Nurture, Disqualify) are visual placeholders with explicit "Mock — not wired" badges.
+- Status changes are not persisted; filters are local UI state only.
+- Lead detail status can be reviewed but not edited in this sprint.
 
 ## Recommended Next Step
 
-Begin Sprint 3: Lead Dashboard + Qualification (`/app/leads`, `/app/leads/[id]`). Wire scorecard completions into the lead inbox so the public-to-internal flow is end-to-end visible.
+Begin Sprint 4: Engagement Workspace (`/app/engagements`, `/app/engagements/[id]`). The "Start AI Opportunity Sprint" placeholder on lead detail is the natural entry point. Reuse `Card`, `Badge`, `MetricCard`, the stage tracker from `ActiveEngagementsPanel`, and the `ScoreCard` per-dimension bands.

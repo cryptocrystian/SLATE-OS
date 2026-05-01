@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScorecardResultHero } from "./scorecard-result-hero";
-import { ScoreCard, bandFor } from "./score-card";
+import { ScoreCard } from "./score-card";
 import { OpportunityAreaCard } from "./opportunity-area-card";
 import { RecommendedNextStepCard } from "./recommended-next-step-card";
 import { RiskReadinessNote } from "./risk-readiness-note";
@@ -52,9 +52,6 @@ export function ScorecardResultsView() {
   }
 
   const { result } = state;
-  const aiBand = bandFor(result.ai);
-  const frictionBand = bandFor(result.friction);
-  const systemsBand = bandFor(result.systems);
 
   return (
     <div className="flex flex-col gap-12 sm:gap-16">
@@ -71,22 +68,19 @@ export function ScorecardResultsView() {
         <ScoreCard
           label="AI Readiness"
           value={result.ai}
-          tone={aiBand.tone}
-          band={aiBand.band}
+          dimension="ai"
           description="Operating posture and prior usage that affect how easily AI can be absorbed."
         />
         <ScoreCard
           label="Workflow Friction"
           value={result.friction}
-          tone={frictionBand.tone}
-          band={frictionBand.band}
-          description="Severity and breadth of day-to-day friction. Higher friction often means higher AI leverage."
+          dimension="friction"
+          description="Severity and breadth of day-to-day friction. High friction is the strongest signal of where AI is likely to create leverage — not a problem to be celebrated."
         />
         <ScoreCard
           label="Systems Readiness"
           value={result.systems}
-          tone={systemsBand.tone}
-          band={systemsBand.band}
+          dimension="systems"
           description="Integration maturity that determines what is realistic in 30/60/90 days."
         />
       </section>

@@ -3,12 +3,16 @@ import { cn } from "@/lib/utils";
 
 export type ScoreTone = "info" | "warning" | "neutral" | "success";
 
+export type ScoreDimension = "ai" | "friction" | "systems" | "fit";
+
 export interface ScoreCardProps {
   label: string;
   value: number;
+  dimension?: ScoreDimension;
+  /** Override the auto-derived band/tone if needed. */
   tone?: ScoreTone;
-  description: string;
   band?: string;
+  description: string;
 }
 
 const toneAccent: Record<ScoreTone, string> = {
@@ -32,21 +36,76 @@ const toneBar: Record<ScoreTone, string> = {
   neutral: "bg-text-secondary",
 };
 
+interface DimensionBand {
+  threshold: number;
+  band: string;
+  tone: ScoreTone;
+}
+
+const DIMENSION_BANDS: Record<ScoreDimension, DimensionBand[]> = {
+  ai: [
+    { threshold: 75, band: "Strong", tone: "success" },
+    { threshold: 55, band: "Healthy", tone: "info" },
+    { threshold: 40, band: "Mixed", tone: "warning" },
+    { threshold: 0, band: "Early", tone: "warning" },
+  ],
+  systems: [
+    { threshold: 75, band: "Mature", tone: "success" },
+    { threshold: 55, band: "Workable", tone: "info" },
+    { threshold: 40, band: "Mixed", tone: "warning" },
+    { threshold: 0, band: "Foundation work needed", tone: "warning" },
+  ],
+  // High friction is the diagnostic finding — leverage potential — but it is
+  // not "good." Friction bands stay info/warning-toned regardless of value
+  // so the color never reads as "everything is fine here."
+  friction: [
+    { threshold: 75, band: "High pain · high leverage", tone: "info" },
+    { threshold: 55, band: "Meaningful friction", tone: "info" },
+    { threshold: 40, band: "Moderate friction", tone: "neutral" },
+    { threshold: 0, band: "Mild friction", tone: "neutral" },
+  ],
+  // Internal Fit Score bands track Saipien Labs' qualification thresholds.
+  fit: [
+    { threshold: 80, band: "Prime Candidate", tone: "success" },
+    { threshold: 65, band: "Good Candidate", tone: "info" },
+    { threshold: 50, band: "Nurture", tone: "warning" },
+    { threshold: 0, band: "Disqualify · Education Path", tone: "warning" },
+  ],
+};
+
+export function bandFor(
+  dimension: ScoreDimension,
+  value: number,
+): { band: string; tone: ScoreTone } {
+  const bands = DIMENSION_BANDS[dimension];
+  for (const entry of bands) {
+    if (value >= entry.threshold) {
+      return { band: entry.band, tone: entry.tone };
+    }
+  }
+  return { band: bands[bands.length - 1].band, tone: bands[bands.length - 1].tone };
+}
+
 export function ScoreCard({
   label,
   value,
-  tone = "neutral",
-  description,
+  dimension,
+  tone,
   band,
+  description,
 }: ScoreCardProps) {
+  const derived = dimension ? bandFor(dimension, value) : null;
+  const resolvedTone: ScoreTone = tone ?? derived?.tone ?? "neutral";
+  const resolvedBand = band ?? derived?.band;
   const pct = Math.max(0, Math.min(100, value));
+
   return (
     <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-bg-surface shadow-card">
       <div
         aria-hidden
         className={cn(
           "pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80",
-          toneAccent[tone],
+          toneAccent[resolvedTone],
         )}
       />
       <div className="relative flex flex-col gap-4 p-5 sm:p-6">
@@ -54,14 +113,14 @@ export function ScoreCard({
           <span className="text-xs font-medium uppercase tracking-[0.08em] text-text-muted">
             {label}
           </span>
-          {band ? (
+          {resolvedBand ? (
             <span
               className={cn(
                 "font-mono text-[10px] uppercase tracking-[0.14em]",
-                toneText[tone],
+                toneText[resolvedTone],
               )}
             >
-              {band}
+              {resolvedBand}
             </span>
           ) : null}
         </div>
@@ -70,7 +129,7 @@ export function ScoreCard({
           <span
             className={cn(
               "font-mono text-4xl font-semibold tabular-nums",
-              toneText[tone],
+              toneText[resolvedTone],
             )}
           >
             {value}
@@ -86,7 +145,7 @@ export function ScoreCard({
           aria-valuemax={100}
         >
           <span
-            className={cn("block h-full rounded-full transition-all", toneBar[tone])}
+            className={cn("block h-full rounded-full transition-all", toneBar[resolvedTone])}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -95,14 +154,4 @@ export function ScoreCard({
       </div>
     </div>
   );
-}
-
-export function bandFor(value: number): {
-  band: string;
-  tone: ScoreTone;
-} {
-  if (value >= 75) return { band: "High", tone: "success" };
-  if (value >= 55) return { band: "Healthy", tone: "info" };
-  if (value >= 40) return { band: "Mixed", tone: "warning" };
-  return { band: "Foundation work needed", tone: "warning" };
 }

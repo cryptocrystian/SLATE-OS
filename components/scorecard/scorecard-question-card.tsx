@@ -31,7 +31,7 @@ export function ScorecardQuestionCard({
         </h3>
         {question.whyWeAsk ? (
           <p className="flex items-start gap-2 text-xs leading-relaxed text-text-muted">
-            <HelpCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" />
+            <HelpCircle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" />
             <span>
               <span className="font-medium text-text-secondary">Why we ask:</span>{" "}
               {question.whyWeAsk}

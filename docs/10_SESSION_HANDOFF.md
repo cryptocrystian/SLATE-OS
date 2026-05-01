@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1 and 2 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1, 2, and 3 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 3 — Lead Dashboard + Qualification** (`/app/leads`, `/app/leads/[id]`). The public scorecard from Sprint 2 should feed the inbox built in Sprint 3.
+Next planned: **Sprint 4 — Engagement Workspace** (`/app/engagements`, `/app/engagements/[id]`). The "Start AI Opportunity Sprint" placeholder on lead detail is the natural entry point.
 
 ---
 
@@ -21,6 +21,12 @@ app/
   app/
     layout.tsx             # AppShell wrapper
     page.tsx               # Command Center dashboard
+    leads/
+      page.tsx             # Lead inbox (server)
+      [id]/page.tsx        # Lead detail (SSG via generateStaticParams)
+  apply/
+    ai-systems-review/
+      page.tsx             # Premium "Application coming soon" stub
   scorecard/
     layout.tsx             # Public metadata only
     page.tsx               # /scorecard landing
@@ -43,6 +49,20 @@ components/
     review-queue.tsx
     active-engagements-panel.tsx
     recent-activity-panel.tsx
+  leads/                   # Lead dashboard + detail (Sprint 3)
+    lead-status-chip.tsx
+    fit-score-badge.tsx
+    lead-filter-tabs.tsx
+    lead-list.tsx
+    lead-list-item.tsx
+    lead-profile-header.tsx
+    scorecard-summary-panel.tsx
+    internal-fit-score-panel.tsx
+    qualification-signals-panel.tsx
+    recommended-action-card.tsx
+    lead-actions-panel.tsx
+    lead-source-card.tsx
+    lead-notes-panel.tsx
   scorecard/               # Public scorecard composition
     public-assessment-shell.tsx
     scorecard-hero.tsx     # Landing hero + result preview
@@ -65,11 +85,16 @@ lib/
     questions.ts           # 19-question bank with dimension weights
     scoring.ts             # Mock scoring + classification + opportunity match
     storage.ts             # localStorage helpers (slate.scorecard.v1)
+  leads/
+    types.ts               # Lead, LeadStatus, FitDimension, QualificationSignal
+    helpers.ts             # fitCategoryFor, status labels/tones, filter set
+    mock-leads.ts          # 6 seeded leads spanning the qualification range
 styles/
   globals.css              # Design tokens (CSS variables) + base styles
 scripts/
   capture-screenshots.cjs  # Sprint 1 capture
   capture-sprint-2.cjs     # Sprint 2 capture (seeds localStorage for results)
+  capture-sprint-3.cjs     # Sprint 3 capture (leads, lead detail, /apply, /scorecard/results)
 docs/
   00–07                    # Canon (do not drift)
   08 CURRENT_STATUS.md
@@ -78,6 +103,7 @@ docs/
   11 VISUAL_UX_AUDIT_PROTOCOL.md
   screenshots/sprint-1/
   screenshots/sprint-2/
+  screenshots/sprint-3/
 ```
 
 ---
@@ -124,25 +150,25 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 3 — Lead Dashboard + Qualification
+## Starting Sprint 4 — Engagement Workspace
 
-**Goal.** First internal triage surface for inbound scorecard completions. Routes:
+**Goal.** Build the operating shell for an AI Opportunity Sprint. Routes:
 
-- `/app/leads` — inbox / triage table
-- `/app/leads/[id]` — lead detail
-- (Stretch) `/apply/ai-systems-review` — currently linked from the scorecard results CTA but not yet implemented
+- `/app/engagements` — list of active and past engagements
+- `/app/engagements/[id]` — engagement command center with stage tracker
 
-**Reuse.** Internal `AppShell`, `PageHeader`, `Card`, `Badge`, `Button`, `MetricCard`, `EmptyState`, `Input`, design tokens, fonts.
+**Entry point.** "Start AI Opportunity Sprint" on `/app/leads/[id]` (currently a mock button) becomes the wired path into a new engagement.
 
-**Reuse from Sprint 2.** The full `lib/scorecard/types.ts` model — `Lead` rows in Sprint 3 should embed a `ScoreResult` snapshot per submission. Internal **Saipien Fit Score** (`fit`) is already computed by `scoreScorecard()` and is the lead-side scoring dimension that the dashboard surfaces (canon: never shown to prospects).
+**Reuse.**
+- `AppShell`, `PageHeader`, `Card`, `Badge`, `Button`, `MetricCard`, `EmptyState`
+- `ActiveEngagementsPanel` already has a working stage tracker (`Setup → Intake → Synthesis → Scoring → Report → Proposal`) — promote it into the engagement detail view.
+- `Lead` → `Engagement` linkage: an engagement is created from a lead snapshot. Reuse `Lead.opportunityAreas` and `prospectScores` as initial state.
 
-**New components likely needed.** `LeadFilters`, `LeadTable`, `LeadStatusChip`, `FitScoreBadge`, `RecommendedActionBadge`, `LeadProfileHeader`, `ScorecardSummaryPanel`, `InternalFitScorePanel`, `QualificationSignals`, `LeadDetailDrawer` (or full page).
+**New components likely needed.** `EngagementHeader`, `EngagementStageTracker` (full-fidelity version), `StakeholderProgressPanel`, `IntakeStatusChip`, `DocumentStatusChip`, `EngagementSummaryCards`, `EngagementList`, `EngagementListItem`.
 
-**Bridge from Sprint 2.** A simple submission queue can read the same `localStorage` key (`slate.scorecard.v1`) for a single demo lead. Replace with seeded mock data if multi-lead views are needed; do not introduce a backend.
+**Boundaries.** No backend, no auth, no real intake delivery. Status moves are local. Stakeholder records are mock. Findings, opportunities, report, and proposal screens stay deferred to Sprints 5–7.
 
-**Boundaries.** No backend, no auth, no email. Status changes are local-only. Internal Fit Score and qualification signals are visible to operators; never to prospects.
-
-**End-of-sprint.** Run the Visual UX Audit Protocol (`docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`), capture screenshots to `docs/screenshots/sprint-3/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 4.
+**End-of-sprint.** Run the audit protocol, capture screenshots to `docs/screenshots/sprint-4/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 5.
 
 ---
 
