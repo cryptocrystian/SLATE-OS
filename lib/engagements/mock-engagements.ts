@@ -143,12 +143,14 @@ export const MOCK_ENGAGEMENTS: Engagement[] = [
       nextAction: "Follow up on the operations workflow doc and reconciliation export.",
     },
     findings: {
-      status: { tone: "neutral", label: "Awaiting intake close" },
-      candidate: 0,
+      status: { tone: "warning", label: "Early synthesis · needs review" },
+      candidate: 4,
       approved: 0,
       rejected: 0,
-      reviewState: "Synthesis will run after intake closes Friday.",
-      nextAction: "Hold until Synthesis stage.",
+      reviewState:
+        "4 early candidate findings drafted from partial intake. Each will be re-validated after intake closes.",
+      nextAction:
+        "Skim the early drafts; full review opens once intake is closed.",
     },
     opportunities: {
       status: { tone: "neutral", label: "Awaiting findings" },

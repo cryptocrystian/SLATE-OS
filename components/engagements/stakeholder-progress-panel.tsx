@@ -5,10 +5,12 @@ import type { IntakeStatus } from "@/lib/engagements/types";
 
 export interface StakeholderProgressPanelProps {
   intake: IntakeStatus;
+  intakeHref?: string;
 }
 
 export function StakeholderProgressPanel({
   intake,
+  intakeHref,
 }: StakeholderProgressPanelProps) {
   const metrics: Array<{ label: string; value: string }> = [
     {
@@ -43,7 +45,7 @@ export function StakeholderProgressPanel({
       }}
       metrics={metrics}
       nextAction={intake.nextAction}
-      cta={{ label: "Manage Intake", lockedNote: "Sprint 5" }}
+      cta={{ label: "Manage Intake", href: intakeHref }}
     />
   );
 }

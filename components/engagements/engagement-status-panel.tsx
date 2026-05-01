@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -24,6 +25,8 @@ export interface EngagementStatusPanelProps {
   nextAction: string;
   cta?: {
     label: string;
+    /** When provided, the CTA renders as an active link. Otherwise it
+     *  renders as a locked button labeled with `lockedNote`. */
     href?: string;
     lockedNote?: string;
   };
@@ -98,29 +101,52 @@ export function EngagementStatusPanel({
             <span className="text-text-muted">Next action: </span>
             <span className="text-text-secondary">{nextAction}</span>
           </div>
-          {cta ? (
-            <button
-              type="button"
-              disabled
-              aria-disabled
-              className={cn(
-                "inline-flex w-full items-center justify-between gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-left text-xs text-text-secondary",
-                "cursor-not-allowed opacity-80",
-              )}
-            >
-              <span className="inline-flex items-center gap-2">
-                <Lock className="h-3 w-3 text-text-muted" />
-                {cta.label}
-              </span>
-              {cta.lockedNote ? (
-                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                  {cta.lockedNote}
-                </span>
-              ) : null}
-            </button>
-          ) : null}
+          {cta ? renderCta(cta) : null}
         </div>
       </CardBody>
     </Card>
   );
 }
+
+function renderCta(cta: NonNullable<EngagementStatusPanelProps["cta"]>) {
+  if (cta.href) {
+    return (
+      <Link
+        href={cta.href}
+        className="group inline-flex w-full items-center justify-between gap-2 rounded-md border border-border-strong bg-bg-elevated px-3 py-2 text-left text-xs font-medium text-text-primary transition-colors hover:border-brand-primary/60 hover:bg-bg-elevated/80"
+      >
+        <span className="inline-flex items-center gap-2">{cta.label}</span>
+        <ArrowUpRight className="h-3.5 w-3.5 text-text-secondary transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-text-primary" />
+      </Link>
+    );
+  }
+  const accessibleName = cta.lockedNote
+    ? `${cta.label}, locked until ${cta.lockedNote}`
+    : `${cta.label}, locked`;
+  return (
+    <button
+      type="button"
+      disabled
+      aria-disabled
+      aria-label={accessibleName}
+      className={cn(
+        "inline-flex w-full items-center justify-between gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-left text-xs text-text-secondary",
+        "cursor-not-allowed opacity-80",
+      )}
+    >
+      <span className="inline-flex items-center gap-2">
+        <Lock aria-hidden className="h-3 w-3 text-text-muted" />
+        {cta.label}
+      </span>
+      {cta.lockedNote ? (
+        <span
+          aria-hidden
+          className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+        >
+          {cta.lockedNote}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+

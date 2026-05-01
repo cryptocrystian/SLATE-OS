@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–4 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1–5 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 5 — Intake + Findings Review** (`/app/engagements/[id]/intake`, `/app/engagements/[id]/findings`). The locked CTAs on `StakeholderProgressPanel`, `DocumentStatusPanel`, and `FindingsStatusPanel` in the engagement detail page are the natural entry points.
+Next planned: **Sprint 6 — Opportunity Matrix + Roadmap** (`/app/engagements/[id]/opportunities`, `/app/engagements/[id]/roadmap`). The locked CTA on `OpportunityStatusPanel` is the natural entry point.
 
 ---
 
@@ -27,6 +27,8 @@ app/
     engagements/
       page.tsx             # Engagement list (server)
       [id]/page.tsx        # Engagement command center (SSG)
+      [id]/intake/page.tsx       # Stakeholder intake manager (SSG, Sprint 5)
+      [id]/findings/page.tsx     # Findings review workspace (SSG, Sprint 5)
   apply/
     ai-systems-review/
       page.tsx             # Premium "Application coming soon" stub
@@ -66,6 +68,16 @@ components/
     lead-actions-panel.tsx        # Now links to seeded engagement when present
     lead-source-card.tsx
     lead-notes-panel.tsx
+  intake/                  # Stakeholder intake manager (Sprint 5)
+    role-coverage-map.tsx
+    stakeholder-list.tsx
+    supporting-inputs-panel.tsx
+    follow-up-queue.tsx
+  findings/                # Findings review workspace (Sprint 5)
+    finding-status-chip.tsx
+    confidence-indicator.tsx
+    evidence-panel.tsx
+    findings-workspace.tsx       # Client orchestrator (3-pane on lg+)
   engagements/             # Engagement workspace (Sprint 4)
     engagement-status-chip.tsx
     engagement-stage-chip.tsx
@@ -114,6 +126,14 @@ lib/
     types.ts               # Engagement + 6 panel-status types, ScorecardSnapshot
     helpers.ts             # STAGES, STAGE_LABEL/DESCRIPTION, STATUS labels/tones, filters
     mock-engagements.ts    # 5 seeded engagements covering Setup → Proposal
+  intake/                  # Stakeholder intake (Sprint 5)
+    types.ts               # Stakeholder, RoleCoverageRow, SupportingInput, IntakeRecord
+    helpers.ts             # Role/status/quality labels and tones, filter set
+    mock-intake.ts         # IntakeRecord per engagement
+  findings/                # Findings review (Sprint 5)
+    types.ts               # Finding, SourceRef, FindingCategory, etc.
+    helpers.ts             # Review status / confidence / category labels and tones
+    mock-findings.ts       # Seeded findings per engagement
 styles/
   globals.css              # Design tokens (CSS variables) + base styles
 scripts/
@@ -121,6 +141,7 @@ scripts/
   capture-sprint-2.cjs     # Sprint 2 capture (seeds localStorage for results)
   capture-sprint-3.cjs     # Sprint 3 capture (leads, lead detail, /apply, /scorecard/results)
   capture-sprint-4.cjs     # Sprint 4 capture (engagements list + 4 detail variants + linked lead)
+  capture-sprint-5.cjs     # Sprint 5 capture (intake + findings × multiple engagement states)
 docs/
   00–07                    # Canon (do not drift)
   08 CURRENT_STATUS.md
@@ -131,6 +152,7 @@ docs/
   screenshots/sprint-2/
   screenshots/sprint-3/
   screenshots/sprint-4/
+  screenshots/sprint-5/
 ```
 
 ---
@@ -177,25 +199,26 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 5 — Intake + Findings Review
+## Starting Sprint 6 — Opportunity Matrix + Roadmap
 
-**Goal.** Build the first deep modules inside the engagement workspace:
+**Goal.** Take approved findings into the prioritization and sequencing surface.
 
-- `/app/engagements/[id]/intake` — stakeholder intake manager and document status
-- `/app/engagements/[id]/findings` — findings review workspace (three-column: list / editor / evidence)
+- `/app/engagements/[id]/opportunities` — impact × complexity matrix with Quick Wins / Strategic Builds / Low Priority / Defer quadrants
+- `/app/engagements/[id]/roadmap` — 30/60/90-day roadmap built from selected opportunities
 
-**Entry points (currently locked).** `StakeholderProgressPanel` ("Manage Intake"), `DocumentStatusPanel` ("Manage Documents"), and `FindingsStatusPanel` ("Review Findings") on the engagement detail page. Replace the locked-button affordance with real navigation when the Sprint 5 routes ship.
+**Entry points (currently locked).** `OpportunityStatusPanel` ("Score Opportunities", `Sprint 6` lock label) on the engagement detail page. Replace with active links once the routes ship. Recommended Action card on the engagement detail also routes to `/opportunities` when the engagement is in the `scoring` stage; flip the lock there too.
 
-**Reuse from Sprint 4.**
-- The full `Engagement` type already carries `IntakeStatus`, `DocumentStatus`, and `FindingsStatus` records with all the fields needed by the deep modules.
-- `EngagementProfileHeader`, `EngagementStageTracker`, `EngagementContextCard`, and the boundary reminder card.
-- The `OpportunityAreaCard` and `RiskReadinessNote` patterns from `components/scorecard/`.
+**Reuse from Sprints 1–5.**
+- Approved findings (`Finding[]` from `lib/findings/mock-findings.ts`, status `approved` or `report-ready`) are the input rows.
+- `OpportunityArea` from `lib/scorecard/types.ts` already has the right shape for the matrix's cards.
+- `EngagementProfileHeader`, `EngagementStageTracker`, `EngagementContextCard`, `EngagementRecommendedActionCard`.
+- `Card`, `Badge`, `MetricCard`, `Button`, `EmptyState`, plus the `ScoreCard` per-dimension banding for impact/complexity.
 
-**New components likely needed.** `StakeholderTable`, `StakeholderRoleChip`, `IntakeStatusBadge`, `RoleCoverageMap`, `ResponseSummaryDrawer`, `DocumentList`, `EvidenceQualityChip`, `FindingCard`, `FindingList`, `FindingEditor`, `EvidencePanel`, `ConfidenceLabel`, `AIAssumptionNote`, `ReviewActionBar`.
+**New components likely needed.** `OpportunityCard`, `OpportunityMatrix` (a 2×2 quadrant view), `ScoringControl`, `PriorityLabel`, `RelatedFindingsPanel`, `RiskDependencyList`, `RoadmapPhaseColumn`, `RoadmapCard`, `DependencyChip`, `SuccessCriteriaBlock`.
 
-**Boundaries.** Mock data only. No real email/intake delivery, no document upload, no AI calls. AI-drafted findings must be visibly labeled and require approve / edit / reject / regenerate before scoring opens.
+**Boundaries.** Mock data, mock scoring, no backend. The matrix and roadmap should make the consultant's prioritization legible inside SLATE without auto-promoting any opportunity into the report.
 
-**End-of-sprint.** Run the audit protocol (`docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`), capture screenshots to `docs/screenshots/sprint-5/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 6.
+**End-of-sprint.** Run the audit protocol, capture screenshots to `docs/screenshots/sprint-6/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 7.
 
 ---
 

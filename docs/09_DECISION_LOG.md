@@ -64,6 +64,26 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Stakeholder intake and findings review use seeded mock evidence
+
+**Decision.** `/app/engagements/[id]/intake` and `/app/engagements/[id]/findings` render seeded stakeholder, document, and finding records. There is no real intake delivery, document upload, or AI synthesis. Every review action (Approve / Edit / Reject / Regenerate / Add note) is mock and clearly labeled.
+
+**Context.** Sprint 5 explicitly excludes backend persistence, real stakeholder forms, and real AI calls. The point of the sprint is to make discovery-to-insight legible inside SLATE so a strategist can immediately see who has responded, what evidence exists, and which findings need approval. Real data flows when persistence and AI synthesis are introduced.
+
+**Tradeoffs.** Reviewer interactions don't persist between sessions. Acceptable for MVP; the surfaces are wired to swap in real data later without component-level changes.
+
+---
+
+## 2026-05-01 — Findings carry typed source references back to evidence
+
+**Decision.** Every `Finding` carries a `sourceRefs[]` of typed evidence: `stakeholder-response`, `uploaded-document`, `scorecard-answer`, or `consultant-note`, each with source name, optional role, excerpt, and strength label. The findings workspace's `EvidencePanel` renders this list verbatim and every finding can be traced to its evidence on screen.
+
+**Context.** Canon (`04_SLATE_UX_UI_CANON.md`) treats evidence as central to trust: "Insights should connect back to source material whenever possible." The product also requires that AI-drafted findings never feel final. Pairing the finding with its evidence — and labeling the AI authorship — keeps the human reviewer in the loop and the audit trail honest.
+
+**Tradeoffs.** Slight authoring cost when seeding mock findings. Worth it: this is the reusable pattern for the report builder and proposal builder in Sprint 7.
+
+---
+
 ## 2026-05-01 — Engagement workspaces use seeded mock AI Opportunity Sprints
 
 **Decision.** `/app/engagements` and `/app/engagements/[id]` render five seeded mock engagements from `lib/engagements/mock-engagements.ts`. Two engagements are explicitly linked to Sprint 3 leads (`atlas-manufacturing` and `helio-health`); the lead detail page's "Start AI Opportunity Sprint" button now opens the seeded engagement when one exists. Three additional engagements (Meridian Advisors, Quanta Operations, Caldera Capital Group) cover Synthesis, Report, and Proposal stages so the full flow is reviewable.

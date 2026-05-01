@@ -5,9 +5,13 @@ import type { DocumentStatus } from "@/lib/engagements/types";
 
 export interface DocumentStatusPanelProps {
   documents: DocumentStatus;
+  intakeHref?: string;
 }
 
-export function DocumentStatusPanel({ documents }: DocumentStatusPanelProps) {
+export function DocumentStatusPanel({
+  documents,
+  intakeHref,
+}: DocumentStatusPanelProps) {
   return (
     <EngagementStatusPanel
       icon={<FileText className="h-4 w-4" />}
@@ -24,7 +28,7 @@ export function DocumentStatusPanel({ documents }: DocumentStatusPanelProps) {
         { label: "Review state", value: documents.reviewState },
       ]}
       nextAction={documents.nextAction}
-      cta={{ label: "Manage Documents", lockedNote: "Sprint 5" }}
+      cta={{ label: "Manage Documents", href: intakeHref }}
     />
   );
 }

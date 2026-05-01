@@ -5,9 +5,13 @@ import type { FindingsStatus } from "@/lib/engagements/types";
 
 export interface FindingsStatusPanelProps {
   findings: FindingsStatus;
+  findingsHref?: string;
 }
 
-export function FindingsStatusPanel({ findings }: FindingsStatusPanelProps) {
+export function FindingsStatusPanel({
+  findings,
+  findingsHref,
+}: FindingsStatusPanelProps) {
   const reviewed = findings.approved + findings.rejected;
   return (
     <EngagementStatusPanel
@@ -32,7 +36,7 @@ export function FindingsStatusPanel({ findings }: FindingsStatusPanelProps) {
         { label: "Review state", value: findings.reviewState },
       ]}
       nextAction={findings.nextAction}
-      cta={{ label: "Review Findings", lockedNote: "Sprint 5" }}
+      cta={{ label: "Review Findings", href: findingsHref }}
     />
   );
 }

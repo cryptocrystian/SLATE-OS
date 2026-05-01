@@ -19,6 +19,7 @@ import {
   getEngagementById,
 } from "@/lib/engagements/mock-engagements";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
+import type { Engagement } from "@/lib/engagements/types";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -37,6 +38,30 @@ export async function generateMetadata({
   };
 }
 
+function ratio(numerator: number, denominator: number, zeroLabel: string) {
+  if (denominator === 0) return zeroLabel;
+  return `${numerator}/${denominator}`;
+}
+
+function recommendedActionRoute(engagement: Engagement) {
+  switch (engagement.currentStage) {
+    case "setup":
+    case "intake":
+      return {
+        href: `/app/engagements/${engagement.id}/intake`,
+      };
+    case "synthesis":
+      return {
+        href: `/app/engagements/${engagement.id}/findings`,
+      };
+    case "scoring":
+      return { lockedNote: "Sprint 6" };
+    case "report":
+    case "proposal":
+      return { lockedNote: "Sprint 7" };
+  }
+}
+
 export default function EngagementDetailPage({
   params,
 }: {
@@ -44,6 +69,17 @@ export default function EngagementDetailPage({
 }) {
   const engagement = getEngagementById(params.id);
   if (!engagement) notFound();
+
+  const intakeHref = `/app/engagements/${engagement.id}/intake`;
+  const findingsHref = `/app/engagements/${engagement.id}/findings`;
+  const recAction = recommendedActionRoute(engagement);
+
+  const stakeholderTotal =
+    engagement.intake.stakeholdersInvited ||
+    engagement.intake.stakeholdersResponded ||
+    0;
+  const documentTotal =
+    engagement.documents.requested || engagement.documents.received || 0;
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -72,8 +108,12 @@ export default function EngagementDetailPage({
       >
         <MetricCard
           label="Stakeholders"
-          value={`${engagement.intake.stakeholdersResponded}/${engagement.intake.stakeholdersInvited || engagement.intake.stakeholdersResponded || 0}`}
-          hint="Responded"
+          value={ratio(
+            engagement.intake.stakeholdersResponded,
+            stakeholderTotal,
+            "Not invited",
+          )}
+          hint={stakeholderTotal === 0 ? "Awaiting kickoff" : "Responded"}
           tone={
             engagement.intake.status.tone === "success"
               ? "success"
@@ -84,8 +124,16 @@ export default function EngagementDetailPage({
         />
         <MetricCard
           label="Documents"
-          value={`${engagement.documents.received}/${engagement.documents.requested || engagement.documents.received || 0}`}
-          hint={`${engagement.documents.reviewed} reviewed`}
+          value={ratio(
+            engagement.documents.received,
+            documentTotal,
+            "Not requested",
+          )}
+          hint={
+            documentTotal === 0
+              ? "Document list opens with intake"
+              : `${engagement.documents.reviewed} reviewed`
+          }
           tone={
             engagement.documents.status.tone === "success" ? "success" : "info"
           }
@@ -97,7 +145,11 @@ export default function EngagementDetailPage({
               ? "—"
               : `${engagement.findings.approved}/${engagement.findings.candidate}`
           }
-          hint="Approved"
+          hint={
+            engagement.findings.candidate === 0
+              ? "Synthesis follows intake"
+              : "Approved"
+          }
           tone={
             engagement.findings.status.tone === "warning"
               ? "warning"
@@ -108,8 +160,16 @@ export default function EngagementDetailPage({
         />
         <MetricCard
           label="Opportunities"
-          value={String(engagement.opportunities.identified)}
-          hint={`${engagement.opportunities.quickWins} quick wins · ${engagement.opportunities.strategicBuilds} strategic`}
+          value={
+            engagement.opportunities.identified === 0
+              ? "—"
+              : String(engagement.opportunities.identified)
+          }
+          hint={
+            engagement.opportunities.identified === 0
+              ? "Scoring follows findings"
+              : `${engagement.opportunities.quickWins} quick wins · ${engagement.opportunities.strategicBuilds} strategic`
+          }
           tone={
             engagement.opportunities.status.tone === "success"
               ? "success"
@@ -130,8 +190,16 @@ export default function EngagementDetailPage({
         />
         <MetricCard
           label="Proposal"
-          value={String(engagement.proposal.options)}
-          hint={engagement.proposal.recommendedOption ?? "Awaiting report"}
+          value={
+            engagement.proposal.options === 0
+              ? "—"
+              : String(engagement.proposal.options)
+          }
+          hint={
+            engagement.proposal.options === 0
+              ? "Awaiting report"
+              : (engagement.proposal.recommendedOption ?? "Awaiting report")
+          }
           tone={
             engagement.proposal.status.tone === "warning"
               ? "warning"
@@ -143,9 +211,26 @@ export default function EngagementDetailPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Main column */}
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <StakeholderProgressPanel intake={engagement.intake} />
-          <DocumentStatusPanel documents={engagement.documents} />
-          <FindingsStatusPanel findings={engagement.findings} />
+          <StakeholderProgressPanel
+            intake={engagement.intake}
+            intakeHref={intakeHref}
+          />
+          <DocumentStatusPanel
+            documents={engagement.documents}
+            intakeHref={intakeHref}
+          />
+          <FindingsStatusPanel
+            findings={engagement.findings}
+            findingsHref={
+              engagement.findings.candidate > 0 ||
+              engagement.currentStage === "synthesis" ||
+              engagement.currentStage === "scoring" ||
+              engagement.currentStage === "report" ||
+              engagement.currentStage === "proposal"
+                ? findingsHref
+                : undefined
+            }
+          />
           <OpportunityStatusPanel opportunities={engagement.opportunities} />
           <ReportStatusPanel report={engagement.report} />
           <ProposalStatusPanel proposal={engagement.proposal} />
@@ -157,7 +242,11 @@ export default function EngagementDetailPage({
 
         {/* Sidebar */}
         <aside className="flex flex-col gap-6">
-          <EngagementRecommendedActionCard engagement={engagement} />
+          <EngagementRecommendedActionCard
+            engagement={engagement}
+            href={recAction.href}
+            lockedNote={recAction.lockedNote}
+          />
           <EngagementContextCard engagement={engagement} />
           <EngagementNotesPanel notes={engagement.notes} />
           <Card variant="base">
