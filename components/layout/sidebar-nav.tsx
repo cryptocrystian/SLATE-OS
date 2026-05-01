@@ -48,7 +48,12 @@ const sections: NavSection[] = [
   {
     label: "Deliver",
     items: [
-      { label: "Engagements", href: "/app/engagements", icon: Briefcase, disabled: true },
+      {
+        label: "Engagements",
+        href: "/app/engagements",
+        icon: Briefcase,
+        badge: { label: "5", tone: "info" },
+      },
       { label: "Audits", href: "/app/audits", icon: ClipboardCheck, disabled: true },
       { label: "Proposals", href: "/app/proposals", icon: FileText, disabled: true },
       { label: "Delivery", href: "/app/delivery", icon: Workflow, disabled: true },

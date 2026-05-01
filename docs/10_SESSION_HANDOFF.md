@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1, 2, and 3 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1–4 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 4 — Engagement Workspace** (`/app/engagements`, `/app/engagements/[id]`). The "Start AI Opportunity Sprint" placeholder on lead detail is the natural entry point.
+Next planned: **Sprint 5 — Intake + Findings Review** (`/app/engagements/[id]/intake`, `/app/engagements/[id]/findings`). The locked CTAs on `StakeholderProgressPanel`, `DocumentStatusPanel`, and `FindingsStatusPanel` in the engagement detail page are the natural entry points.
 
 ---
 
@@ -24,6 +24,9 @@ app/
     leads/
       page.tsx             # Lead inbox (server)
       [id]/page.tsx        # Lead detail (SSG via generateStaticParams)
+    engagements/
+      page.tsx             # Engagement list (server)
+      [id]/page.tsx        # Engagement command center (SSG)
   apply/
     ai-systems-review/
       page.tsx             # Premium "Application coming soon" stub
@@ -60,9 +63,27 @@ components/
     internal-fit-score-panel.tsx
     qualification-signals-panel.tsx
     recommended-action-card.tsx
-    lead-actions-panel.tsx
+    lead-actions-panel.tsx        # Now links to seeded engagement when present
     lead-source-card.tsx
     lead-notes-panel.tsx
+  engagements/             # Engagement workspace (Sprint 4)
+    engagement-status-chip.tsx
+    engagement-stage-chip.tsx
+    engagement-stage-tracker.tsx  # Horizontal on lg, vertical below
+    engagement-list.tsx
+    engagement-list-item.tsx
+    engagement-profile-header.tsx
+    engagement-status-panel.tsx   # Generic shell used by 6 specific panels
+    stakeholder-progress-panel.tsx
+    document-status-panel.tsx
+    findings-status-panel.tsx
+    opportunity-status-panel.tsx
+    report-status-panel.tsx
+    proposal-status-panel.tsx
+    engagement-context-card.tsx
+    engagement-risks-panel.tsx
+    engagement-recommended-action-card.tsx
+    engagement-notes-panel.tsx
   scorecard/               # Public scorecard composition
     public-assessment-shell.tsx
     scorecard-hero.tsx     # Landing hero + result preview
@@ -89,12 +110,17 @@ lib/
     types.ts               # Lead, LeadStatus, FitDimension, QualificationSignal
     helpers.ts             # fitCategoryFor, status labels/tones, filter set
     mock-leads.ts          # 6 seeded leads spanning the qualification range
+  engagements/
+    types.ts               # Engagement + 6 panel-status types, ScorecardSnapshot
+    helpers.ts             # STAGES, STAGE_LABEL/DESCRIPTION, STATUS labels/tones, filters
+    mock-engagements.ts    # 5 seeded engagements covering Setup → Proposal
 styles/
   globals.css              # Design tokens (CSS variables) + base styles
 scripts/
   capture-screenshots.cjs  # Sprint 1 capture
   capture-sprint-2.cjs     # Sprint 2 capture (seeds localStorage for results)
   capture-sprint-3.cjs     # Sprint 3 capture (leads, lead detail, /apply, /scorecard/results)
+  capture-sprint-4.cjs     # Sprint 4 capture (engagements list + 4 detail variants + linked lead)
 docs/
   00–07                    # Canon (do not drift)
   08 CURRENT_STATUS.md
@@ -104,6 +130,7 @@ docs/
   screenshots/sprint-1/
   screenshots/sprint-2/
   screenshots/sprint-3/
+  screenshots/sprint-4/
 ```
 
 ---
@@ -150,25 +177,25 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 4 — Engagement Workspace
+## Starting Sprint 5 — Intake + Findings Review
 
-**Goal.** Build the operating shell for an AI Opportunity Sprint. Routes:
+**Goal.** Build the first deep modules inside the engagement workspace:
 
-- `/app/engagements` — list of active and past engagements
-- `/app/engagements/[id]` — engagement command center with stage tracker
+- `/app/engagements/[id]/intake` — stakeholder intake manager and document status
+- `/app/engagements/[id]/findings` — findings review workspace (three-column: list / editor / evidence)
 
-**Entry point.** "Start AI Opportunity Sprint" on `/app/leads/[id]` (currently a mock button) becomes the wired path into a new engagement.
+**Entry points (currently locked).** `StakeholderProgressPanel` ("Manage Intake"), `DocumentStatusPanel` ("Manage Documents"), and `FindingsStatusPanel` ("Review Findings") on the engagement detail page. Replace the locked-button affordance with real navigation when the Sprint 5 routes ship.
 
-**Reuse.**
-- `AppShell`, `PageHeader`, `Card`, `Badge`, `Button`, `MetricCard`, `EmptyState`
-- `ActiveEngagementsPanel` already has a working stage tracker (`Setup → Intake → Synthesis → Scoring → Report → Proposal`) — promote it into the engagement detail view.
-- `Lead` → `Engagement` linkage: an engagement is created from a lead snapshot. Reuse `Lead.opportunityAreas` and `prospectScores` as initial state.
+**Reuse from Sprint 4.**
+- The full `Engagement` type already carries `IntakeStatus`, `DocumentStatus`, and `FindingsStatus` records with all the fields needed by the deep modules.
+- `EngagementProfileHeader`, `EngagementStageTracker`, `EngagementContextCard`, and the boundary reminder card.
+- The `OpportunityAreaCard` and `RiskReadinessNote` patterns from `components/scorecard/`.
 
-**New components likely needed.** `EngagementHeader`, `EngagementStageTracker` (full-fidelity version), `StakeholderProgressPanel`, `IntakeStatusChip`, `DocumentStatusChip`, `EngagementSummaryCards`, `EngagementList`, `EngagementListItem`.
+**New components likely needed.** `StakeholderTable`, `StakeholderRoleChip`, `IntakeStatusBadge`, `RoleCoverageMap`, `ResponseSummaryDrawer`, `DocumentList`, `EvidenceQualityChip`, `FindingCard`, `FindingList`, `FindingEditor`, `EvidencePanel`, `ConfidenceLabel`, `AIAssumptionNote`, `ReviewActionBar`.
 
-**Boundaries.** No backend, no auth, no real intake delivery. Status moves are local. Stakeholder records are mock. Findings, opportunities, report, and proposal screens stay deferred to Sprints 5–7.
+**Boundaries.** Mock data only. No real email/intake delivery, no document upload, no AI calls. AI-drafted findings must be visibly labeled and require approve / edit / reject / regenerate before scoring opens.
 
-**End-of-sprint.** Run the audit protocol, capture screenshots to `docs/screenshots/sprint-4/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 5.
+**End-of-sprint.** Run the audit protocol (`docs/11_VISUAL_UX_AUDIT_PROTOCOL.md`), capture screenshots to `docs/screenshots/sprint-5/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 6.
 
 ---
 

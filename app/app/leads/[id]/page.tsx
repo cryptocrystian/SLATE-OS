@@ -13,6 +13,7 @@ import { OpportunityAreaCard } from "@/components/scorecard/opportunity-area-car
 import { RiskReadinessNote } from "@/components/scorecard/risk-readiness-note";
 import { Card, CardBody } from "@/components/ui/card";
 import { MOCK_LEADS, getLeadById } from "@/lib/leads/mock-leads";
+import { engagementForLead } from "@/lib/engagements/mock-engagements";
 
 export function generateStaticParams() {
   return MOCK_LEADS.map((l) => ({ id: l.id }));
@@ -38,6 +39,7 @@ export default function LeadDetailPage({
 }) {
   const lead = getLeadById(params.id);
   if (!lead) notFound();
+  const engagement = engagementForLead(lead.id);
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -85,7 +87,7 @@ export default function LeadDetailPage({
         <aside className="flex flex-col gap-6">
           <RecommendedActionCard lead={lead} />
           <InternalFitScorePanel lead={lead} />
-          <LeadActionsPanel />
+          <LeadActionsPanel engagementId={engagement?.id} />
           <LeadSourceCard lead={lead} />
           <LeadNotesPanel notes={lead.notes} />
         </aside>

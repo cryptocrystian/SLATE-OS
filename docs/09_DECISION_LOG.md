@@ -64,6 +64,26 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Engagement workspaces use seeded mock AI Opportunity Sprints
+
+**Decision.** `/app/engagements` and `/app/engagements/[id]` render five seeded mock engagements from `lib/engagements/mock-engagements.ts`. Two engagements are explicitly linked to Sprint 3 leads (`atlas-manufacturing` and `helio-health`); the lead detail page's "Start AI Opportunity Sprint" button now opens the seeded engagement when one exists. Three additional engagements (Meridian Advisors, Quanta Operations, Caldera Capital Group) cover Synthesis, Report, and Proposal stages so the full flow is reviewable.
+
+**Context.** Sprint 4 explicitly excludes backend, auth, real engagement creation, and stakeholder intake. The point of the sprint is to make the post-qualification command center visible and reviewable. Real persistence and engagement creation arrive later.
+
+**Tradeoffs.** The lead → engagement transition is illustrated, not lived. Acceptable for MVP. Status panel CTAs are locked with explicit "Sprint 5 / 6 / 7" labels so the operator understands what activates each module.
+
+---
+
+## 2026-05-01 — BuildOps stays documentation-only
+
+**Decision.** No BuildOps app functionality is built during the GrowthOps + AdvisoryOps MVP. No `/app/builds` route, no BuildOps navigation item, no sprint manager, no agent session UI, no repo context manager, no QA workspace, no deployment visibility, no related backend.
+
+**Context.** BuildOps is being authored as future-facing canon in parallel. The active MVP must remain focused on the AI Workflow Scorecard → Lead Qualification → AI Opportunity Sprint → Audit Report → Proposal path. Implementing BuildOps surfaces now would dilute the MVP and risk early architectural decisions before the canon is stable.
+
+**Tradeoffs.** The product roadmap is visible only through the locked sidebar items and the canon docs. BuildOps surfaces ship in their own dedicated sprint sequence after AdvisoryOps reaches feature completeness.
+
+---
+
 ## 2026-05-01 — Lead dashboard uses seeded mock leads until backend lands
 
 **Decision.** `/app/leads` and `/app/leads/[id]` render six seeded mock leads from `lib/leads/mock-leads.ts`. There is no live handoff from `/scorecard/results` (localStorage) into the lead inbox.
