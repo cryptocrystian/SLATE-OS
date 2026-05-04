@@ -5,9 +5,13 @@ import type { ProposalStatus } from "@/lib/engagements/types";
 
 export interface ProposalStatusPanelProps {
   proposal: ProposalStatus;
+  proposalHref?: string;
 }
 
-export function ProposalStatusPanel({ proposal }: ProposalStatusPanelProps) {
+export function ProposalStatusPanel({
+  proposal,
+  proposalHref,
+}: ProposalStatusPanelProps) {
   return (
     <EngagementStatusPanel
       icon={<FileSignature className="h-4 w-4" />}
@@ -23,7 +27,7 @@ export function ProposalStatusPanel({ proposal }: ProposalStatusPanelProps) {
         { label: "State", value: proposal.state },
       ]}
       nextAction={proposal.nextAction}
-      cta={{ label: "Draft Proposal", lockedNote: "Sprint 7" }}
+      cta={{ label: "Draft Proposal", href: proposalHref }}
     />
   );
 }

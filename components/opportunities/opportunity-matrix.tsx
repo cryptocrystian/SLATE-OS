@@ -64,7 +64,10 @@ export function OpportunityMatrix({
         </div>
 
         {/* Axis legend */}
-        <div className="flex items-center justify-between text-[11px] text-text-muted">
+        <div
+          id="opportunity-matrix-axis-x"
+          className="flex items-center justify-between text-[11px] text-text-muted"
+        >
           <span className="font-mono uppercase tracking-[0.12em]">
             ← Lower complexity
           </span>
@@ -75,7 +78,9 @@ export function OpportunityMatrix({
 
         <div
           className="grid gap-3 sm:grid-cols-2"
-          aria-label="Opportunity matrix by impact and complexity"
+          role="grid"
+          aria-label="Opportunity matrix: impact (rows) by complexity (columns)"
+          aria-describedby="opportunity-matrix-axis-x opportunity-matrix-axis-y"
         >
           {ORDERED_QUADRANTS.map((q) => {
             const tone = TONE_MAP[QUADRANT_TONE[q]] ?? "neutral";
@@ -154,7 +159,10 @@ export function OpportunityMatrix({
           })}
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-text-muted">
+        <div
+          id="opportunity-matrix-axis-y"
+          className="flex items-center justify-between text-[11px] text-text-muted"
+        >
           <span className="font-mono uppercase tracking-[0.12em]">
             ↓ Lower impact
           </span>

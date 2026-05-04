@@ -54,10 +54,17 @@ export default function EngagementDetailPage({
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
+  const reportHref = `/app/engagements/${engagement.id}/report`;
+  const proposalHref = `/app/engagements/${engagement.id}/proposal`;
   const recAction = recommendedActionRoute(
     engagement,
     `/app/engagements/${engagement.id}`,
   );
+
+  const stageOrder = ["setup", "intake", "synthesis", "scoring", "report", "proposal"];
+  const currentIdx = stageOrder.indexOf(engagement.currentStage);
+  const isReportStageOrLater = currentIdx >= stageOrder.indexOf("report");
+  const isProposalStageOrLater = currentIdx >= stageOrder.indexOf("proposal");
 
   const stakeholderTotal =
     engagement.intake.stakeholdersInvited ||
@@ -226,8 +233,14 @@ export default function EngagementDetailPage({
                 : undefined
             }
           />
-          <ReportStatusPanel report={engagement.report} />
-          <ProposalStatusPanel proposal={engagement.proposal} />
+          <ReportStatusPanel
+            report={engagement.report}
+            reportHref={isReportStageOrLater ? reportHref : undefined}
+          />
+          <ProposalStatusPanel
+            proposal={engagement.proposal}
+            proposalHref={isProposalStageOrLater ? proposalHref : undefined}
+          />
           <EngagementRisksPanel
             risks={engagement.riskNotes}
             dependencies={engagement.dependencies}

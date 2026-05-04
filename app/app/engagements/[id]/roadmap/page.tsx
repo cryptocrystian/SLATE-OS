@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Calendar, Lock } from "lucide-react";
+import { ArrowLeft, ArrowRight, Calendar } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -58,9 +59,15 @@ export default function EngagementRoadmapPage({
   };
 
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
+  const reportHref =
+    items.length > 0 ? `/app/engagements/${engagement.id}/report` : undefined;
   const recAction = recommendedActionRoute(
     engagement,
     `/app/engagements/${engagement.id}/roadmap`,
+  );
+
+  const opportunityTitles: Record<string, string> = Object.fromEntries(
+    opportunities.map((o) => [o.id, o.title]),
   );
 
   return (
@@ -80,22 +87,19 @@ export default function EngagementRoadmapPage({
                 Back to Opportunities
               </Button>
             </Link>
-            <button
-              type="button"
-              disabled
-              aria-disabled
-              aria-label="Prepare Report, locked until Sprint 7"
-              className="inline-flex h-9 cursor-not-allowed items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated/60 px-4 text-xs font-medium text-text-secondary opacity-80"
-            >
-              <Lock aria-hidden className="h-3 w-3 text-text-muted" />
-              Prepare Report
-              <span
-                aria-hidden
-                className="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
-              >
-                Sprint 7
-              </span>
-            </button>
+            {reportHref ? (
+              <Link href={reportHref}>
+                <Button
+                  variant="primary"
+                  size="md"
+                  trailingIcon={<ArrowRight className="h-4 w-4" />}
+                >
+                  Prepare Report
+                </Button>
+              </Link>
+            ) : (
+              <LockedActionButton label="Prepare Report" />
+            )}
           </>
         }
         meta={
@@ -191,6 +195,7 @@ export default function EngagementRoadmapPage({
                   key={phase}
                   phase={phase}
                   items={items.filter((i) => i.phase === phase)}
+                  opportunityTitles={opportunityTitles}
                 />
               ))}
             </div>

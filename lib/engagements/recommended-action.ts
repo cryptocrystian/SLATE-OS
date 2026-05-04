@@ -18,8 +18,8 @@ const STAGE_DESTINATION: Partial<
   intake: (id) => ({ href: `/app/engagements/${id}/intake` }),
   synthesis: (id) => ({ href: `/app/engagements/${id}/findings` }),
   scoring: (id) => ({ href: `/app/engagements/${id}/opportunities` }),
-  report: () => ({ lockedNote: "Sprint 7" }),
-  proposal: () => ({ lockedNote: "Sprint 7" }),
+  report: (id) => ({ href: `/app/engagements/${id}/report` }),
+  proposal: (id) => ({ href: `/app/engagements/${id}/proposal` }),
 };
 
 /**

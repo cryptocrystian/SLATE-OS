@@ -9,9 +9,14 @@ import type { RoadmapItem, RoadmapPhase } from "@/lib/roadmap/types";
 export interface RoadmapPhaseColumnProps {
   phase: RoadmapPhase;
   items: RoadmapItem[];
+  opportunityTitles?: Record<string, string>;
 }
 
-export function RoadmapPhaseColumn({ phase, items }: RoadmapPhaseColumnProps) {
+export function RoadmapPhaseColumn({
+  phase,
+  items,
+  opportunityTitles,
+}: RoadmapPhaseColumnProps) {
   return (
     <section
       aria-label={`${PHASE_LABEL[phase]}, ${items.length} item${items.length === 1 ? "" : "s"}`}
@@ -47,7 +52,10 @@ export function RoadmapPhaseColumn({ phase, items }: RoadmapPhaseColumnProps) {
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
             <li key={item.id}>
-              <RoadmapCard item={item} />
+              <RoadmapCard
+                item={item}
+                opportunityTitles={opportunityTitles}
+              />
             </li>
           ))}
         </ul>

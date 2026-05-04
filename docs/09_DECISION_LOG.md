@@ -64,6 +64,46 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Report builder uses seeded report sections tied to findings, opportunities, roadmap items, and evidence
+
+**Decision.** `/app/engagements/[id]/report` renders seeded `Report` records (in `lib/reports/mock-reports.ts`) for Quanta and Caldera. Each `ReportSection` carries `linkedFindingIds`, `linkedOpportunityIds`, and `linkedRoadmapItemIds` — the full source trail from the Sprint 5/6 data layer. AI-drafted sections carry an explicit `aiDrafted: true` flag and a `confidence` value; the workspace surfaces both visually and never auto-promotes a section to client-facing.
+
+**Context.** Sprint 7 explicitly excludes production document generation and final SOW execution. The point is to show the consultant-grade assembly workspace operators will use, with evidence traceability intact from finding → opportunity → roadmap → report. Engagements without report data render an empty state pointing back to findings + opportunities.
+
+**Tradeoffs.** Report content is illustrative. Acceptable for MVP; the surface is wired so swapping in real AI synthesis + persistence is a data-layer change.
+
+---
+
+## 2026-05-01 — Proposal builder uses seeded proposal options and pricing placeholders
+
+**Decision.** `/app/engagements/[id]/proposal` renders seeded `Proposal` records tied to `Opportunity` and `RoadmapItem` IDs. Three tiered options (`quick-win-build`, `ai-workflow-system`, `managed-ai-partner`) are seeded for Caldera with the AI Workflow System tier marked `recommended`. Pricing fields are explicitly named `pricingPlaceholder` and rendered with "Pricing placeholder · for internal planning only" copy.
+
+**Context.** Pricing depends on systems access, data readiness, and implementation assumptions. Hard-coding numbers risks anchoring on the wrong frame. Placeholder copy keeps the conversation honest and locks the boundary explicitly: this is a commercial planning workspace, not a quote.
+
+**Tradeoffs.** Strategists can't quote from this surface today. Correct: final pricing always lives in the SOW, not in the planning workspace.
+
+---
+
+## 2026-05-01 — Implementation credit is a commercial planning lever, not a discount
+
+**Decision.** `ImplementationCredit` carries `creditEligible`, `creditAmountPlaceholder`, `creditWindow`, and `creditNotes`. The `ImplementationCreditPanel` renders both an "Eligible / Not eligible" status badge and the explicit copy: "Represented as a commercial lever for the conversation, not an automatic discount or a legally binding term."
+
+**Context.** Saipien Labs may credit a portion of the AI Opportunity Sprint fee toward implementation if the client proceeds within an agreed window. This is a commercial conversion lever, not a contractual obligation. The workspace must present it as such — final terms are negotiated in the SOW, not in the planning workspace.
+
+**Tradeoffs.** None. Boundary is explicit in copy and structure.
+
+---
+
+## 2026-05-01 — Locked-CTA pattern consolidated into `LockedActionButton`
+
+**Decision.** A shared `components/ui/locked-action-button.tsx` replaces ad-hoc disabled buttons. Used by the roadmap header, report header, proposal header, and per-option SOW actions. Carries a Lock icon, mono sprint/lock label, and `aria-label="<Action>, locked until <Sprint>"`.
+
+**Context.** Sprint 6 audit flagged that the roadmap's `Prepare Report` was a raw HTML button rather than the `Button` primitive. Sprint 7 introduced multiple new locked CTAs; consolidating into one primitive removes drift and keeps assistive-tech treatment uniform.
+
+**Tradeoffs.** Slight indirection. Worth it: every locked CTA in the codebase now passes through the same affordance.
+
+---
+
 ## 2026-05-01 — Opportunity scoring uses seeded directional scoring tied to approved findings
 
 **Decision.** `/app/engagements/[id]/opportunities` renders seeded `Opportunity` records (in `lib/opportunities/mock-opportunities.ts`) that reference approved-or-report-ready finding IDs from `lib/findings/`. All scores are 0–100 directional values. Quadrant placement (Quick Wins / Strategic Builds / Low Priority / Defer · Avoid) is computed from impact (≥70 high) and complexity (≥60 high) thresholds and stored on the opportunity for stable presentation.

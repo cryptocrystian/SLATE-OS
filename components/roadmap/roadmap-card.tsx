@@ -6,18 +6,34 @@ import type { RoadmapItem } from "@/lib/roadmap/types";
 
 export interface RoadmapCardProps {
   item: RoadmapItem;
+  /** Map from opportunity id → short title, used to surface the linked
+   *  opportunity name on the chip. */
+  opportunityTitles?: Record<string, string>;
 }
 
-export function RoadmapCard({ item }: RoadmapCardProps) {
+export function RoadmapCard({ item, opportunityTitles }: RoadmapCardProps) {
+  const linkedTitle =
+    item.linkedOpportunityId && opportunityTitles
+      ? opportunityTitles[item.linkedOpportunityId]
+      : undefined;
+
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-1.5">
           <OpportunityPriorityChip priority={item.priority} />
           {item.linkedOpportunityId ? (
-            <span className="inline-flex items-center gap-1 rounded-md border border-border-subtle bg-bg-elevated/50 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              <Link2 aria-hidden className="h-3 w-3" />
-              Linked opportunity
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-border-subtle bg-bg-elevated/50 px-2 py-0.5 text-[11px] font-medium text-text-secondary"
+              title={linkedTitle ?? "Linked opportunity"}
+            >
+              <Link2 aria-hidden className="h-3 w-3 text-text-muted" />
+              <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+                →
+              </span>
+              <span className="max-w-[18ch] truncate sm:max-w-[28ch]">
+                {linkedTitle ?? "Linked opportunity"}
+              </span>
             </span>
           ) : null}
         </div>

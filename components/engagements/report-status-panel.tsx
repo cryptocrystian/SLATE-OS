@@ -5,9 +5,13 @@ import type { ReportStatus } from "@/lib/engagements/types";
 
 export interface ReportStatusPanelProps {
   report: ReportStatus;
+  reportHref?: string;
 }
 
-export function ReportStatusPanel({ report }: ReportStatusPanelProps) {
+export function ReportStatusPanel({
+  report,
+  reportHref,
+}: ReportStatusPanelProps) {
   return (
     <EngagementStatusPanel
       icon={<ScrollText className="h-4 w-4" />}
@@ -27,7 +31,7 @@ export function ReportStatusPanel({ report }: ReportStatusPanelProps) {
         { label: "State", value: report.state },
       ]}
       nextAction={report.nextAction}
-      cta={{ label: "Build Report", lockedNote: "Sprint 7" }}
+      cta={{ label: "Build Report", href: reportHref }}
     />
   );
 }

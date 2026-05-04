@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–6 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1–7 are complete. The GrowthOps + AdvisoryOps MVP arc is feature-complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 7 — Report + Proposal Builder** (`/app/engagements/[id]/report`, `/app/engagements/[id]/proposal`). The locked CTAs on `ReportStatusPanel`, `ProposalStatusPanel`, and the roadmap page's `Prepare Report` button are the natural entry points.
+Next planned: **MVP Stabilization + End-to-End Polish** — final visual audit, cross-sprint consistency pass, and a stabilization window before any post-MVP work (BuildOps, StudioOps, ClientOps, real persistence) is scoped.
 
 ---
 
@@ -31,6 +31,8 @@ app/
       [id]/findings/page.tsx     # Findings review workspace (SSG, Sprint 5)
       [id]/opportunities/page.tsx  # Opportunity matrix workspace (SSG, Sprint 6)
       [id]/roadmap/page.tsx        # 30/60/90 roadmap (SSG, Sprint 6)
+      [id]/report/page.tsx         # Report builder (SSG, Sprint 7)
+      [id]/proposal/page.tsx       # Proposal & SOW options (SSG, Sprint 7)
   apply/
     ai-systems-review/
       page.tsx             # Premium "Application coming soon" stub
@@ -52,6 +54,7 @@ components/
     metric-card.tsx
     empty-state.tsx
     input.tsx              # Text/email input primitive (added in Sprint 2)
+    locked-action-button.tsx  # Shared locked-CTA primitive (Sprint 7)
   slate/                   # Internal /app composition
     review-queue.tsx
     active-engagements-panel.tsx
@@ -90,6 +93,13 @@ components/
   roadmap/                 # 30/60/90 roadmap (Sprint 6)
     roadmap-card.tsx
     roadmap-phase-column.tsx
+  reports/                 # Report builder (Sprint 7)
+    report-status-chip.tsx
+    report-workspace.tsx         # Client orchestrator (3-pane: outline / preview / linked)
+  proposals/               # Proposal & SOW options (Sprint 7)
+    proposal-status-chip.tsx
+    proposal-workspace.tsx       # Client orchestrator (option cards + selected detail)
+    implementation-credit-panel.tsx
   engagements/             # Engagement workspace (Sprint 4)
     engagement-status-chip.tsx
     engagement-stage-chip.tsx
@@ -147,6 +157,14 @@ lib/
     types.ts               # RoadmapItem, RoadmapPhase
     helpers.ts             # PHASE_ORDER, PHASE_LABEL, PHASE_DESCRIPTION
     mock-roadmap.ts        # Seeded 30/60/90 items for Quanta + Caldera
+  reports/                 # Report assembly (Sprint 7)
+    types.ts               # Report, ReportSection, statuses, confidence
+    helpers.ts             # SECTION_ORDER/LABEL, status labels/tones, filters
+    mock-reports.ts        # Seeded reports for Quanta + Caldera (12 sections each)
+  proposals/               # Proposal & SOW options (Sprint 7)
+    types.ts               # Proposal, ProposalOption, ImplementationCredit
+    helpers.ts             # OPTION_TYPE_LABEL/TONE, status labels/tones
+    mock-proposals.ts      # Seeded 3-tier proposal for Caldera
   intake/                  # Stakeholder intake (Sprint 5)
     types.ts               # Stakeholder, RoleCoverageRow, SupportingInput, IntakeRecord
     helpers.ts             # Role/status/quality labels and tones, filter set
@@ -164,6 +182,7 @@ scripts/
   capture-sprint-4.cjs     # Sprint 4 capture (engagements list + 4 detail variants + linked lead)
   capture-sprint-5.cjs     # Sprint 5 capture (intake + findings × multiple engagement states)
   capture-sprint-6.cjs     # Sprint 6 capture (opportunities + roadmap × multiple engagement states)
+  capture-sprint-7.cjs     # Sprint 7 capture (report + proposal × multiple engagement states)
 docs/
   00–07                    # Canon (do not drift)
   08 CURRENT_STATUS.md
@@ -176,6 +195,7 @@ docs/
   screenshots/sprint-4/
   screenshots/sprint-5/
   screenshots/sprint-6/
+  screenshots/sprint-7/
 ```
 
 ---
@@ -222,7 +242,25 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 7 — Report + Proposal Builder
+## Starting Post-MVP — Stabilization + End-to-End Polish
+
+**Goal.** Run a final cross-sprint visual + accessibility + copy audit, then a stabilization window that hardens the seven-stage demo path. No new feature scope until stabilization is signed off.
+
+**Recommended sequence.**
+
+1. **Final Sprint 7 visual UX audit.** Capture state for the report and proposal pages on Quanta and Caldera, plus the empty-state pages on Helio / Meridian / Atlas. Verify recommended-action helper across all seven engagement-related pages routes correctly and never loops.
+2. **End-to-end demo path.** Walk the full lifecycle on Quanta (Lead → Engagement → Intake → Findings → Opportunities → Roadmap → Report) and Caldera (… → Report → Proposal). Confirm every CTA either links to a real destination or carries a `LockedActionButton` with sprint label.
+3. **Cross-sprint visual consistency.** Confirm shared primitives are used uniformly: `LockedActionButton`, `EngagementRecommendedActionCard` (`href` / `lockedNote` / `selfReference`), `MetricCard` zero-state copy, `ScoreCard` per-dimension banding, segmented filter tabs.
+4. **Cross-sprint accessibility pass.** Verify `aria-pressed` on every selectable button (findings list, opportunities list + matrix cells, report outline, proposal options), `aria-describedby` on the matrix axes, locked-CTA `aria-label` strings, and color contrast on tonal text.
+5. **Microcopy pass.** Confirm AI-drafted content is always labeled, boundary reminders are present on every deep page, and pricing copy never reads as final.
+
+**Out of scope (post-stabilization).** BuildOps surfaces, StudioOps surfaces, ClientOps surfaces, real backend, real auth, real AI synthesis, production export, real SOW execution. Each of these is its own dedicated multi-sprint workstream.
+
+**End-of-stabilization.** Update `docs/08_CURRENT_STATUS.md` to mark stabilization complete, append a final decision-log entry on stabilization sign-off, and decide the next workstream (likely real persistence as the unlock for the existing UI).
+
+---
+
+## Historical: Starting Sprint 7 — Report + Proposal Builder
 
 **Goal.** Build the final two AI Opportunity Sprint deliverables.
 
