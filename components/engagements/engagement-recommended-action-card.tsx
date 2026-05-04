@@ -1,23 +1,29 @@
 import * as React from "react";
 import Link from "next/link";
-import { ArrowRight, Lock, Sparkles } from "lucide-react";
+import { ArrowRight, Compass, Lock, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Engagement } from "@/lib/engagements/types";
 
 export interface EngagementRecommendedActionCardProps {
   engagement: Engagement;
-  /** When provided, the CTA links here. When absent, the CTA renders as
-   *  a locked button with the optional `lockedNote` (e.g. "Sprint 7"). */
+  /** When provided, the CTA links here. */
   href?: string;
+  /** When provided, the CTA renders as a locked button with this label. */
   lockedNote?: string;
+  /** When true, the recommended action would route the user back to the
+   *  page they are already on. The card renders as a read-only "Current
+   *  workspace" state without a clickable CTA. */
+  selfReference?: boolean;
 }
 
 export function EngagementRecommendedActionCard({
   engagement,
   href,
   lockedNote,
+  selfReference,
 }: EngagementRecommendedActionCardProps) {
+  const showSelf = selfReference === true;
   const accessibleLockName = lockedNote
     ? `${engagement.recommendedAction.cta}, locked until ${lockedNote}`
     : `${engagement.recommendedAction.cta}, locked`;
@@ -29,9 +35,18 @@ export function EngagementRecommendedActionCard({
         className="pointer-events-none absolute -inset-x-10 -top-20 -z-10 h-32 bg-gradient-to-b from-brand-primary/15 via-transparent to-transparent blur-2xl"
       />
       <div className="flex flex-col gap-4">
-        <Badge tone="brand" dot variant="soft" className="self-start">
-          <Sparkles className="mr-1.5 h-3 w-3" />
-          Recommended action
+        <Badge tone={showSelf ? "ai" : "brand"} dot variant="soft" className="self-start">
+          {showSelf ? (
+            <>
+              <Compass className="mr-1.5 h-3 w-3" />
+              Current workspace
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-1.5 h-3 w-3" />
+              Recommended action
+            </>
+          )}
         </Badge>
         <h2 className="text-lg font-semibold tracking-tight text-text-primary">
           {engagement.recommendedAction.headline}
@@ -40,7 +55,23 @@ export function EngagementRecommendedActionCard({
           {engagement.recommendedAction.detail}
         </p>
 
-        {href ? (
+        {showSelf ? (
+          <div
+            className="inline-flex w-full items-center justify-between gap-2 self-start rounded-md border border-border-subtle bg-bg-elevated/60 px-4 py-2 text-xs font-medium text-text-secondary sm:w-auto"
+            aria-label={`${engagement.recommendedAction.cta}, current workspace`}
+          >
+            <span className="inline-flex items-center gap-2">
+              <Compass aria-hidden className="h-3 w-3 text-brand-primary" />
+              {engagement.recommendedAction.cta}
+            </span>
+            <span
+              aria-hidden
+              className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+            >
+              You are here
+            </span>
+          </div>
+        ) : href ? (
           <Link href={href} className="self-start">
             <Button
               variant="primary"
@@ -74,9 +105,11 @@ export function EngagementRecommendedActionCard({
         )}
 
         <p className="border-t border-border-subtle pt-3 text-[11px] leading-relaxed text-text-muted">
-          {href
-            ? "Action stays mock for now — wiring lands when stakeholder intake, findings, scoring, report, and proposal modules ship in Sprints 5–7."
-            : "Destination activates with the sprint that ships its module."}
+          {showSelf
+            ? "This is the current step of the engagement. Action lives in the workspace below."
+            : href
+              ? "Action stays mock for now — wiring lands when stakeholder intake, findings, scoring, report, and proposal modules ship in Sprints 5–7."
+              : "Destination activates with the sprint that ships its module."}
         </p>
       </div>
     </section>

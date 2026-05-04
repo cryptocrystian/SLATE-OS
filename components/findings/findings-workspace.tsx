@@ -141,6 +141,8 @@ export function FindingsWorkspace({ findings }: FindingsWorkspaceProps) {
                   <button
                     type="button"
                     onClick={() => setSelectedId(f.id)}
+                    aria-pressed={isSelected}
+                    aria-label={`${f.statement}, ${f.reviewStatus}`}
                     className={cn(
                       "flex w-full flex-col gap-2 rounded-lg border p-3 text-left transition-colors",
                       isSelected

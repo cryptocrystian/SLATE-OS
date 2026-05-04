@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — End of Sprint 5_
+_Last updated: 2026-05-01 — End of Sprint 6_
 
 ## Sprint State
 
@@ -10,8 +10,8 @@ _Last updated: 2026-05-01 — End of Sprint 5_
 | 2 | Public Scorecard Flow | ✅ Complete (audit 4.7/5, fixes folded into Sprint 3) |
 | 3 | Lead Dashboard + Qualification | ✅ Complete |
 | 4 | Engagement Workspace | ✅ Complete (audit 4.8/5, fixes folded into Sprint 5) |
-| 5 | Intake + Findings Review | ✅ Complete |
-| 6 | Opportunity Matrix + Roadmap | ⏳ Not started |
+| 5 | Intake + Findings Review | ✅ Complete (audit 4.7/5, fixes folded into Sprint 6) |
+| 6 | Opportunity Matrix + Roadmap | ✅ Complete |
 | 7 | Report + Proposal Builder | ⏳ Not started |
 
 ## Stack
@@ -23,48 +23,46 @@ _Last updated: 2026-05-01 — End of Sprint 5_
 - Inter (sans) and JetBrains Mono (mono) via `next/font`
 - No backend, no auth, no database, no AI integration — mock data only
 
-## Implemented (Sprint 5 additions)
+## Implemented (Sprint 6 additions)
 
-- `/app/engagements/[id]/intake` — Stakeholder intake manager
-  - PageHeader with eyebrow `AdvisoryOps · Intake`, primary `Review Findings` (when findings exist), secondary `Back to engagement`
-  - 6 summary metrics (Invited, Completed, In Progress, Missing Roles, Strong Responses, Inputs Received) — `0/0` cases now show `—` or descriptive text
-  - `RoleCoverageMap` showing required vs. optional roles, coverage status (Covered / Partial / Missing), stakeholder counts, and per-role notes
-  - `StakeholderList` (client) with status filter tabs and per-stakeholder cards: name + title + role, status chip + response-quality chip, completion bar, summary, key signals / open questions / risk flags
-  - `SupportingInputsPanel` with document type, source, status, evidence quality
-  - `FollowUpQueue` with severity-toned items
-  - Right rail: Recommended Action card, Engagement context, intake risk notes (via `EngagementRisksPanel`), boundary reminder
-- `/app/engagements/[id]/findings` — Findings review workspace
-  - PageHeader with eyebrow `AdvisoryOps · Findings`, primary `Approve selected`, secondary `Back to engagement`
-  - 6 summary metrics (Candidate Findings, Needs Review, Approved, Rejected, Report Ready, Low Evidence)
-  - `FindingsWorkspace` (client): three-pane split on `lg+` (filters/list, finding detail, evidence panel) — list and evidence stack on smaller viewports
-  - Per-finding detail: AI-drafted badge, category, status chip, full-block confidence indicator, summary, evidence summary, suggested impact, optional assumption flag, optional reviewer note, mock review action bar (Approve / Edit / Regenerate / Add note / Reject)
-  - `EvidencePanel` showing every linked source with type icon, person/role/document, strength, and excerpt blockquote — every finding can be traced back to its evidence
-  - `ManualFindingPlaceholder` and an explicit boundary reminder card
-- Sidebar already includes Engagements (unlocked in Sprint 4); both new routes are reachable from the engagement command center.
+- `/app/engagements/[id]/opportunities` — Opportunity matrix workspace
+  - PageHeader with eyebrow `AdvisoryOps · Opportunities`, primary `Build Roadmap` (when opportunities exist), secondary `Back to engagement`
+  - 6 summary metrics (Identified / Quick Wins / Strategic Builds / Defer · Avoid / Avg Impact / Strong Evidence) with em-dash zero-states
+  - `OpportunityMatrix` — 4-quadrant view (Quick Wins / Strategic Builds / Low Priority / Defer · Avoid) with axis legends, per-quadrant tone, and clickable cards
+  - `OpportunitiesWorkspace` (client) below the matrix: filter tabs by quadrant, opportunity list, and a selected detail panel with `OpportunityScoreStrip` (six 0–100 scores), implementation shape, source summary, risks/dependencies/success-signals blocks, and a recommended-next-action card
+  - `RelatedFindingsPanel` linking each opportunity back to its source findings (and from there to evidence)
+  - Empty state for engagements without approved findings: "Approve findings before opportunity scoring begins" with a deep-link to the findings workspace
+  - Boundary reminder card
+- `/app/engagements/[id]/roadmap` — 30/60/90 roadmap workspace
+  - PageHeader with eyebrow `AdvisoryOps · Roadmap`, primary `Prepare Report` (locked, `Sprint 7`), secondary `Back to Opportunities`
+  - 6 summary metrics (Roadmap Items / Quick Wins / Strategic Builds / Dependencies / First 30 Days / Report-ready Inputs)
+  - Three `RoadmapPhaseColumn`s (First 30 Days / Days 31–60 / Days 61–90), each with phase description card and a column of `RoadmapCard`s
+  - `RoadmapCard` carries priority chip, linked-opportunity badge, objective, key actions, dependencies, success criteria, risks, owner placeholder, readiness note
+  - Empty state for engagements without opportunities yet
+  - Boundary reminder framing the roadmap as advisory implementation-readiness, not a project-management board
 
-## Sprint 4 Audit Fixes (folded into Sprint 5)
+## Sprint 5 Audit Fixes (folded in)
 
-- **Recommended Action CTA pattern.** `EngagementRecommendedActionCard` now accepts an optional `href`. With `href`, it renders as an active primary link. Without, it renders as a locked button with a sprint label and an `aria-label` that reads "…locked until Sprint 7." Engagement detail page picks the destination from the engagement's current stage: Setup/Intake → `/intake`, Synthesis → `/findings`, Scoring → locked Sprint 6, Report/Proposal → locked Sprint 7.
-- **Locked CTA accessibility.** `EngagementStatusPanel`'s locked button now sets `aria-label="<Action>, locked until <Sprint label>"`. Active links use `ArrowUpRight` and clean transitions instead of the lock pattern.
-- **0/0 metric readability.** Engagement detail metrics now render `Not invited`, `Not requested`, or `—` when the underlying total is zero, with hint copy like "Awaiting kickoff" or "Document list opens with intake."
+- **Recommended-action routing helper.** New `lib/engagements/recommended-action.ts` — `recommendedActionRoute(engagement, currentPath?)` returns `{ href?, lockedNote?, selfReference? }`. Used by all five engagement detail/intake/findings/opportunities/roadmap pages. The card now never loops to itself: when the resolved destination matches the current path it renders as a "Current workspace · You are here" read-only state without a clickable CTA.
+- **Findings list selection accessibility.** `FindingsWorkspace` list buttons now expose `aria-pressed={isSelected}` and a descriptive `aria-label` (`"<finding statement>, <review status>"`). Visual styling unchanged.
+- **Engagement command-center wiring.** `OpportunityStatusPanel` now accepts `opportunitiesHref` and renders an active link for engagements in scoring/report/proposal stages. The Sprint 4 lock pattern remains for engagements still in earlier stages.
 
 ## Verified
 
 - `npm run lint` — clean
-- `npm run build` — clean. **31 routes prerender as static**: 5 engagement detail pages + 5 intake pages + 5 findings pages + leads (6) + scorecard (3) + apply + landing routes
-- Sprint 5 screenshots captured at 1440 / 1024 / 390 to `docs/screenshots/sprint-5/` for: Helio + Meridian intake, Helio + Meridian + Quanta findings, Atlas intake (early-stage state), and the Helio engagement detail (CTAs now linking to the new routes)
+- `npm run build` — clean. **41 routes prerender as static**: 5 engagement detail pages × 5 child routes (detail, intake, findings, opportunities, roadmap) plus leads (6), scorecard (3), apply, landing routes, and the root.
+- Sprint 6 screenshots captured at 1440 / 1024 / 390 to `docs/screenshots/sprint-6/` for: Quanta + Caldera opportunities and roadmap (mature engagements), Meridian + Helio + Atlas opportunities and roadmap (empty/early states), the Helio engagement detail (CTAs unchanged but routing now via the helper), and the Helio findings page (post-aria-pressed fix).
 
 ## BuildOps Boundary
 
-Reaffirmed: BuildOps remains documentation-only. No `/app/builds`, no BuildOps nav item, no sprint manager / agent session / repo context UI, no related backend.
+Reaffirmed: BuildOps remains documentation-only. No `/app/builds`, no BuildOps nav, no sprint manager / agent session / repo context UI, no related backend.
 
 ## Known Constraints
 
-- Stakeholder responses, documents, and findings are seeded mock data; no real form submissions, document upload, or AI synthesis.
-- Review actions on findings (Approve / Edit / Reject / Regenerate / Add note) are mock — explicitly labeled.
-- Selection state in the findings workspace is local-only and resets on navigation.
-- The `FindingsWorkspace` 3-pane layout requires `lg+` width; on smaller screens the panes stack to single column.
+- Opportunities and roadmap items are seeded mock data; no real scoring persistence, no drag/drop sequencing.
+- Review actions on findings, action buttons on lead detail, and the various locked CTAs (`Prepare Report`, `Draft Proposal`) remain mock with explicit labels.
+- Filter and selection state in the workspaces is local-only and resets on navigation.
 
 ## Recommended Next Step
 
-Begin Sprint 6: Opportunity Matrix + Roadmap (`/app/engagements/[id]/opportunities`, `/app/engagements/[id]/roadmap`). The locked CTA on `OpportunityStatusPanel` is the natural entry point; reuse `Finding` evidence and `OpportunityArea` types from existing scorecard/lead data.
+Begin Sprint 7: Report + Proposal Builder (`/app/engagements/[id]/report`, `/app/engagements/[id]/proposal`). The locked CTAs on `ReportStatusPanel`, `ProposalStatusPanel`, and the roadmap page's `Prepare Report` button are the natural entry points. Bind the report builder to approved + report-ready findings; bind the proposal builder to opportunities tagged Quick-Win / Strategic Build and the roadmap's first-30/31-60/61-90 sequencing.

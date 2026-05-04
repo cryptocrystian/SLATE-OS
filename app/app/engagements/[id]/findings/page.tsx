@@ -18,6 +18,7 @@ import {
   getEngagementById,
 } from "@/lib/engagements/mock-engagements";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
+import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -160,10 +161,20 @@ export default function EngagementFindingsPage({
         </div>
 
         <aside className="flex flex-col gap-6 lg:col-span-3">
-          <EngagementRecommendedActionCard
-            engagement={engagement}
-            href={`/app/engagements/${engagement.id}/findings`}
-          />
+          {(() => {
+            const route = recommendedActionRoute(
+              engagement,
+              `/app/engagements/${engagement.id}/findings`,
+            );
+            return (
+              <EngagementRecommendedActionCard
+                engagement={engagement}
+                href={route.href}
+                lockedNote={route.lockedNote}
+                selfReference={route.selfReference}
+              />
+            );
+          })()}
           <EngagementContextCard engagement={engagement} />
         </aside>
       </div>

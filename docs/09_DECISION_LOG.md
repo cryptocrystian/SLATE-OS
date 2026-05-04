@@ -64,6 +64,36 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Opportunity scoring uses seeded directional scoring tied to approved findings
+
+**Decision.** `/app/engagements/[id]/opportunities` renders seeded `Opportunity` records (in `lib/opportunities/mock-opportunities.ts`) that reference approved-or-report-ready finding IDs from `lib/findings/`. All scores are 0–100 directional values. Quadrant placement (Quick Wins / Strategic Builds / Low Priority / Defer · Avoid) is computed from impact (≥70 high) and complexity (≥60 high) thresholds and stored on the opportunity for stable presentation.
+
+**Context.** Sprint 6 explicitly excludes real scoring persistence and AI-generated scoring. The point is to show the prioritization workspace operators will use, with evidence traceability intact from finding → opportunity → roadmap → eventual report. Engagements with no approved findings render an empty state pointing back to the findings workspace.
+
+**Tradeoffs.** Scoring is illustrative, not real. Acceptable for MVP — the surface is wired so adding real scoring later is a data-layer swap.
+
+---
+
+## 2026-05-01 — Roadmap planning uses seeded 30/60/90-day items tied to opportunities
+
+**Decision.** `/app/engagements/[id]/roadmap` renders seeded `RoadmapItem` records bound to opportunity IDs. Phases are `first-30 / days-31-60 / days-61-90`. Each item carries objective, key actions, dependencies, success criteria, risks, owner placeholder, and readiness note.
+
+**Context.** Reuses the same evidence-traceability narrative — every roadmap item links back to its opportunity, and from there to the supporting findings and stakeholder/document evidence. No drag/drop persistence is built; sequencing is encoded directly in the seed file.
+
+**Tradeoffs.** Roadmap state is fixed in mock data. When real persistence lands, the data layer swap is mechanical; the visual surface stays the same.
+
+---
+
+## 2026-05-01 — Recommended-action routing extracted to a shared helper
+
+**Decision.** `lib/engagements/recommended-action.ts` exports `recommendedActionRoute(engagement, currentPath?)` returning `{ href?, lockedNote?, selfReference? }`. All five engagement-related pages (detail / intake / findings / opportunities / roadmap) consume it. When the resolved destination matches the current page, the recommended-action card renders as "Current workspace · You are here" without a clickable CTA.
+
+**Context.** Sprint 5's audit flagged that the recommended-action card looped to the current page on `/intake` and `/findings`. Promoting routing into one place removes the bug surface and gives every future page (Sprint 7's `/report` and `/proposal`) a single point of configuration.
+
+**Tradeoffs.** Slightly more indirection; eliminates a real correctness bug.
+
+---
+
 ## 2026-05-01 — Stakeholder intake and findings review use seeded mock evidence
 
 **Decision.** `/app/engagements/[id]/intake` and `/app/engagements/[id]/findings` render seeded stakeholder, document, and finding records. There is no real intake delivery, document upload, or AI synthesis. Every review action (Approve / Edit / Reject / Regenerate / Add note) is mock and clearly labeled.

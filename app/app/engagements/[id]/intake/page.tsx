@@ -20,6 +20,7 @@ import {
 } from "@/lib/engagements/mock-engagements";
 import { getIntakeForEngagement } from "@/lib/intake/mock-intake";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
+import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -203,10 +204,20 @@ export default function EngagementIntakePage({
         </div>
 
         <aside className="flex flex-col gap-6">
-          <EngagementRecommendedActionCard
-            engagement={engagement}
-            href={`/app/engagements/${engagement.id}/intake`}
-          />
+          {(() => {
+            const route = recommendedActionRoute(
+              engagement,
+              `/app/engagements/${engagement.id}/intake`,
+            );
+            return (
+              <EngagementRecommendedActionCard
+                engagement={engagement}
+                href={route.href}
+                lockedNote={route.lockedNote}
+                selfReference={route.selfReference}
+              />
+            );
+          })()}
           <EngagementContextCard engagement={engagement} />
           <EngagementRisksPanel
             risks={intake.intakeRiskNotes}

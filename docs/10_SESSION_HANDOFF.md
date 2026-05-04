@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–5 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1–6 are complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
 
-Next planned: **Sprint 6 — Opportunity Matrix + Roadmap** (`/app/engagements/[id]/opportunities`, `/app/engagements/[id]/roadmap`). The locked CTA on `OpportunityStatusPanel` is the natural entry point.
+Next planned: **Sprint 7 — Report + Proposal Builder** (`/app/engagements/[id]/report`, `/app/engagements/[id]/proposal`). The locked CTAs on `ReportStatusPanel`, `ProposalStatusPanel`, and the roadmap page's `Prepare Report` button are the natural entry points.
 
 ---
 
@@ -29,6 +29,8 @@ app/
       [id]/page.tsx        # Engagement command center (SSG)
       [id]/intake/page.tsx       # Stakeholder intake manager (SSG, Sprint 5)
       [id]/findings/page.tsx     # Findings review workspace (SSG, Sprint 5)
+      [id]/opportunities/page.tsx  # Opportunity matrix workspace (SSG, Sprint 6)
+      [id]/roadmap/page.tsx        # 30/60/90 roadmap (SSG, Sprint 6)
   apply/
     ai-systems-review/
       page.tsx             # Premium "Application coming soon" stub
@@ -78,6 +80,16 @@ components/
     confidence-indicator.tsx
     evidence-panel.tsx
     findings-workspace.tsx       # Client orchestrator (3-pane on lg+)
+  opportunities/           # Opportunity matrix (Sprint 6)
+    opportunity-priority-chip.tsx
+    opportunity-card.tsx
+    opportunity-matrix.tsx
+    opportunity-score-strip.tsx
+    related-findings-panel.tsx
+    opportunities-workspace.tsx  # Client orchestrator (matrix + list + detail + evidence)
+  roadmap/                 # 30/60/90 roadmap (Sprint 6)
+    roadmap-card.tsx
+    roadmap-phase-column.tsx
   engagements/             # Engagement workspace (Sprint 4)
     engagement-status-chip.tsx
     engagement-stage-chip.tsx
@@ -126,6 +138,15 @@ lib/
     types.ts               # Engagement + 6 panel-status types, ScorecardSnapshot
     helpers.ts             # STAGES, STAGE_LABEL/DESCRIPTION, STATUS labels/tones, filters
     mock-engagements.ts    # 5 seeded engagements covering Setup → Proposal
+    recommended-action.ts  # Shared routing helper (Sprint 6)
+  opportunities/           # Opportunity scoring (Sprint 6)
+    types.ts               # Opportunity, priorities, quadrants, evidence strength
+    helpers.ts             # priority/quadrant/evidence labels and tones, computeQuadrant
+    mock-opportunities.ts  # Seeded opportunities for Quanta + Caldera
+  roadmap/                 # 30/60/90 sequencing (Sprint 6)
+    types.ts               # RoadmapItem, RoadmapPhase
+    helpers.ts             # PHASE_ORDER, PHASE_LABEL, PHASE_DESCRIPTION
+    mock-roadmap.ts        # Seeded 30/60/90 items for Quanta + Caldera
   intake/                  # Stakeholder intake (Sprint 5)
     types.ts               # Stakeholder, RoleCoverageRow, SupportingInput, IntakeRecord
     helpers.ts             # Role/status/quality labels and tones, filter set
@@ -142,6 +163,7 @@ scripts/
   capture-sprint-3.cjs     # Sprint 3 capture (leads, lead detail, /apply, /scorecard/results)
   capture-sprint-4.cjs     # Sprint 4 capture (engagements list + 4 detail variants + linked lead)
   capture-sprint-5.cjs     # Sprint 5 capture (intake + findings × multiple engagement states)
+  capture-sprint-6.cjs     # Sprint 6 capture (opportunities + roadmap × multiple engagement states)
 docs/
   00–07                    # Canon (do not drift)
   08 CURRENT_STATUS.md
@@ -153,6 +175,7 @@ docs/
   screenshots/sprint-3/
   screenshots/sprint-4/
   screenshots/sprint-5/
+  screenshots/sprint-6/
 ```
 
 ---
@@ -199,26 +222,26 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Sprint 6 — Opportunity Matrix + Roadmap
+## Starting Sprint 7 — Report + Proposal Builder
 
-**Goal.** Take approved findings into the prioritization and sequencing surface.
+**Goal.** Build the final two AI Opportunity Sprint deliverables.
 
-- `/app/engagements/[id]/opportunities` — impact × complexity matrix with Quick Wins / Strategic Builds / Low Priority / Defer quadrants
-- `/app/engagements/[id]/roadmap` — 30/60/90-day roadmap built from selected opportunities
+- `/app/engagements/[id]/report` — assemble the audit report section by section, with linked evidence and approved findings
+- `/app/engagements/[id]/proposal` — three-tier SOW options (Quick-Win Build, AI Workflow System, Managed AI Partner) with implementation credit, assumptions, and pricing placeholders
 
-**Entry points (currently locked).** `OpportunityStatusPanel` ("Score Opportunities", `Sprint 6` lock label) on the engagement detail page. Replace with active links once the routes ship. Recommended Action card on the engagement detail also routes to `/opportunities` when the engagement is in the `scoring` stage; flip the lock there too.
+**Entry points (currently locked).** `ReportStatusPanel` and `ProposalStatusPanel` on the engagement detail page. The roadmap page header's `Prepare Report` button is locked with `Sprint 7`. The recommended-action helper already returns `lockedNote: "Sprint 7"` for `report` and `proposal` stages — flip those to live `href`s once the routes ship.
 
-**Reuse from Sprints 1–5.**
-- Approved findings (`Finding[]` from `lib/findings/mock-findings.ts`, status `approved` or `report-ready`) are the input rows.
-- `OpportunityArea` from `lib/scorecard/types.ts` already has the right shape for the matrix's cards.
-- `EngagementProfileHeader`, `EngagementStageTracker`, `EngagementContextCard`, `EngagementRecommendedActionCard`.
-- `Card`, `Badge`, `MetricCard`, `Button`, `EmptyState`, plus the `ScoreCard` per-dimension banding for impact/complexity.
+**Reuse from Sprints 1–6.**
+- Approved + report-ready findings from `lib/findings/mock-findings.ts` are the report's content layer; `Finding.sourceRefs[]` carries the evidence trail.
+- Opportunities from `lib/opportunities/` and roadmap items from `lib/roadmap/` are the proposal's content layer (tiered SOW pulls from quadrant + phase combinations).
+- `EngagementProfileHeader`, `EngagementStageTracker`, `EngagementContextCard`, `EngagementRecommendedActionCard`, `OpportunityScoreStrip`, `EvidencePanel` (from findings).
+- `Card`, `Badge`, `MetricCard`, `Button`, `EmptyState`, the recommended-action helper.
 
-**New components likely needed.** `OpportunityCard`, `OpportunityMatrix` (a 2×2 quadrant view), `ScoringControl`, `PriorityLabel`, `RelatedFindingsPanel`, `RiskDependencyList`, `RoadmapPhaseColumn`, `RoadmapCard`, `DependencyChip`, `SuccessCriteriaBlock`.
+**New components likely needed.** `ReportOutlineSidebar`, `ReportSectionCard`, `ReportSectionEditor`, `ReportSectionStatusChip`, `LinkedFindingsPanel`, `ExportReportButton`, `ProposalOptionCard`, `ScopeBuilderPanel`, `PricingPlaceholderPanel`, `ImplementationCreditPanel`, `AssumptionsPanel`, `ExportProposalButton`.
 
-**Boundaries.** Mock data, mock scoring, no backend. The matrix and roadmap should make the consultant's prioritization legible inside SLATE without auto-promoting any opportunity into the report.
+**Boundaries.** Mock content, no real export, no backend. Report and proposal sections must surface AI authorship and require human approval. No real PDF generation, no actual SOW PDF — placeholder only.
 
-**End-of-sprint.** Run the audit protocol, capture screenshots to `docs/screenshots/sprint-6/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and adjust this handoff for Sprint 7.
+**End-of-sprint.** Run the audit protocol, capture screenshots to `docs/screenshots/sprint-7/`, update `docs/08_CURRENT_STATUS.md`, append to `docs/09_DECISION_LOG.md` for any material decisions, and close out the MVP arc in this handoff.
 
 ---
 

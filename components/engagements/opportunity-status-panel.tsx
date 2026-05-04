@@ -5,10 +5,12 @@ import type { OpportunityScoringStatus } from "@/lib/engagements/types";
 
 export interface OpportunityStatusPanelProps {
   opportunities: OpportunityScoringStatus;
+  opportunitiesHref?: string;
 }
 
 export function OpportunityStatusPanel({
   opportunities,
+  opportunitiesHref,
 }: OpportunityStatusPanelProps) {
   return (
     <EngagementStatusPanel
@@ -44,7 +46,7 @@ export function OpportunityStatusPanel({
         },
       ]}
       nextAction={opportunities.nextAction}
-      cta={{ label: "Score Opportunities", lockedNote: "Sprint 6" }}
+      cta={{ label: "Score Opportunities", href: opportunitiesHref }}
     />
   );
 }

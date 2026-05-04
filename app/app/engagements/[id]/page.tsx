@@ -19,7 +19,7 @@ import {
   getEngagementById,
 } from "@/lib/engagements/mock-engagements";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
-import type { Engagement } from "@/lib/engagements/types";
+import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -43,25 +43,6 @@ function ratio(numerator: number, denominator: number, zeroLabel: string) {
   return `${numerator}/${denominator}`;
 }
 
-function recommendedActionRoute(engagement: Engagement) {
-  switch (engagement.currentStage) {
-    case "setup":
-    case "intake":
-      return {
-        href: `/app/engagements/${engagement.id}/intake`,
-      };
-    case "synthesis":
-      return {
-        href: `/app/engagements/${engagement.id}/findings`,
-      };
-    case "scoring":
-      return { lockedNote: "Sprint 6" };
-    case "report":
-    case "proposal":
-      return { lockedNote: "Sprint 7" };
-  }
-}
-
 export default function EngagementDetailPage({
   params,
 }: {
@@ -72,7 +53,11 @@ export default function EngagementDetailPage({
 
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
-  const recAction = recommendedActionRoute(engagement);
+  const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
+  const recAction = recommendedActionRoute(
+    engagement,
+    `/app/engagements/${engagement.id}`,
+  );
 
   const stakeholderTotal =
     engagement.intake.stakeholdersInvited ||
@@ -231,7 +216,16 @@ export default function EngagementDetailPage({
                 : undefined
             }
           />
-          <OpportunityStatusPanel opportunities={engagement.opportunities} />
+          <OpportunityStatusPanel
+            opportunities={engagement.opportunities}
+            opportunitiesHref={
+              engagement.currentStage === "scoring" ||
+              engagement.currentStage === "report" ||
+              engagement.currentStage === "proposal"
+                ? opportunitiesHref
+                : undefined
+            }
+          />
           <ReportStatusPanel report={engagement.report} />
           <ProposalStatusPanel proposal={engagement.proposal} />
           <EngagementRisksPanel
