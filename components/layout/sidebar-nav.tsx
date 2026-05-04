@@ -14,9 +14,19 @@ import {
   BookMarked,
   Settings,
   Lock,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { signOut } from "@/lib/auth/actions";
+
+export interface SidebarIdentity {
+  initials: string;
+  displayName: string;
+  subtitle: string;
+  /** When false, identity tile renders a placeholder and no sign-out button. */
+  authenticated: boolean;
+}
 
 interface NavItem {
   label: string;
@@ -68,8 +78,18 @@ const sections: NavSection[] = [
   },
 ];
 
-export function SidebarNav() {
+export interface SidebarNavProps {
+  identity?: SidebarIdentity;
+}
+
+export function SidebarNav({ identity }: SidebarNavProps = {}) {
   const pathname = usePathname();
+  const tile: SidebarIdentity = identity ?? {
+    initials: "··",
+    displayName: "Operator",
+    subtitle: "Saipien Labs",
+    authenticated: false,
+  };
 
   return (
     <aside className="flex h-full w-full flex-col bg-bg-shell">
@@ -162,13 +182,32 @@ export function SidebarNav() {
 
       <div className="border-t border-border-subtle px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated text-xs font-medium text-text-secondary">
-            MR
+          <div
+            aria-hidden
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border-subtle bg-bg-elevated text-xs font-medium uppercase text-text-secondary"
+          >
+            {tile.initials}
           </div>
-          <div className="flex flex-1 flex-col leading-tight">
-            <span className="text-xs font-medium text-text-primary">M. Reyes</span>
-            <span className="text-[11px] text-text-muted">Strategy · Saipien Labs</span>
+          <div className="flex flex-1 flex-col leading-tight min-w-0">
+            <span className="truncate text-xs font-medium text-text-primary">
+              {tile.displayName}
+            </span>
+            <span className="truncate text-[11px] text-text-muted">
+              {tile.subtitle}
+            </span>
           </div>
+          {tile.authenticated ? (
+            <form action={signOut}>
+              <button
+                type="submit"
+                aria-label="Sign out"
+                title="Sign out"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-bg-elevated/60 text-text-muted transition-colors hover:border-border-strong hover:text-text-primary"
+              >
+                <LogOut className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </form>
+          ) : null}
         </div>
       </div>
     </aside>

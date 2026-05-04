@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is now drafted in `docs/persistence/`.
+Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Step 0 (Supabase setup + env scaffolding) and Step 1 (auth shell + operator login) are now implemented.** All `/app/*` routes are auth-protected; mock domain data still renders behind the guard.
 
-Next planned: **review the persistence canon** in a single session, then begin the first implementation sprint — Migration Sequence Step 0 (Supabase setup + env scaffolding) followed by Step 1 (Auth shell + operator login). Neither step touches the UI surface.
+Next planned: **Migration Sequence Step 2 — public scorecard submission persistence** (real `scorecard_submissions`, `scorecard_answers`, `accounts`, `contacts`, `leads`, `lead_fit_dimensions`, `lead_qualification_signals`; server-side scoring; `/scorecard/results` reads by `submission_id`). UI components stay; the localStorage-only path moves to a resume buffer.
 
 ---
 
@@ -202,6 +202,26 @@ docs/
     01_DATA_MODEL_DRAFT.md
     02_MIGRATION_SEQUENCE.md
     03_SECURITY_AND_RLS_DRAFT.md
+supabase/                           # Persistence/Auth Step 0/1
+  migrations/
+    0001_auth_workspaces_profiles.sql
+    README.md
+middleware.ts                       # /app/* auth guard + session refresh
+.env.example                        # names only — never commit .env.local
+```
+
+### Auth-related files added in Step 0/1
+
+```
+lib/env.ts                          # safe env getters; throws at call time only
+lib/supabase/client.ts              # browser client (anon key only)
+lib/supabase/server.ts              # server client bound to cookies()
+lib/supabase/middleware.ts          # updateSession(request) helper
+lib/auth/actions.ts                 # signInWithMagicLink, signOut server actions
+lib/auth/identity.ts                # getOperatorIdentity() with safe fallbacks
+components/auth/login-form.tsx      # client form using server action
+app/login/page.tsx                  # premium dark SLATE-styled login surface
+app/auth/callback/route.ts          # magic-link code → session exchange
 ```
 
 ---
@@ -248,11 +268,26 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
+## Persistence/Auth Step 0 + Step 1 — Status & Local Setup
+
+Step 0 (Supabase setup + env scaffolding) and Step 1 (auth shell + operator login) are implemented. The full lifecycle UI under `/app/*` continues to render mock domain data — only auth/session/profile/workspace are real now.
+
+### Local setup checklist
+
+1. Copy `.env.example` to `.env.local` and fill in real values from the Supabase project dashboard. Never commit `.env.local`. The service role key stays server-only — do not prefix it `NEXT_PUBLIC_`.
+2. In Supabase Dashboard → SQL Editor (or `supabase db push`), apply `supabase/migrations/0001_auth_workspaces_profiles.sql`. The migration is idempotent.
+3. In Supabase Dashboard → Authentication → URL Configuration, set:
+   - Site URL: `http://localhost:3000` (or your deployed origin)
+   - Redirect URLs: include `http://localhost:3000/auth/callback`
+4. In Supabase Dashboard → Authentication → Providers → Email, enable magic link.
+5. Invite each Saipien Labs operator via Supabase Dashboard → Authentication → Users. The `on_auth_user_created` trigger automatically creates a corresponding `profiles` row.
+6. `npm run dev` and sign in at `/login`.
+
 ## Starting Persistence/Auth Implementation
 
 **Goal.** Replace seeded mock data route-by-route while preserving the accepted UI surface.
 
-**Order.** Follow `docs/persistence/02_MIGRATION_SEQUENCE.md` strictly. Step 0 → Step 1 → Step 2 → … No skipping.
+**Order.** Follow `docs/persistence/02_MIGRATION_SEQUENCE.md` strictly. Step 2 (scorecard submission) is next; do not skip ahead to leads, engagements, or any of Steps 3–10.
 
 **Per-step end state.** `npm run lint` clean, `npm run build` clean, the visual UX audit protocol passes against the affected routes, and the per-step acceptance criteria from the migration sequence doc are met.
 

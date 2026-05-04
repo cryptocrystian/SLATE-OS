@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — Persistence/Auth Sprint 0 (architecture canon)_
+_Last updated: 2026-05-04 — Persistence/Auth Step 0 + Step 1 implemented_
 
 ## Sprint State
 
@@ -16,8 +16,10 @@ _Last updated: 2026-05-01 — Persistence/Auth Sprint 0 (architecture canon)_
 | — | MVP Stabilization + End-to-End Polish | ✅ Complete |
 | — | MVP Acceptance Audit | ✅ Approved (4.8/5) |
 | P0 | Persistence/Auth Architecture | ✅ Canon drafted |
+| P1 | Persistence/Auth Step 0 — Supabase setup + env scaffolding | ✅ Complete |
+| P1 | Persistence/Auth Step 1 — Auth shell + operator login | ✅ Complete |
 
-The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Next planned: review the persistence canon, then begin the first persistence implementation sprint (Step 0: Supabase setup + env scaffolding).
+The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
 ## Stack
 
@@ -114,6 +116,60 @@ Four documents drafted in `docs/persistence/`:
 
 Recommended stack: **Supabase Postgres + Supabase Auth + RLS + Next.js Route Handlers / Server Actions**. Justified in `00_PERSISTENCE_AUTH_CANON.md`.
 
+## Persistence/Auth Step 0 + Step 1 — what landed
+
+**Step 0 — Supabase setup + env scaffolding.**
+
+- `@supabase/supabase-js` and `@supabase/ssr` installed.
+- `lib/env.ts` — typed env getters (`getPublicEnv`, `isSupabaseEnvConfigured`, `getSiteUrl`); throws only at call time so `next build` does not crash with missing env.
+- `lib/supabase/client.ts` — browser client (uses anon key only).
+- `lib/supabase/server.ts` — server client bound to `cookies()` for server components, route handlers, server actions.
+- `lib/supabase/middleware.ts` — `updateSession(request)` helper for the root middleware.
+- `.env.example` — names only, no values; service role key is **not** prefixed `NEXT_PUBLIC_`.
+- `supabase/migrations/0001_auth_workspaces_profiles.sql` — singleton `workspaces` row, `profiles` table joined to `auth.users`, shared `set_updated_at` trigger, RLS (operator read on workspaces; operator read + self-update + self-insert on profiles), `on_auth_user_created` trigger that auto-inserts a `profiles` row when a new `auth.users` row is created.
+- `supabase/migrations/README.md` — apply via Supabase Dashboard SQL Editor or `supabase db push`; CLI is optional.
+
+**Step 1 — Auth shell + operator login.**
+
+- `/login` (premium dark SLATE-styled magic-link form, success / error states, `?sent=1` confirms email sent, `?error=…` surfaces controlled error copy without leaking Supabase internals).
+- `/auth/callback` (route handler that exchanges `code` → session and redirects to `/app`, or to `/login?error=callback` on failure).
+- Root `middleware.ts` — refreshes Supabase session on `/app/*`, `/login`, `/auth/*`; redirects unauthenticated `/app/*` → `/login`; degrades to `/login?error=config` if Supabase env is unset; leaves `/scorecard*`, `/apply/*`, `/` untouched.
+- Sign-out — `signOut()` server action wired to a small icon button in the sidebar identity tile; redirects to `/login`.
+- Sidebar/user identity — `app/app/layout.tsx` is now an async server layout that resolves the operator via `getOperatorIdentity()` (auth user + `profiles` row, with safe fallbacks: `display_name → email → "Operator"`, derived initials when `avatar_initials` is null), threads identity to `AppShell` → `SidebarNav`. The hard-coded "MR · M. Reyes · Strategy · Saipien Labs" string is gone.
+- Login form is a client component that uses the `signInWithMagicLink` server action; `LoginForm` passes the action to a real `<form action={…}>` with a pending state.
+
+## Data / Mock Boundary (preserved)
+
+- `/app/*` is auth-protected.
+- `/app/*` still renders mock domain data from `lib/<domain>/mock-*.ts`.
+- `/scorecard/*` still uses localStorage / mock scoring.
+- No scorecard submission persistence (Step 2).
+- No leads persistence (Step 3).
+- No engagement / intake / findings / opportunities / roadmap / reports / proposals persistence (Step 4–8).
+- No activity events / notes persistence (Step 9).
+- No mock data deletion. No domain queries against Supabase. The only real data this sprint introduces is auth/session/profile/workspace.
+
+## BuildOps Boundary (preserved)
+
+Reaffirmed: BuildOps remains documentation-only. No `/app/builds`, no BuildOps nav, no builds/sprints/agent-session/repo-context tables, no QA workspace, no deployment visibility, no BuildOps API or RLS, no BuildOps backend services. None of the above changed in this sprint.
+
+## Verified
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 54 routes generate (the previous 51 prerendered routes plus `/login`, `/auth/callback`, and the now-dynamic `/app` root). `/app`, `/app/leads`, `/app/engagements` are now `ƒ` (dynamic) because the layout reads cookies; the engagement and lead detail routes still SSG via `generateStaticParams`. Middleware compiles to ~82 kB.
+- Curl smoke-test against `npm run dev`:
+  - `/login`, `/scorecard`, `/scorecard/start`, `/apply/ai-systems-review` → 200.
+  - `/app`, `/app/leads`, `/app/engagements` (no session) → 307 → `/login`.
+  - `/auth/callback` (no `code`) → 307 → `/login?error=callback`.
+  - `/login?sent=1` and `/login?error=callback` → 200 with success / error UI.
+  - `/` → 307 → `/app` (preserved; subsequent `/app` request bounces to `/login` for anonymous principals).
+- Magic-link round-trip with a real Supabase project requires applying `0001_auth_workspaces_profiles.sql`, configuring Site URL and Redirect URL in the Supabase dashboard (`http://localhost:3000/auth/callback`), and inviting at least one operator email. Those steps are dashboard work; not testable from CI.
+
+## Known Constraints (still)
+
+- All deliverable content under `/app/*` remains seeded mock data. Real persistence lands route-by-route in Step 2+.
+- Screenshot capture for this sprint was skipped — Playwright + Chromium are not installed locally in this environment. `/login`, `/login?sent=1`, and `/login?error=callback` were verified via curl; capture in a future session if needed for the UX audit log.
+
 ## Recommended Next Step
 
-Review the persistence canon (this should take a single session). Then begin the first implementation sprint — **Migration Sequence Step 0: Supabase setup + env scaffolding**, followed by **Step 1: Auth shell + operator login**. No UI changes in either; both are plumbing.
+**Step 2 — Public scorecard submission persistence.** Per `docs/persistence/02_MIGRATION_SEQUENCE.md`. Introduces `workspaces` (already seeded), `accounts`, `contacts`, `leads`, `lead_fit_dimensions`, `lead_qualification_signals`, `scorecard_submissions`, `scorecard_answers`. Server endpoint at `/api/scorecard/submit` does the scoring and inserts (service-role on server only); `/scorecard/results` switches to read-by-`submission_id` with localStorage as a resume buffer.

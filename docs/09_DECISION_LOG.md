@@ -4,6 +4,28 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-04 — Persistence/Auth Step 0/1 adds Supabase env scaffolding and operator auth
+
+**Decision.** Step 0/1 introduces Supabase client/server helpers, env scaffolding, `/login`, `/auth/callback`, `/app/*` auth guard, and real operator identity wiring while preserving all mock domain data.
+
+**Context.** The accepted MVP is now ready for persistence. Auth is the first boundary to establish before public scorecard submissions or internal records become real. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`, Step 0 (env + helpers) and Step 1 (auth shell) ship together because Step 1 cannot land without Step 0 plumbing, and neither touches domain data.
+
+**Implementation.**
+
+- Dependencies: `@supabase/supabase-js`, `@supabase/ssr`.
+- Helpers: `lib/env.ts` (lazy env reads, missing-env never crashes the build), `lib/supabase/{client,server,middleware}.ts`, `lib/auth/actions.ts` (`signInWithMagicLink`, `signOut`), `lib/auth/identity.ts` (operator → SidebarIdentity with safe fallbacks).
+- Env scaffolding: `.env.example` with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server-only, no `NEXT_PUBLIC_` prefix), `NEXT_PUBLIC_SITE_URL=http://localhost:3000`. `.env.local` was not modified, never read for content, and remains gitignored via the existing `.env*.local` rule.
+- SQL: `supabase/migrations/0001_auth_workspaces_profiles.sql` ships `workspaces` (singleton seed), `profiles` (1:1 with `auth.users`), shared `set_updated_at` trigger, `on_auth_user_created` trigger, RLS (operator read on workspaces; operator read + self-update + self-insert on profiles). The full 29-table schema from `01_DATA_MODEL_DRAFT.md` is intentionally **not** in this migration.
+- Routes: `/login` (premium dark login surface, success and error states, no public-registration framing), `/auth/callback` (code → session exchange, controlled error redirect), root `middleware.ts` (`/app/*` guard, session refresh, public routes pass through, env-missing case redirects `/app/*` to `/login?error=config`).
+- Sidebar/user identity: `app/app/layout.tsx` is now async + `force-dynamic`; identity flows from `getOperatorIdentity()` → `AppShell` → `SidebarNav`. Sign-out is a small icon button in the sidebar tile wired to the `signOut` server action.
+- The `M. Reyes / J. Okafor / A. Lin` strings inside `lib/engagements/mock-engagements.ts` remain — they are illustrative engagement-owner display strings and are out of Step 1 scope. Step 2+ replaces those with real `profiles` references.
+
+**Tradeoffs.** Internal routes now require a Supabase session locally and in deployed environments. `/app`, `/app/leads`, and `/app/engagements` are now dynamic instead of statically prerendered (they read cookies for the auth check); the `[id]` detail routes still SSG via `generateStaticParams`. Domain data remains mock until Step 2+. Real magic-link delivery requires Supabase Dashboard configuration that is not exercisable from CI; documented in `supabase/migrations/README.md`.
+
+**Boundary preserved.** No BuildOps surfaces, tables, RLS, API, or backend services. Mock domain data preserved in place behind the auth guard. `/scorecard*`, `/apply/*`, and `/` remain anonymous.
+
+---
+
 ## 2026-05-01 — Sprint 1 stack: Next.js 14 + React 18 + Tailwind v3
 
 **Decision.** Use Next.js 14.2 (App Router), React 18, TypeScript strict mode, and Tailwind CSS v3 for the SLATE codebase.

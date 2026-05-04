@@ -3,19 +3,21 @@
 import * as React from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SidebarNav } from "./sidebar-nav";
+import { SidebarNav, type SidebarIdentity } from "./sidebar-nav";
 import { TopBar } from "./top-bar";
 
 export interface AppShellProps {
   children: React.ReactNode;
   topBarContext?: string;
   reviewCount?: number;
+  identity?: SidebarIdentity;
 }
 
 export function AppShell({
   children,
   topBarContext,
   reviewCount,
+  identity,
 }: AppShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
@@ -37,7 +39,7 @@ export function AppShell({
 
       <aside className="hidden w-64 shrink-0 border-r border-border-subtle lg:block">
         <div className="sticky top-0 h-screen">
-          <SidebarNav />
+          <SidebarNav identity={identity} />
         </div>
       </aside>
 
@@ -57,7 +59,7 @@ export function AppShell({
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarNav />
+            <SidebarNav identity={identity} />
           </div>
         </div>
       ) : null}
