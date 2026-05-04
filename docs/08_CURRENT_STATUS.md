@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — End of MVP Stabilization_
+_Last updated: 2026-05-01 — Persistence/Auth Sprint 0 (architecture canon)_
 
 ## Sprint State
 
@@ -14,8 +14,10 @@ _Last updated: 2026-05-01 — End of MVP Stabilization_
 | 6 | Opportunity Matrix + Roadmap | ✅ Complete (audit 4.8/5, fixes folded into Sprint 7) |
 | 7 | Report + Proposal Builder | ✅ Complete (audit 4.8/5, fixes folded into stabilization) |
 | — | MVP Stabilization + End-to-End Polish | ✅ Complete |
+| — | MVP Acceptance Audit | ✅ Approved (4.8/5) |
+| P0 | Persistence/Auth Architecture | ✅ Canon drafted |
 
-The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. Next planned: **MVP acceptance audit**, then a separate decision on backend/auth/persistence as the unlock for the existing UI.
+The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Next planned: review the persistence canon, then begin the first persistence implementation sprint (Step 0: Supabase setup + env scaffolding).
 
 ## Stack
 
@@ -101,6 +103,17 @@ Three Sprint 7 audit fixes folded in plus a cross-sprint integrity pass:
 
 Cross-sprint integrity verified (no dead links, no no-op loops, every CTA either routes to an active page, renders as `LockedActionButton` with sprint label, or resolves via `recommendedActionRoute` for empty states).
 
+## Persistence/Auth Architecture Canon
+
+Four documents drafted in `docs/persistence/`:
+
+- `00_PERSISTENCE_AUTH_CANON.md` — goals, principles, role model, mock-to-real migration principle, eight acceptance criteria
+- `01_DATA_MODEL_DRAFT.md` — 29 tables mapped from existing `lib/<domain>/` types; six derived panel-status pieces called out as views, not columns
+- `02_MIGRATION_SEQUENCE.md` — 11-step route-by-route sequence with goals, tables introduced, mock data replaced, acceptance criteria, and risks per step
+- `03_SECURITY_AND_RLS_DRAFT.md` — route posture, default-deny RLS principles, public scorecard / stakeholder token / operator policy sketches, audit-trail policy, what not to expose client-side
+
+Recommended stack: **Supabase Postgres + Supabase Auth + RLS + Next.js Route Handlers / Server Actions**. Justified in `00_PERSISTENCE_AUTH_CANON.md`.
+
 ## Recommended Next Step
 
-Run an **MVP acceptance audit** across the full lifecycle (Quanta + Caldera demo paths). After acceptance, decide the next workstream — likely real persistence as the unlock for the existing UI surface, then BuildOps as a separate dedicated multi-sprint sequence.
+Review the persistence canon (this should take a single session). Then begin the first implementation sprint — **Migration Sequence Step 0: Supabase setup + env scaffolding**, followed by **Step 1: Auth shell + operator login**. No UI changes in either; both are plumbing.

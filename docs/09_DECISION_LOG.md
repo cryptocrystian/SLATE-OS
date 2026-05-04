@@ -64,6 +64,20 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Persistence/Auth canon drafted before any backend code
+
+**Decision.** After MVP acceptance, SLATE enters a Persistence/Auth architecture sprint *before* implementation. Four canon documents are drafted in `docs/persistence/` (canon, data model, migration sequence, security + RLS). No backend packages, migrations, auth code, or database code added in this sprint.
+
+**Context.** The MVP UI surface is broad (51 routes, seven engagement-related pages, full lifecycle from public scorecard through proposal). Implementing persistence without a written architecture would mean making schema and policy decisions inside a coding sprint where the context is heavy. Drafting the canon first lets the team review the data model, the migration order, and the security boundary before any irreversible commits to a stack.
+
+**Recommended stack.** Supabase Postgres + Supabase Auth + RLS + Next.js Route Handlers / Server Actions. Default unless implementation discovers a strong reason to deviate. The recommendation is justified in `docs/persistence/00_PERSISTENCE_AUTH_CANON.md`.
+
+**Migration principle.** Replace seeded mock data route-by-route while preserving the accepted UI surface. Components stay the same; the data source switches underneath via per-domain `queries.ts` files that return the existing TypeScript shapes.
+
+**Tradeoffs.** A short delay before the first real persistence ships. Worth it: every per-step acceptance criterion is now decided up front.
+
+---
+
 ## 2026-05-01 — Post-MVP stabilization preserves feature scope
 
 **Decision.** A dedicated stabilization pass after Sprint 7 fixes the three priority items from the Sprint 7 audit and runs a cross-sprint integrity sweep — without adding backend, auth, persistence, BuildOps, or any new feature module. Specifically: empty-state CTAs on `/report` and `/proposal` now route via `recommendedActionRoute` for stage-aware handoff; report outline shows canonical section numbers regardless of filter; roadmap linked-opportunity chip carries `aria-label` + soft elision; new `recommendedActionLabel(href)` helper provides consistent CTA copy.

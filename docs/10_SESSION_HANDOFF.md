@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. The MVP Stabilization pass landed three Sprint 7 audit fixes and a cross-sprint integrity sweep. The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized.
+Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is now drafted in `docs/persistence/`.
 
-Next planned: **MVP acceptance audit** across the full lifecycle. After acceptance, the team decides the next workstream — likely real persistence as the unlock for the existing UI, then BuildOps as a separate dedicated multi-sprint sequence.
+Next planned: **review the persistence canon** in a single session, then begin the first implementation sprint — Migration Sequence Step 0 (Supabase setup + env scaffolding) followed by Step 1 (Auth shell + operator login). Neither step touches the UI surface.
 
 ---
 
@@ -196,6 +196,12 @@ docs/
   screenshots/sprint-5/
   screenshots/sprint-6/
   screenshots/sprint-7/
+  screenshots/mvp-stabilization/
+  persistence/                      # Persistence/Auth architecture canon (Sprint P0)
+    00_PERSISTENCE_AUTH_CANON.md
+    01_DATA_MODEL_DRAFT.md
+    02_MIGRATION_SEQUENCE.md
+    03_SECURITY_AND_RLS_DRAFT.md
 ```
 
 ---
@@ -242,7 +248,23 @@ Both `lint` and `build` are clean as of end of Sprint 1.
 
 ---
 
-## Starting Post-MVP — Stabilization + End-to-End Polish
+## Starting Persistence/Auth Implementation
+
+**Goal.** Replace seeded mock data route-by-route while preserving the accepted UI surface.
+
+**Order.** Follow `docs/persistence/02_MIGRATION_SEQUENCE.md` strictly. Step 0 → Step 1 → Step 2 → … No skipping.
+
+**Per-step end state.** `npm run lint` clean, `npm run build` clean, the visual UX audit protocol passes against the affected routes, and the per-step acceptance criteria from the migration sequence doc are met.
+
+**Reuse.** Every existing `lib/<domain>/types.ts` is the contract for the corresponding `queries.ts` file. The component surface in `components/` should not change. The `LockedActionButton` pattern stays — locked CTAs (`Export Report`, `Send to Client`, `Prepare SOW Draft`, `Prepare Client Review`) remain locked through the persistence sprint.
+
+**Boundaries.** Per `docs/persistence/00_PERSISTENCE_AUTH_CANON.md`: no real AI synthesis, no production document export, no e-signature, no email delivery, no billing, no real CRM integration, no BuildOps. Each is its own future workstream.
+
+**End-of-sprint.** Re-run the MVP acceptance audit against the persisted product on Quanta and Caldera demo paths. After sign-off, scope the next workstream (likely AI synthesis for findings, then real export, then BuildOps).
+
+---
+
+## Historical: Starting Post-MVP — Stabilization + End-to-End Polish
 
 **Goal.** Run a final cross-sprint visual + accessibility + copy audit, then a stabilization window that hardens the seven-stage demo path. No new feature scope until stabilization is signed off.
 
