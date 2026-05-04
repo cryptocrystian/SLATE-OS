@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, FileSignature } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileSignature } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,10 @@ import { getProposalForEngagement } from "@/lib/proposals/mock-proposals";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
 import { getReportForEngagement } from "@/lib/reports/mock-reports";
-import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import {
+  recommendedActionLabel,
+  recommendedActionRoute,
+} from "@/lib/engagements/recommended-action";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -168,13 +171,25 @@ export default function EngagementProposalPage({
             <EmptyState
               icon={<FileSignature className="h-4 w-4" />}
               title="Build the report and roadmap before proposal options are assembled."
-              description="Proposal options pull from approved opportunities and the 30/60/90 roadmap. Once the report is at least half-approved, the option workspace populates here."
+              description={
+                recAction.lockedNote
+                  ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The next step in this engagement isn't yet wired."
+                  : recAction.href === reportHref
+                    ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. Once the report is at least half-approved, the option workspace populates here."
+                    : "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The engagement is still earlier in the workflow — pick up where the work currently is."
+              }
               action={
-                <Link href={reportHref}>
-                  <Button variant="primary" size="md">
-                    Open report builder
-                  </Button>
-                </Link>
+                recAction.href ? (
+                  <Link href={recAction.href}>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      trailingIcon={<ArrowRight className="h-4 w-4" />}
+                    >
+                      {recommendedActionLabel(recAction.href)}
+                    </Button>
+                  </Link>
+                ) : null
               }
             />
           ) : (

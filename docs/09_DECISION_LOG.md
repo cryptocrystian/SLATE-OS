@@ -64,6 +64,16 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-01 — Post-MVP stabilization preserves feature scope
+
+**Decision.** A dedicated stabilization pass after Sprint 7 fixes the three priority items from the Sprint 7 audit and runs a cross-sprint integrity sweep — without adding backend, auth, persistence, BuildOps, or any new feature module. Specifically: empty-state CTAs on `/report` and `/proposal` now route via `recommendedActionRoute` for stage-aware handoff; report outline shows canonical section numbers regardless of filter; roadmap linked-opportunity chip carries `aria-label` + soft elision; new `recommendedActionLabel(href)` helper provides consistent CTA copy.
+
+**Context.** The MVP scored 4.8/5 and approved on its final audit. Stabilization is the right shape of work *before* committing to the next workstream (real persistence, then BuildOps). Skipping stabilization would push small inconsistencies into a backend sprint where they're harder to isolate.
+
+**Tradeoffs.** None significant. The surface stays feature-complete; quality goes up.
+
+---
+
 ## 2026-05-01 — Report builder uses seeded report sections tied to findings, opportunities, roadmap items, and evidence
 
 **Decision.** `/app/engagements/[id]/report` renders seeded `Report` records (in `lib/reports/mock-reports.ts`) for Quanta and Caldera. Each `ReportSection` carries `linkedFindingIds`, `linkedOpportunityIds`, and `linkedRoadmapItemIds` — the full source trail from the Sprint 5/6 data layer. AI-drafted sections carry an explicit `aiDrafted: true` flag and a `confidence` value; the workspace surfaces both visually and never auto-promotes a section to client-facing.

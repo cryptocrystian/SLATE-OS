@@ -154,7 +154,9 @@ export function ReportWorkspace({
         </div>
 
         <ol className="flex flex-col gap-1.5">
-          {filtered.map((s, i) => {
+          {filtered.map((s) => {
+            const canonicalIdx = sections.findIndex((x) => x.id === s.id);
+            const sectionNumber = String(canonicalIdx + 1).padStart(2, "0");
             const isSelected = s.id === selectedId;
             return (
               <li key={s.id}>
@@ -162,7 +164,7 @@ export function ReportWorkspace({
                   type="button"
                   onClick={() => setSelectedId(s.id)}
                   aria-pressed={isSelected}
-                  aria-label={`${s.title}, ${s.status}`}
+                  aria-label={`Section ${sectionNumber} of ${sections.length}, ${s.title}, ${s.status}`}
                   className={cn(
                     "flex w-full flex-col gap-1.5 rounded-lg border p-3 text-left transition-colors",
                     isSelected
@@ -172,7 +174,7 @@ export function ReportWorkspace({
                 >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                      {String(i + 1).padStart(2, "0")}
+                      {sectionNumber}
                     </span>
                     <ReportSectionStatusChip status={s.status} />
                   </div>

@@ -20,7 +20,10 @@ import { getReportForEngagement } from "@/lib/reports/mock-reports";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
-import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import {
+  recommendedActionLabel,
+  recommendedActionRoute,
+} from "@/lib/engagements/recommended-action";
 
 export function generateStaticParams() {
   return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
@@ -190,15 +193,27 @@ export default function EngagementReportPage({
               description="The report draws on approved findings, prioritized opportunities, and the 30/60/90 roadmap. Once those land, the outline and section drafts populate here."
               action={
                 <div className="flex flex-wrap gap-2">
-                  <Link href={findingsHref}>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      trailingIcon={<ArrowRight className="h-4 w-4" />}
-                    >
-                      Open findings
-                    </Button>
-                  </Link>
+                  {recAction.href ? (
+                    <Link href={recAction.href}>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        trailingIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        {recommendedActionLabel(recAction.href)}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href={findingsHref}>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        trailingIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        Open findings
+                      </Button>
+                    </Link>
+                  )}
                   <Link href={opportunitiesHref}>
                     <Button variant="secondary" size="md">
                       Open opportunities

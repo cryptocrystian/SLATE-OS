@@ -39,3 +39,18 @@ export function recommendedActionRoute(
   }
   return route;
 }
+
+/**
+ * Short, human label for the recommended action's destination, suitable
+ * for empty-state CTA buttons. Maps the resolved href back to a phrase
+ * like "Continue at intake" or "Open opportunities".
+ */
+export function recommendedActionLabel(href: string): string {
+  if (href.endsWith("/intake")) return "Continue at intake";
+  if (href.endsWith("/findings")) return "Continue at findings";
+  if (href.endsWith("/opportunities")) return "Continue at opportunities";
+  if (href.endsWith("/roadmap")) return "Continue at roadmap";
+  if (href.endsWith("/report")) return "Open report builder";
+  if (href.endsWith("/proposal")) return "Open proposal builder";
+  return "Continue";
+}

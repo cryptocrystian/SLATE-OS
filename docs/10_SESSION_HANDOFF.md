@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. The GrowthOps + AdvisoryOps MVP arc is feature-complete. See `docs/08_CURRENT_STATUS.md` for the implementation summary.
+Sprints 1–7 are complete. The MVP Stabilization pass landed three Sprint 7 audit fixes and a cross-sprint integrity sweep. The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized.
 
-Next planned: **MVP Stabilization + End-to-End Polish** — final visual audit, cross-sprint consistency pass, and a stabilization window before any post-MVP work (BuildOps, StudioOps, ClientOps, real persistence) is scoped.
+Next planned: **MVP acceptance audit** across the full lifecycle. After acceptance, the team decides the next workstream — likely real persistence as the unlock for the existing UI, then BuildOps as a separate dedicated multi-sprint sequence.
 
 ---
 

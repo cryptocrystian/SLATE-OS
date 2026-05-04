@@ -26,12 +26,16 @@ export function RoadmapCard({ item, opportunityTitles }: RoadmapCardProps) {
             <span
               className="inline-flex items-center gap-1 rounded-md border border-border-subtle bg-bg-elevated/50 px-2 py-0.5 text-[11px] font-medium text-text-secondary"
               title={linkedTitle ?? "Linked opportunity"}
+              aria-label={`Linked opportunity: ${linkedTitle ?? "linked opportunity"}`}
             >
               <Link2 aria-hidden className="h-3 w-3 text-text-muted" />
-              <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              <span aria-hidden className="font-mono uppercase tracking-[0.12em] text-text-muted">
                 →
               </span>
-              <span className="max-w-[18ch] truncate sm:max-w-[28ch]">
+              <span
+                aria-hidden
+                className="block max-w-[18ch] overflow-hidden text-ellipsis whitespace-nowrap sm:max-w-[28ch]"
+              >
                 {linkedTitle ?? "Linked opportunity"}
               </span>
             </span>

@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-01 — End of Sprint 7 (MVP complete)_
+_Last updated: 2026-05-01 — End of MVP Stabilization_
 
 ## Sprint State
 
@@ -12,9 +12,10 @@ _Last updated: 2026-05-01 — End of Sprint 7 (MVP complete)_
 | 4 | Engagement Workspace | ✅ Complete (audit 4.8/5, fixes folded into Sprint 5) |
 | 5 | Intake + Findings Review | ✅ Complete (audit 4.7/5, fixes folded into Sprint 6) |
 | 6 | Opportunity Matrix + Roadmap | ✅ Complete (audit 4.8/5, fixes folded into Sprint 7) |
-| 7 | Report + Proposal Builder | ✅ Complete |
+| 7 | Report + Proposal Builder | ✅ Complete (audit 4.8/5, fixes folded into stabilization) |
+| — | MVP Stabilization + End-to-End Polish | ✅ Complete |
 
-The GrowthOps + AdvisoryOps MVP arc is now feature-complete. Next planned: **MVP Stabilization + End-to-End Polish**.
+The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. Next planned: **MVP acceptance audit**, then a separate decision on backend/auth/persistence as the unlock for the existing UI.
 
 ## Stack
 
@@ -90,13 +91,16 @@ Reaffirmed: BuildOps remains documentation-only. No `/app/builds`, no BuildOps n
 - Review actions across findings / report / proposal are mock with explicit labeling.
 - Workspace selection state is local-only and resets on navigation.
 
+## Stabilization Pass (2026-05-01)
+
+Three Sprint 7 audit fixes folded in plus a cross-sprint integrity pass:
+
+- **Fix 1 — Empty-state CTA routing.** Both `/report` and `/proposal` empty states now use `recommendedActionRoute(engagement)` to direct the user to the engagement's actual current step. Helio (intake stage) → "Continue at intake"; Atlas (setup) → "Continue at intake"; Meridian (synthesis) → "Continue at findings"; Quanta (report stage proposal page) → "Open report builder". New `recommendedActionLabel(href)` helper provides the human label.
+- **Fix 2 — Canonical report section numbering.** `ReportWorkspace` outline now displays each section's true index in the report (e.g. AI Opportunity Portfolio stays `07` even when filtered to "Needs Review"). `aria-label` on each outline button now reads `Section <N> of <total>, <title>, <status>`.
+- **Fix 3 — Roadmap linked-opportunity chip accessibility.** Visual truncation now uses `text-ellipsis whitespace-nowrap`; the chip carries `aria-label="Linked opportunity: <full title>"` and the visible truncated text is `aria-hidden`. Title attribute kept for hover.
+
+Cross-sprint integrity verified (no dead links, no no-op loops, every CTA either routes to an active page, renders as `LockedActionButton` with sprint label, or resolves via `recommendedActionRoute` for empty states).
+
 ## Recommended Next Step
 
-Run a final visual UX audit on Sprint 7, then begin **MVP Stabilization + End-to-End Polish**:
-
-- Audit cross-sprint visual consistency
-- Audit cross-sprint copy/microcopy consistency
-- Audit cross-sprint accessibility
-- Verify every CTA has a destination (or a labeled lock)
-- Verify the lead → engagement → intake → findings → opportunities → roadmap → report → proposal trail at the highest fidelity for the canonical demo engagements (Quanta, Caldera)
-- Decide which interactive states should persist beyond local UI (mock filter state, mock review actions)
+Run an **MVP acceptance audit** across the full lifecycle (Quanta + Caldera demo paths). After acceptance, decide the next workstream — likely real persistence as the unlock for the existing UI surface, then BuildOps as a separate dedicated multi-sprint sequence.
