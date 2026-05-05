@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,25 +36,20 @@ export function PublicAssessmentShell({
         >
           <Link
             href="/scorecard"
-            className="flex items-center gap-3 outline-none"
+            className="flex flex-col gap-1 outline-none"
+            aria-label="SLATE — AI Workflow Scorecard"
           >
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong bg-bg-elevated">
-              <div
-                aria-hidden
-                className="absolute inset-0 rounded-lg bg-gradient-to-br from-brand-primary/30 via-transparent to-practice-ai/20"
-              />
-              <span className="relative font-mono text-sm font-semibold text-text-primary">
-                SL
-              </span>
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight text-text-primary">
-                SLATE
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                AI Workflow Scorecard
-              </span>
-            </div>
+            <Image
+              src="/brand/slate-logo-white.png"
+              alt="SLATE"
+              width={720}
+              height={155}
+              priority
+              className="h-7 w-auto"
+            />
+            <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+              AI Workflow Scorecard
+            </span>
           </Link>
 
           <div className="hidden items-center gap-2 text-[11px] text-text-muted sm:flex">

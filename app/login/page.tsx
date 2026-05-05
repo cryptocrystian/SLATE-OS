@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { CheckCircle2, ShieldCheck, Sparkles, TriangleAlert } from "lucide-react";
 import { LoginForm } from "@/components/auth/login-form";
@@ -60,25 +61,20 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
         <section className="flex flex-1 flex-col justify-between gap-10 lg:max-w-md">
           <Link
             href="/"
-            className="inline-flex w-fit items-center gap-3 outline-none"
+            className="inline-flex w-fit flex-col gap-1.5 outline-none"
+            aria-label="SLATE — Saipien Labs OS"
           >
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-lg border border-border-strong bg-bg-elevated">
-              <div
-                aria-hidden
-                className="absolute inset-0 rounded-lg bg-gradient-to-br from-brand-primary/30 via-transparent to-practice-ai/20"
-              />
-              <span className="relative font-mono text-sm font-semibold tracking-tight text-text-primary">
-                SL
-              </span>
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-sm font-semibold tracking-tight text-text-primary">
-                SLATE
-              </span>
-              <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
-                Saipien Labs OS
-              </span>
-            </div>
+            <Image
+              src="/brand/slate-logo-white.png"
+              alt="SLATE"
+              width={720}
+              height={155}
+              priority
+              className="h-8 w-auto"
+            />
+            <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+              Saipien Labs OS
+            </span>
           </Link>
 
           <div className="flex flex-col gap-6">

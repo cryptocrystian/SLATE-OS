@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -93,24 +94,18 @@ export function SidebarNav({ identity }: SidebarNavProps = {}) {
 
   return (
     <aside className="flex h-full w-full flex-col bg-bg-shell">
-      <div className="flex items-center gap-3 px-5 pt-6 pb-5">
-        <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong bg-bg-elevated">
-          <div
-            aria-hidden
-            className="absolute inset-0 rounded-lg bg-gradient-to-br from-brand-primary/30 via-transparent to-practice-ai/20"
-          />
-          <span className="relative font-mono text-sm font-semibold tracking-tight text-text-primary">
-            SL
-          </span>
-        </div>
-        <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold tracking-tight text-text-primary">
-            SLATE
-          </span>
-          <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
-            Saipien Labs OS
-          </span>
-        </div>
+      <div className="flex flex-col gap-2 px-5 pt-6 pb-5">
+        <Image
+          src="/brand/slate-logo-white.png"
+          alt="SLATE"
+          width={720}
+          height={155}
+          priority
+          className="h-7 w-auto"
+        />
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          Saipien Labs OS
+        </span>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 pb-6">
