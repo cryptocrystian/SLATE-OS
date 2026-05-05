@@ -24,7 +24,9 @@ export type ActivityEventType =
   | "note_updated"
   | "note_deleted"
   | "input_asset_uploaded"
-  | "input_asset_downloaded";
+  | "input_asset_downloaded"
+  | "ai_findings_generated"
+  | "ai_synthesis_failed";
 
 export type ActivityEntityType =
   | "lead"
@@ -40,7 +42,8 @@ export type ActivityEntityType =
   | "proposal_option"
   | "note"
   | "scorecard_submission"
-  | "input_asset";
+  | "input_asset"
+  | "ai_synthesis_run";
 
 export interface ActivityEvent {
   id: string;

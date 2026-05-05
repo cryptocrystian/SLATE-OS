@@ -204,6 +204,7 @@ export function mapFindingRow(
         ? row.assumption_note
         : undefined,
     reviewerNote: row.reviewer_note ?? undefined,
+    aiDrafted: Boolean(row.ai_drafted),
   };
 }
 

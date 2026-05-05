@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 10 (file / document binary storage) implemented; private `engagement-documents` Supabase Storage bucket, stakeholder + operator uploads with strict MIME / size validation, operator downloads via short-lived signed URLs, no OCR or parsing, public surfaces never list or download files_
+_Last updated: 2026-05-05 — AI Synthesis Step 1 (operator-triggered draft findings generation) implemented; OpenAI-backed server-only adapter, structured synthesis context (scorecard + intake + asset metadata + existing findings), strict JSON validator, drafts persist as `ai_drafted = true` / `needs_review`, every finding still requires operator approval before report-ready_
 
 ## Sprint State
 
@@ -28,6 +28,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 10 (file / document binary s
 | P8 | Persistence/Auth Step 8 — Reports + proposals persistence | ✅ Complete |
 | P9 | Persistence/Auth Step 9 — Activity events + notes persistence | ✅ Complete |
 | P10 | Persistence/Auth Step 10 — File / document binary storage | ✅ Complete |
+| AI1 | AI Synthesis Step 1 — Findings draft generation | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -778,6 +779,88 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 
 - The migration provisions the bucket via `insert into storage.buckets … on conflict (id) do update`. Some Supabase regions deny the implicit storage-schema grants required for a regular SQL session; in that case the bucket can be created via the Supabase Dashboard with the same shape (private, 10 MiB limit, identical MIME allowlist) and the migration becomes a no-op.
 
+## AI Synthesis Step 1 — what landed
+
+**Goal.** Operator-triggered AI draft finding generation from persisted scorecard, stakeholder intake, and input asset metadata. AI output is stored as `needs-review` findings and must pass operator approval before becoming report-ready. Uploaded file contents are not parsed.
+
+**Migration — `supabase/migrations/0011_ai_synthesis_runs.sql`.**
+
+- New `ai_synthesis_runs` table. Columns: `id`, `workspace_id → workspaces`, `engagement_id → engagements (on delete cascade)`, `run_type text`, `status text default 'started'`, `provider text`, `model text`, `input_summary jsonb`, `output_summary jsonb`, `error_code text`, `error_message text`, `created_by_profile_id`, `created_by_user_id`, `started_at`, `completed_at`, `created_at`. Indexed on `(engagement_id, started_at desc)`, `(workspace_id, started_at desc)`, `(status, started_at desc)`.
+- RLS: `ai_synthesis_runs_operator_full` for `authenticated`, `using/with check (workspace_id = (select id from public.workspaces limit 1))`. No anon access. Public scorecard / intake routes never read synthesis runs.
+- `run_type` and `status` stay text-typed so the vocabulary can extend (future `report_section_draft`, `opportunity_draft`, etc.) without another migration.
+- Idempotent (`create table if not exists`, `drop policy if exists` + `create policy`).
+
+**AI provider layer — `lib/ai/{types,provider,findings-context,findings-synthesis}.ts`.**
+
+- `lib/ai/types.ts` — `DraftFindingCandidate`, `DraftFindingSourceRef`, `AiProviderConfig`, `ProviderInvocationResult` discriminated union.
+- `lib/ai/provider.ts` — server-only (`import "server-only"`). `getAiProviderConfig()` reads `SLATE_AI_PROVIDER`, `OPENAI_API_KEY`, `SLATE_AI_FINDINGS_MODEL` (default `gpt-4o-mini`); returns `null` if the key is absent. `isAiConfigured()` is a thin boolean wrapper used by the page server component to render a controlled unavailable state when no key is configured. `callChatJson(request)` POSTs to `https://api.openai.com/v1/chat/completions` via `fetch` with `response_format: { type: "json_object" }`, 60s `AbortController` timeout, status-aware error mapping (429 → `ai-rate-limited`, network failure → `ai-request-failed`, abort → `ai-timeout`). No SDK dependency added — `fetch` is enough and keeps the dep footprint zero. The key is never logged.
+- `lib/ai/findings-context.ts` — `buildFindingsSynthesisContext(engagementId)`. Server-only, `auth.getUser()`-gated. Loads engagement + linked account + scorecard submission/answers (when present) + stakeholder sessions/responses + input asset metadata + existing findings. Caps: ≤ 50 intake responses, ≤ 30 input assets, ≤ 30 existing findings, ≤ 30 scorecard answers; per-string clip at 240–360 chars. Strips PII proactively (no email, no contact details). Internal fit score is intentionally omitted. Never reads binary file content; `mimeFamily` is the only file-shape signal passed to the model.
+- `lib/ai/findings-synthesis.ts` — `synthesizeDraftFindings(context)` shapes a tight system + schema-instruction + user prompt, calls the provider with `temperature = 0.2`, then validates the JSON response with explicit allowlists. Bounds: 3–7 findings. Validator drops candidates without a statement, with unknown category, with no source refs and no `assumptionFlag = true`, and with malformed source refs. `category`, `confidence`, `sourceType`, `strength` all gated on `Set<DraftFinding…>` allowlists. Long fields are clipped to DB-safe lengths.
+
+**Server action — `lib/findings/synthesis-actions.ts`.**
+
+- `generateDraftFindingsForEngagement(engagementId)` — operator-only. Auth-gates first, returns `ai-not-configured` immediately when the key is absent.
+- Opens an `ai_synthesis_runs` row in `started` state with `input_summary` containing only safe counts (`intakeResponses`, `intakeSessions`, `completedSessions`, `inputAssets`, `scorecardAnswers`, `existingFindings`, `min/maxFindings`). No prompt body, no excerpt, no model response is ever written to this row.
+- Calls `synthesizeDraftFindings` and inspects the result. On provider error: marks the run `failed`, emits `ai_synthesis_failed`, revalidates routes, returns the typed error.
+- On success: deduplicates against existing finding statements (case-insensitive whitespace-collapsed), inserts each surviving candidate as a finding row (`ai_drafted = true`, `review_status = 'needs_review'`, `category` / `confidence` from the validator's allowlist) plus its typed source refs into `finding_source_refs`. Source-ref `strength = "missing"` from the model is mapped to `"thin"` for DB compatibility (the existing strength vocabulary is `strong | adequate | thin`).
+- Updates the run row to `completed` (or `failed` if zero findings persisted) with `output_summary` containing only counts + provider/model labels.
+- Emits exactly one activity event per call (`ai_findings_generated` or `ai_synthesis_failed`). Metadata is restricted to `{ runType, generatedCount, skippedDuplicateCount, provider, model }` (no statements, excerpts, or stakeholder content).
+- Revalidates `/app/engagements/<id>/findings` and `/app/engagements/<id>`. Returns `{ ok, generatedCount, skippedDuplicateCount, provider, model }` to the caller — never a raw model response.
+- Partial-failure behavior: if a finding row inserts but its source refs fail, the finding row is left in `needs_review` and the operator can attach evidence manually. The error count is recorded on `output_summary.insertErrorCount`.
+
+**UI integration.**
+
+- `components/findings/generate-findings-form.tsx` (`"use client"`) — shows `Generate draft findings` CTA with subdued "Draft only · operator review required" badge. Three states:
+  - `aiConfigured = true` and intake responses present → enabled CTA, copy explains scorecard + intake + metadata are used and uploaded files are not parsed.
+  - `aiConfigured = true` and no intake responses → CTA enabled but a warning banner says synthesis will run on scorecard context only and most candidates will be flagged as assumptions.
+  - `aiConfigured = false` → CTA disabled, controlled message: *"AI synthesis is not configured for this environment. Add the provider key server-side (`OPENAI_API_KEY` in `.env.local`) to enable draft generation."*
+- Component uses `useTransition`. On success it shows generated count + skipped duplicates. On failure it shows a translated error code (e.g., `ai-rate-limited` → "AI provider rate-limit reached. Wait a minute and try again.").
+- `app/app/engagements/[id]/findings/page.tsx` — calls `isAiConfigured()` server-side and threads it plus `hasIntakeEvidence = candidates.length > 0` into `<GenerateFindingsForm>`. The form renders only when `loaded.kind === "real"`. Mock slug engagements never see the AI synthesis surface. Page meta line now reads "AI Synthesis Step 1 · Live" / "AI draft + operator-authored · human approval required".
+- `components/findings/findings-workspace.tsx` — finding detail panel now branches its category badges: AI-drafted findings keep the existing `Sparkles · AI-drafted` badge; operator-authored findings (`aiDrafted === false`) render a neutral `Operator-authored` badge instead. List items also gain a subtle `Sparkles · AI` badge when AI-drafted. Existing mock findings (where `aiDrafted` is undefined) keep the AI-drafted treatment so seeded screenshots don't regress.
+- `lib/findings/types.ts` + `lib/findings/mappers.ts` — `Finding` type now carries an optional `aiDrafted: boolean`; the DB → TS mapper sets `aiDrafted: Boolean(row.ai_drafted)` so persisted findings carry the real flag.
+
+**Activity events.**
+
+- `lib/activity/types.ts` — added `ai_findings_generated` and `ai_synthesis_failed` to `ActivityEventType`; added `ai_synthesis_run` to `ActivityEntityType`.
+- `components/activity/activity-timeline.tsx` — added tone + label entries: `ai_findings_generated → ai / "AI findings generated"`, `ai_synthesis_failed → risk / "AI synthesis failed"`.
+- Activity metadata restricted to `{ runType, generatedCount, skippedDuplicateCount, provider, model }`. The existing `sanitizeMetadata` (Step 9) still drops keys matching `/token|secret|password|apikey|authorization|cookie|email|body|raw|excerpt/i` defensively even though the synthesis caller never includes those.
+
+**Public/internal boundary.**
+
+- Only authenticated operators can trigger synthesis. `generateDraftFindingsForEngagement` short-circuits on `auth.getUser()` before any context is built or any provider call is made.
+- Synthesis output is stored as operator-only `findings` rows under existing `findings_operator_full` RLS. Public scorecard / public intake routes never read findings, source refs, synthesis runs, or activity events.
+- The OpenAI key is read only in `lib/ai/provider.ts` (server-only) and never leaves the server. The browser bundle never receives any synthesis code (the `server-only` import enforces this at build time).
+- The page server component reads `isAiConfigured()` once and passes only the boolean down — the key is never serialized into the rendered HTML.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements continue rendering the seeded mock findings from `lib/findings/mock-findings.ts` — no AI synthesis surface, no `GenerateFindingsForm`, no `ManualFindingPlaceholder` regression.
+- The CTA appears only when `loaded.kind === "real"` AND `aiConfigured === true`.
+
+**Validation guardrails.**
+
+- Categories: 8-value allowlist matching `findings.category` DB vocabulary. Unknown → reject candidate.
+- Confidence: 4-value allowlist. Unknown → default to `needs_evidence`.
+- Source types: 4-value allowlist. Unknown → drop the source ref.
+- Source strength: 4 values (`strong`, `adequate`, `thin`, `missing`). `missing` is recorded on the candidate but persisted as `thin` (the DB strength vocabulary is 3-valued).
+- Statement required and non-empty; clipped to 240 chars.
+- Source IDs are validated against the canonical UUID regex; invalid IDs are dropped (the source ref still persists with the label/excerpt only).
+- Generated count clamped to 7 maximum even if the model returns more.
+- Every finding must have ≥ 1 source ref OR `assumptionFlag = true`.
+- Statement deduplication is case-insensitive and whitespace-collapsed against existing findings on the engagement.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 25 routes. `/app/engagements/[id]/findings` First Load grew from 113 kB to 114 kB (one new client component bundled).
+- Build also succeeds with `OPENAI_API_KEY` unset — `getAiProviderConfig()` returns `null`, the page renders the controlled "AI synthesis is not configured" state, no provider calls are issued.
+- Secret handling: `.env.local` was not read, modified, or staged; no provider keys, no prompt bodies, no raw model responses, no stakeholder content, no Supabase keys printed during this sprint. `.env.example` updated with names only (`SLATE_AI_PROVIDER`, `OPENAI_API_KEY`, `SLATE_AI_FINDINGS_MODEL`).
+
 ## Recommended Next Step
 
-**Documentation mode for AI synthesis or storage hardening (operator-controlled).** The persistence sequence canon (`02_MIGRATION_SEQUENCE.md`) ends after Step 10 file storage. The natural next chunks — AI synthesis pipeline (real `aiDrafted` findings), document parsing (PDF text extraction), and production export — are explicit non-goals of the persistence workstream and need their own canon entries before any code lands. In the interim, the persisted MVP arc is complete end-to-end: a real engagement can be created from a real lead, walked through stakeholder intake, synthesized into findings, scored into opportunities, sequenced into a roadmap, assembled into a report, packaged as proposal options, audited via activity + notes, and now backed by real document storage.
+**AI Synthesis Step 2 — opportunity drafting from approved findings, OR document parsing pipeline.** Step 1 deliberately stops at findings drafts to keep the human-in-the-loop boundary intact. Two natural follow-ons:
+
+1. **Opportunity drafting.** Once a body of approved findings exists for an engagement, opportunities can be drafted by the same provider abstraction. Inputs would be approved + report-ready findings + the existing evidence surface; the validator + activity logger pattern from Step 1 transfers directly. Operator approval still required.
+2. **Document parsing.** Step 1 explicitly treats uploaded files as metadata-only. Adding a server-only PDF/DOCX/CSV text-extraction pipeline (with size + page caps, no OCR for scanned content) would let synthesis cite document excerpts as well as stakeholder responses. Storage hardening (per-asset RLS, virus scanning, content sniffing) should land alongside parsing rather than as a separate workstream.
+
+(3) production export and (4) BuildOps remain out of scope.

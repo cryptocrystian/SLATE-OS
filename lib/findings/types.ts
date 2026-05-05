@@ -46,4 +46,5 @@ export interface Finding {
   sourceRefs: SourceRef[];
   assumptionFlag?: string;
   reviewerNote?: string;
+  aiDrafted?: boolean;
 }

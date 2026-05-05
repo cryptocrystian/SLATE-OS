@@ -162,6 +162,12 @@ export function FindingsWorkspace({
                         {f.category}
                       </Badge>
                       <FindingStatusChip status={f.reviewStatus} />
+                      {f.aiDrafted !== false ? (
+                        <Badge tone="ai" variant="outline">
+                          <Sparkles className="mr-1 h-2.5 w-2.5" />
+                          AI
+                        </Badge>
+                      ) : null}
                     </div>
                     <p className="text-sm font-medium leading-snug text-text-primary">
                       {f.statement}
@@ -215,10 +221,16 @@ function FindingDetail({
             {finding.category}
           </Badge>
           <FindingStatusChip status={finding.reviewStatus} />
-          <Badge tone="ai" variant="outline">
-            <Sparkles className="mr-1 h-3 w-3" />
-            AI-drafted
-          </Badge>
+          {finding.aiDrafted !== false ? (
+            <Badge tone="ai" variant="outline">
+              <Sparkles className="mr-1 h-3 w-3" />
+              AI-drafted
+            </Badge>
+          ) : (
+            <Badge tone="neutral" variant="outline">
+              Operator-authored
+            </Badge>
+          )}
         </div>
 
         <h2 className="text-lg font-semibold leading-snug tracking-tight text-text-primary sm:text-xl">

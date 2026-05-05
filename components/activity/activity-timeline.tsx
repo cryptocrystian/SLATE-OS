@@ -42,6 +42,8 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   note_deleted: "neutral",
   input_asset_uploaded: "info",
   input_asset_downloaded: "neutral",
+  ai_findings_generated: "ai",
+  ai_synthesis_failed: "risk",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -71,6 +73,8 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   note_deleted: "Note removed",
   input_asset_uploaded: "Document uploaded",
   input_asset_downloaded: "Document downloaded",
+  ai_findings_generated: "AI findings generated",
+  ai_synthesis_failed: "AI synthesis failed",
 };
 
 export function ActivityTimeline({

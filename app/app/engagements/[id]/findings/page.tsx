@@ -13,6 +13,7 @@ import {
 } from "@/components/findings/findings-workspace";
 import { FindingReviewActionBar } from "@/components/findings/review-action-bar";
 import { CreateFindingForm } from "@/components/findings/create-finding-form";
+import { GenerateFindingsForm } from "@/components/findings/generate-findings-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -22,6 +23,7 @@ import {
   getFindingsForEngagementPersisted,
 } from "@/lib/findings/queries";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { isAiConfigured } from "@/lib/ai/provider";
 import type { Finding } from "@/lib/findings/types";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +58,9 @@ export default async function EngagementFindingsPage({
   } else {
     findings = getMockFindings(engagement.id);
   }
+
+  const aiConfigured = isPersisted && isAiConfigured();
+  const hasIntakeEvidence = isPersisted && candidates.length > 0;
 
   const counts = {
     total: findings.length,
@@ -93,12 +98,14 @@ export default async function EngagementFindingsPage({
             <span className="text-text-muted">
               <Sparkles className="mr-1 inline h-3 w-3 text-practice-ai align-text-bottom" />
               {isPersisted
-                ? "Operator-authored · AI synthesis activates later"
+                ? aiConfigured
+                  ? "AI draft + operator-authored · human approval required"
+                  : "Operator-authored · AI synthesis available once configured"
                 : "AI-drafted · awaits human approval"}
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 6 · Live" : "Sprint 5 · Mock data"}
+              {isPersisted ? "AI Synthesis Step 1 · Live" : "Sprint 5 · Mock data"}
             </span>
           </>
         }
@@ -149,10 +156,17 @@ export default async function EngagementFindingsPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
           {isPersisted ? (
-            <CreateFindingForm
-              engagementId={engagement.id}
-              candidates={candidates}
-            />
+            <>
+              <GenerateFindingsForm
+                engagementId={engagement.id}
+                aiConfigured={aiConfigured}
+                hasIntakeEvidence={hasIntakeEvidence}
+              />
+              <CreateFindingForm
+                engagementId={engagement.id}
+                candidates={candidates}
+              />
+            </>
           ) : null}
 
           {findings.length === 0 && isPersisted ? (
