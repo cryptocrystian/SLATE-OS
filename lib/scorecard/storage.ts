@@ -5,6 +5,9 @@ const KEY = "slate.scorecard.v1";
 interface StoredState {
   answers: Answers;
   sectionIdx: number;
+  /** ISO timestamp when the user first opened the scorecard. Powers the
+   *  server-side too-fast-submission heuristic. */
+  startedAt?: string;
   completedAt?: string;
 }
 

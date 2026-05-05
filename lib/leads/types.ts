@@ -58,6 +58,19 @@ export interface ProspectScores {
   systems: number;
 }
 
+/**
+ * Trust posture for a lead, derived from the scorecard's anti-abuse +
+ * email-quality pipeline at submission time. `unverified` is the
+ * default — operators can later promote a lead to `verified` once
+ * email-click verification ships, or `flagged` / `rejected` for
+ * suspicious submissions.
+ */
+export type LeadTrustStatus =
+  | "verified"
+  | "unverified"
+  | "flagged"
+  | "rejected";
+
 export interface Lead {
   id: string;
   companyName: string;
@@ -85,4 +98,6 @@ export interface Lead {
   opportunityAreas: OpportunityArea[];
   riskNotes: string[];
   notes: string[];
+  trustStatus: LeadTrustStatus;
+  trustReasons: string[];
 }

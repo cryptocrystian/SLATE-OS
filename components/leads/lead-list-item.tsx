@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LeadStatusChip } from "./lead-status-chip";
+import { LeadTrustChip } from "./lead-trust-chip";
 import { FitScoreBadge } from "./fit-score-badge";
 import type { Lead } from "@/lib/leads/types";
 
@@ -37,6 +38,11 @@ export function LeadListItem({ lead }: LeadListItemProps) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LeadStatusChip status={lead.status} />
+            <LeadTrustChip
+              status={lead.trustStatus}
+              reasons={lead.trustReasons}
+              size="sm"
+            />
             <FitScoreBadge value={lead.internalFitScore} size="sm" />
           </div>
         </div>

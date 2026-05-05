@@ -19,12 +19,51 @@ import {
   type Question,
 } from "@/lib/scorecard/types";
 
-function messageFor(status: number): string {
-  if (status === 400)
-    return "Some required fields didn't make it through. Please check the contact section and try again.";
-  if (status === 503)
-    return "SLATE submission is temporarily unavailable. Please try again in a moment.";
-  return "Something went wrong submitting your scorecard. Please try again.";
+type ApiErrorCode =
+  | "invalid-email"
+  | "disposable-email"
+  | "submission-too-fast"
+  | "rate-limited"
+  | "missing-fields"
+  | "invalid-submission"
+  | "service-not-configured"
+  | "unknown";
+
+const API_ERROR_COPY: Record<ApiErrorCode, string> = {
+  "invalid-email":
+    "Use a valid work email to see your result.",
+  "disposable-email":
+    "Use a real work email so we can keep the scorecard useful.",
+  "submission-too-fast":
+    "That was submitted too quickly. Please review your answers and try again.",
+  "rate-limited":
+    "Too many scorecard submissions were received from this email. Try again later.",
+  "missing-fields":
+    "Some required fields didn't make it through. Please check the contact section and try again.",
+  "invalid-submission":
+    "We couldn't accept that submission. Please review your answers and try again.",
+  "service-not-configured":
+    "SLATE submission is temporarily unavailable. Please try again in a moment.",
+  unknown: "Something went wrong submitting your scorecard. Please try again.",
+};
+
+function classifyApiError(
+  status: number,
+  code: string | undefined,
+): ApiErrorCode {
+  switch (code) {
+    case "invalid-email":
+    case "disposable-email":
+    case "submission-too-fast":
+    case "rate-limited":
+    case "missing-fields":
+    case "invalid-submission":
+    case "service-not-configured":
+      return code;
+    default:
+      if (status === 503) return "service-not-configured";
+      return "unknown";
+  }
 }
 
 function isAnswered(q: Question, value: AnswerValue | undefined) {
@@ -49,6 +88,13 @@ export function ScorecardStepper() {
   const [submitting, setSubmitting] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [showValidation, setShowValidation] = React.useState(false);
+  // Honeypot — must stay empty for a real user. Hidden from the visual
+  // surface and from assistive tech via aria-hidden + tabIndex=-1.
+  const [honeypot, setHoneypot] = React.useState("");
+  // Tracks when the user actually started filling out the scorecard.
+  // Set on first hydration; mirrors into localStorage so a refresh
+  // doesn't reset the "fast submit" trigger.
+  const startedAtRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     const stored = loadScorecardState();
@@ -57,13 +103,28 @@ export function ScorecardStepper() {
       setSectionIdx(
         Math.min(Math.max(stored.sectionIdx ?? 0, 0), SECTIONS.length - 1),
       );
+      if (stored.startedAt) {
+        startedAtRef.current = stored.startedAt;
+      }
+    }
+    if (!startedAtRef.current) {
+      startedAtRef.current = new Date().toISOString();
+      saveScorecardState({
+        answers: stored?.answers ?? {},
+        sectionIdx: stored?.sectionIdx ?? 0,
+        startedAt: startedAtRef.current,
+      });
     }
     setHydrated(true);
   }, []);
 
   React.useEffect(() => {
     if (!hydrated) return;
-    saveScorecardState({ answers, sectionIdx });
+    saveScorecardState({
+      answers,
+      sectionIdx,
+      startedAt: startedAtRef.current ?? undefined,
+    });
   }, [answers, sectionIdx, hydrated]);
 
   const section = SECTIONS[sectionIdx];
@@ -108,22 +169,51 @@ export function ScorecardStepper() {
   async function submit() {
     setSubmitting(true);
     setSubmitError(null);
-    // Keep local answers as a resume buffer regardless of API outcome.
+    const completedAtIso = new Date().toISOString();
+    const startedAtIso = startedAtRef.current ?? completedAtIso;
+    const submissionDurationMs = Math.max(
+      0,
+      new Date(completedAtIso).getTime() - new Date(startedAtIso).getTime(),
+    );
+
     saveScorecardState({
       answers,
       sectionIdx,
-      completedAt: new Date().toISOString(),
+      startedAt: startedAtIso,
+      completedAt: completedAtIso,
     });
+
+    const clientMeta: Record<string, string> = {
+      startedAtIso,
+      completedAtIso,
+      submissionDurationMs: String(submissionDurationMs),
+    };
+    if (typeof window !== "undefined") {
+      try {
+        clientMeta.locale = navigator.language;
+        clientMeta.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch {
+        /* non-fatal */
+      }
+    }
 
     try {
       const resp = await fetch("/api/scorecard/submit", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify({ answers, clientMeta, honeypot }),
       });
       if (!resp.ok) {
+        let code: string | undefined;
+        try {
+          const body = (await resp.json()) as { error?: string };
+          code = body?.error;
+        } catch {
+          /* JSON failure — fall through to status-based copy */
+        }
+        const tag = classifyApiError(resp.status, code);
         setSubmitting(false);
-        setSubmitError(messageFor(resp.status));
+        setSubmitError(API_ERROR_COPY[tag]);
         return;
       }
       const data = (await resp.json()) as { submissionId?: string };
@@ -177,6 +267,25 @@ export function ScorecardStepper() {
             onChange={(v) => setAnswer(q.id, v)}
           />
         ))}
+      </div>
+
+      {/* Honeypot — visually and assistively hidden, but still in the DOM.
+          Real users never interact with this field; bots filling every
+          input land here and get rejected by the server. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-[9999px] top-auto h-px w-px overflow-hidden opacity-0"
+      >
+        <label htmlFor="slate-website-confirm">Website (do not fill)</label>
+        <input
+          id="slate-website-confirm"
+          name="website"
+          type="text"
+          autoComplete="off"
+          tabIndex={-1}
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+        />
       </div>
 
       {showValidation && !allAnswered ? (

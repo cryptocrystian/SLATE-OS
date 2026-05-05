@@ -3,6 +3,7 @@ import type {
   Lead,
   LeadSource,
   LeadStatus,
+  LeadTrustStatus,
   PracticeArea,
   ProspectScores,
   QualificationSignal,
@@ -58,6 +59,8 @@ export interface DbLeadRow {
   submission_id: string | null;
   last_activity_at: string;
   created_at: string;
+  trust_status: string | null;
+  trust_reasons: string[] | null;
   accounts: DbAccountRow | null;
   contacts: DbContactRow | null;
   /** From scorecard_submissions when joined; otherwise null. */
@@ -105,6 +108,18 @@ const PRACTICE_FROM_DB: Record<string, PracticeArea> = {
   custom_dev: "Custom Development",
   venture_studio: "Venture Studio",
 };
+
+const TRUST_FROM_DB: Record<string, LeadTrustStatus> = {
+  verified: "verified",
+  unverified: "unverified",
+  flagged: "flagged",
+  rejected: "rejected",
+};
+
+function mapTrustStatus(raw: string | null | undefined): LeadTrustStatus {
+  if (!raw) return "unverified";
+  return TRUST_FROM_DB[raw] ?? "unverified";
+}
 
 const FIT_DIMENSION_LABEL: Record<FitDimension["id"], string> = {
   "business-value": "Business Value Potential",
@@ -212,6 +227,10 @@ export function mapLeadRowToListLead(row: DbLeadRow): Omit<
         "Review qualification signals before scheduling a discovery call.",
       cta: recommended.cta?.toString() || "Open lead",
     },
+    trustStatus: mapTrustStatus(row.trust_status),
+    trustReasons: Array.isArray(row.trust_reasons)
+      ? row.trust_reasons.filter((s): s is string => typeof s === "string")
+      : [],
   };
 }
 

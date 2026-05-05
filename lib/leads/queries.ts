@@ -35,6 +35,8 @@ const LEAD_LIST_SELECT = `
   submission_id,
   last_activity_at,
   created_at,
+  trust_status,
+  trust_reasons,
   accounts:account_id ( name, industry, employee_range, revenue_range ),
   contacts:contact_id ( full_name, title, email ),
   scorecard_submissions:submission_id ( submitted_at )
@@ -51,6 +53,8 @@ interface RawLeadJoinRow {
   submission_id: string | null;
   last_activity_at: string;
   created_at: string;
+  trust_status: string | null;
+  trust_reasons: string[] | null;
   accounts: DbLeadRow["accounts"];
   contacts: DbLeadRow["contacts"];
   scorecard_submissions: { submitted_at: string | null } | null;
@@ -68,6 +72,8 @@ function toDbLeadRow(raw: RawLeadJoinRow): DbLeadRow {
     submission_id: raw.submission_id,
     last_activity_at: raw.last_activity_at,
     created_at: raw.created_at,
+    trust_status: raw.trust_status,
+    trust_reasons: raw.trust_reasons,
     accounts: raw.accounts,
     contacts: raw.contacts,
     submission_submitted_at: raw.scorecard_submissions?.submitted_at ?? null,
