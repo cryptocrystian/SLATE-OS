@@ -219,9 +219,12 @@ lib/supabase/server.ts              # server client bound to cookies()
 lib/supabase/middleware.ts          # updateSession(request) helper
 lib/auth/actions.ts                 # signInWithMagicLink, signOut server actions
 lib/auth/identity.ts                # getOperatorIdentity() with safe fallbacks
-components/auth/login-form.tsx      # client form using server action
+lib/auth/operator-allowlist.ts      # email + domain allowlist (fail-closed)
+components/auth/login-form.tsx      # client form using server action; useFormStatus
 app/login/page.tsx                  # premium dark SLATE-styled login surface
 app/auth/callback/route.ts          # magic-link code → session exchange
+scripts/dev/configure-supabase-smtp.cjs  # dev-only Mgmt API SMTP patch
+scripts/dev/probe-smtp-auth.cjs          # dev-only SMTP AUTH probe (no mail sent)
 ```
 
 ---
@@ -275,13 +278,15 @@ Step 0 (Supabase setup + env scaffolding) and Step 1 (auth shell + operator logi
 ### Local setup checklist
 
 1. Copy `.env.example` to `.env.local` and fill in real values from the Supabase project dashboard. Never commit `.env.local`. The service role key stays server-only — do not prefix it `NEXT_PUBLIC_`.
-2. In Supabase Dashboard → SQL Editor (or `supabase db push`), apply `supabase/migrations/0001_auth_workspaces_profiles.sql`. The migration is idempotent.
-3. In Supabase Dashboard → Authentication → URL Configuration, set:
-   - Site URL: `http://localhost:3000` (or your deployed origin)
-   - Redirect URLs: include `http://localhost:3000/auth/callback`
-4. In Supabase Dashboard → Authentication → Providers → Email, enable magic link.
-5. Invite each Saipien Labs operator via Supabase Dashboard → Authentication → Users. The `on_auth_user_created` trigger automatically creates a corresponding `profiles` row.
-6. `npm run dev` and sign in at `/login`.
+2. **Populate the operator allowlist.** Set `SLATE_OPERATOR_DOMAIN_ALLOWLIST=saipienlabs.com` (and/or list explicit emails in `SLATE_OPERATOR_EMAIL_ALLOWLIST=`). If both are empty, every sign-in attempt is rejected — the policy is fail-closed.
+3. In Supabase Dashboard → SQL Editor (or `supabase db push`), apply `supabase/migrations/0001_auth_workspaces_profiles.sql`. The migration is idempotent.
+4. In Supabase Dashboard → Authentication → URL Configuration, set:
+   - Site URL: `http://localhost:3000` (or your deployed origin / dev port)
+   - Redirect URLs: include the matching `/auth/callback` for each port/origin you'll exercise (`http://localhost:3000/auth/callback`, `http://localhost:3001/auth/callback`, prod, etc.)
+5. In Supabase Dashboard → Authentication → Providers → Email, enable magic link. **For operator auth, keep Supabase signups restricted where possible — disable "Allow new users to sign up" if your project plan exposes that toggle.** SLATE also enforces a server-side operator allowlist in `signInWithMagicLink`; both layers should remain in place before Step 2 begins.
+6. Invite each Saipien Labs operator via Supabase Dashboard → Authentication → Users. The `on_auth_user_created` trigger automatically creates a corresponding `profiles` row.
+7. (Optional) Configure custom SMTP. Supabase's free-tier email cap is ~3/hour and rate-limits aggressively during dev. Two helpers under `scripts/dev/` automate this for the SLATE Mailgun account: `configure-supabase-smtp.cjs` PATCHes Supabase Auth via the Management API, and `probe-smtp-auth.cjs` connects to the SMTP host with `AUTH LOGIN` to verify creds without sending mail. Both are dev-only, read everything from `process.env`, and redact secrets from output.
+8. `npm run dev` and sign in at `/login`.
 
 ## Starting Persistence/Auth Implementation
 

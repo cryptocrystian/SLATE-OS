@@ -57,4 +57,11 @@ In the Supabase Dashboard:
      automatically. Operators can later update their own
      `display_name` / `title` / `avatar_initials`.
 
+For operator auth, keep Supabase signups restricted where possible
+(Authentication → Settings → "Allow new users to sign up" → off, if your
+plan exposes the toggle). SLATE also enforces a server-side operator
+allowlist in `signInWithMagicLink` via `SLATE_OPERATOR_EMAIL_ALLOWLIST`
+and `SLATE_OPERATOR_DOMAIN_ALLOWLIST`; both layers should remain in
+place before Step 2 begins.
+
 No further migrations are required to exercise Step 1's `/login` flow.

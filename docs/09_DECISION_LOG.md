@@ -4,6 +4,27 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-04 — Operator allowlist enforced server-side; magic-link auth verified end-to-end
+
+**Decision.** `signInWithMagicLink` now rejects any email not present in `SLATE_OPERATOR_EMAIL_ALLOWLIST` (exact match) or `SLATE_OPERATOR_DOMAIN_ALLOWLIST` (domain match), *before* any Supabase API call. If both env vars are empty, every email is rejected — the policy is fail-closed in every environment. Unauthorized addresses redirect to `/login?error=unauthorized` with neutral copy ("That email is not authorized for SLATE operator access.") that does not reveal whether the email exists in Supabase.
+
+**Context.** End-to-end verification of Step 1 against a real Supabase project surfaced that the auth gate's "operator-only" framing was UX copy only — the server action would forward any well-formed email to Supabase. With Mailgun now wired as the outbound mailer (no rate-limit floor), this would also have meant Supabase happily issuing magic links to any address that passed regex. The allowlist closes that gap before broader operator rollout. Done at the application layer rather than at Supabase Auth Hooks for two reasons: (1) the rejection happens in our codepath we already audit, with no additional cloud surface to manage, and (2) it short-circuits before Supabase is touched, so unauthorized addresses never burn an OTP send and never leak account existence through Supabase's rate-limit timing.
+
+**Implementation.**
+- `lib/auth/operator-allowlist.ts` — pure module exporting `isAuthorizedOperator(email)` and `isOperatorAllowlistConfigured()`. Email normalized (`trim().toLowerCase()`), domain stripped of leading `@`. Server-only by virtue of `process.env` read; never `NEXT_PUBLIC_` prefixed.
+- `lib/auth/actions.ts` — calls `isAuthorizedOperator` after regex validation and before `signInWithOtp`. Diagnostic logger sanitized to whitelist exactly four Supabase response fields (`name`, `code`, `status`, `message`); never logs email, redirect target, or raw error.
+- `app/login/page.tsx` — `unauthorized` added to `ERROR_COPY`.
+- `.env.example` — documents both allowlist vars, with `SLATE_OPERATOR_DOMAIN_ALLOWLIST=saipienlabs.com` as a default for the SLATE deployment.
+
+**Verification follow-ups also landed in this commit.**
+- Login form pending state fixed via `useFormStatus()` from `react-dom`. Prior implementation kept a local `pending` flag set to `true` across the same-route navigation to `/login?sent=1`, which led to a stuck spinner and an accidental double-submit that hit Supabase's per-email OTP cooldown.
+- Two dev-only Mgmt API helpers (`scripts/dev/configure-supabase-smtp.cjs`, `scripts/dev/probe-smtp-auth.cjs`) committed. Both read all secrets from `process.env`, redact known credential patterns from output, and are not imported by the app runtime.
+- Mailgun replaces Supabase's free email service for all auth emails. SMTP is configured via the Management API patch script; the password lives in `.env.local` only, never in code or git.
+
+**Tradeoffs.** Adding a new operator now requires editing `.env.local` (or the deployment's env), redeploying / restarting, and inviting them in Supabase Dashboard. For a single-org operator pool that's fine; if SLATE ever needs self-service operator provisioning we'd move the allowlist into a database table and a small admin UI. Not in scope.
+
+---
+
 ## 2026-05-04 — Persistence/Auth Step 0/1 adds Supabase env scaffolding and operator auth
 
 **Decision.** Step 0/1 introduces Supabase client/server helpers, env scaffolding, `/login`, `/auth/callback`, `/app/*` auth guard, and real operator identity wiring while preserving all mock domain data.

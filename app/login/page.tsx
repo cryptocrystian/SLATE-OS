@@ -23,6 +23,7 @@ interface LoginPageProps {
 const ERROR_COPY: Record<string, string> = {
   "missing-email": "Enter your email to continue.",
   "invalid-email": "That doesn't look like a valid email address.",
+  unauthorized: "That email is not authorized for SLATE operator access.",
   config:
     "SLATE is not yet connected to Supabase in this environment. Reach out to the operator who set up your invite.",
   auth: "We couldn't send a sign-in link. Try again, or contact a SLATE operator.",

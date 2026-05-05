@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useFormStatus } from "react-dom";
 import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +14,9 @@ export interface LoginFormProps {
 }
 
 export function LoginForm({ defaultEmail, invalid }: LoginFormProps) {
-  const [pending, setPending] = React.useState(false);
-
   return (
     <form
       action={signInWithMagicLink}
-      onSubmit={() => setPending(true)}
       className="flex flex-col gap-4"
       noValidate
     >
@@ -33,24 +31,32 @@ export function LoginForm({ defaultEmail, invalid }: LoginFormProps) {
         invalid={invalid}
         hint="We send a one-time sign-in link. Operator access only."
       />
-      <Button
-        type="submit"
-        size="lg"
-        className={cn("w-full justify-center")}
-        disabled={pending}
-        leadingIcon={
-          pending ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            <Mail className="h-4 w-4" aria-hidden />
-          )
-        }
-        trailingIcon={
-          pending ? null : <ArrowRight className="h-4 w-4" aria-hidden />
-        }
-      >
-        {pending ? "Sending magic link…" : "Send magic link"}
-      </Button>
+      <SubmitButton />
     </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      size="lg"
+      className={cn("w-full justify-center")}
+      disabled={pending}
+      leadingIcon={
+        pending ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <Mail className="h-4 w-4" aria-hidden />
+        )
+      }
+      trailingIcon={
+        pending ? null : <ArrowRight className="h-4 w-4" aria-hidden />
+      }
+    >
+      {pending ? "Sending magic link…" : "Send magic link"}
+    </Button>
   );
 }

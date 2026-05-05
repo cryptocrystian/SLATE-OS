@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-04 — Persistence/Auth Step 0 + Step 1 implemented_
+_Last updated: 2026-05-04 — Persistence/Auth Step 0 + Step 1 verified end-to-end (real Supabase + Mailgun SMTP)_
 
 ## Sprint State
 
@@ -169,6 +169,15 @@ Reaffirmed: BuildOps remains documentation-only. No `/app/builds`, no BuildOps n
 
 - All deliverable content under `/app/*` remains seeded mock data. Real persistence lands route-by-route in Step 2+.
 - Screenshot capture for this sprint was skipped — Playwright + Chromium are not installed locally in this environment. `/login`, `/login?sent=1`, and `/login?error=callback` were verified via curl; capture in a future session if needed for the UX audit log.
+
+## Verification Follow-Ups (2026-05-04)
+
+End-to-end magic-link verification revealed three small follow-ups, all closed in the same branch:
+
+- **Operator allowlist enforced server-side.** `lib/auth/operator-allowlist.ts` reads `SLATE_OPERATOR_EMAIL_ALLOWLIST` (exact emails) and `SLATE_OPERATOR_DOMAIN_ALLOWLIST` (bare domains). `signInWithMagicLink` rejects unauthorized addresses with `/login?error=unauthorized` *before* any Supabase call, so unauthorized emails never trigger an OTP send and don't leak account existence via timing. Fail-closed: if both env vars are empty, every email is rejected. The login page surfaces the controlled copy "That email is not authorized for SLATE operator access."
+- **Login form spinner fix preserved.** `components/auth/login-form.tsx` uses `useFormStatus()` from `react-dom`, which correctly resets the pending state across the same-route navigation to `/login?sent=1`. Eliminates the double-submit pitfall that previously triggered Supabase's per-email OTP cooldown.
+- **Diagnostic logging sanitized.** `logAuthError` in `lib/auth/actions.ts` whitelists exactly four Supabase response fields (`name`, `code`, `status`, `message`) and never logs the email, redirect target, or raw error object.
+- **Two dev-only Mgmt API helpers committed.** `scripts/dev/configure-supabase-smtp.cjs` and `scripts/dev/probe-smtp-auth.cjs`. Both read all secrets from `process.env`, redact known credential patterns from output, are clearly marked dev-only (`.cjs` under `scripts/dev/`), and are never imported by the app runtime.
 
 ## Recommended Next Step
 
