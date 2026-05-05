@@ -1,10 +1,10 @@
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { ScoreResult } from "@/lib/scorecard/types";
+import type { PublicScoreResult } from "@/lib/scorecard/public-result";
 
 export interface ScorecardResultHeroProps {
-  result: ScoreResult;
+  result: PublicScoreResult;
   firstName?: string;
   company?: string;
 }

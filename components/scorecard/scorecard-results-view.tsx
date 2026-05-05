@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScorecardResultHero } from "./scorecard-result-hero";
@@ -14,37 +15,92 @@ import {
   loadScorecardState,
 } from "@/lib/scorecard/storage";
 import { scoreScorecard } from "@/lib/scorecard/scoring";
-import type { ScoreResult } from "@/lib/scorecard/types";
+import {
+  toPublicScoreResult,
+  type PublicScoreResult,
+} from "@/lib/scorecard/public-result";
 
 interface State {
-  status: "loading" | "missing" | "ready";
-  result?: ScoreResult;
+  status: "loading" | "missing" | "ready" | "error";
+  result?: PublicScoreResult;
   firstName?: string;
   company?: string;
 }
 
 export function ScorecardResultsView() {
+  const searchParams = useSearchParams();
+  const submissionId = searchParams?.get("submission_id") ?? null;
   const [state, setState] = React.useState<State>({ status: "loading" });
 
   React.useEffect(() => {
-    const stored = loadScorecardState();
-    if (!stored || !stored.answers || Object.keys(stored.answers).length === 0) {
-      setState({ status: "missing" });
-      return;
+    let cancelled = false;
+
+    async function load() {
+      if (submissionId) {
+        try {
+          const resp = await fetch(`/api/scorecard/results/${submissionId}`, {
+            cache: "no-store",
+          });
+          if (!resp.ok) {
+            if (cancelled) return;
+            setState({ status: resp.status === 404 ? "missing" : "error" });
+            return;
+          }
+          const data = (await resp.json()) as {
+            submissionId: string;
+            result: PublicScoreResult;
+            displayContext: { firstName: string | null; company: string | null };
+          };
+          if (cancelled) return;
+          setState({
+            status: "ready",
+            result: data.result,
+            firstName: data.displayContext?.firstName ?? undefined,
+            company: data.displayContext?.company ?? undefined,
+          });
+          return;
+        } catch {
+          if (cancelled) return;
+          setState({ status: "error" });
+          return;
+        }
+      }
+
+      // Fallback: localStorage resume buffer (dev / mid-flow refresh)
+      const stored = loadScorecardState();
+      if (
+        !stored ||
+        !stored.answers ||
+        Object.keys(stored.answers).length === 0
+      ) {
+        if (cancelled) return;
+        setState({ status: "missing" });
+        return;
+      }
+      const result = toPublicScoreResult(scoreScorecard(stored.answers));
+      const firstName = stored.answers["contact.firstName"];
+      const company = stored.answers["contact.company"];
+      if (cancelled) return;
+      setState({
+        status: "ready",
+        result,
+        firstName: typeof firstName === "string" ? firstName : undefined,
+        company: typeof company === "string" ? company : undefined,
+      });
     }
-    const result = scoreScorecard(stored.answers);
-    const firstName = stored.answers["contact.firstName"];
-    const company = stored.answers["contact.company"];
-    setState({
-      status: "ready",
-      result,
-      firstName: typeof firstName === "string" ? firstName : undefined,
-      company: typeof company === "string" ? company : undefined,
-    });
-  }, []);
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [submissionId]);
 
   if (state.status === "loading") {
     return <div className="min-h-[40vh]" aria-hidden />;
+  }
+
+  if (state.status === "error") {
+    return <ResultsErrorState submissionId={submissionId} />;
   }
 
   if (state.status === "missing" || !state.result) {
@@ -162,8 +218,8 @@ function ResultsMissingState() {
         Take the scorecard to see your result.
       </h1>
       <p className="max-w-xl text-sm leading-relaxed text-text-secondary">
-        Results are calculated from your answers and saved on this device.
-        Once you complete the scorecard, the result lands here.
+        Results are calculated from your answers. Once you complete the
+        scorecard, the result lands here.
       </p>
       <Link href="/scorecard/start">
         <Button
@@ -172,6 +228,33 @@ function ResultsMissingState() {
           trailingIcon={<ArrowRight className="h-4 w-4" />}
         >
           Start the Scorecard
+        </Button>
+      </Link>
+    </div>
+  );
+}
+
+function ResultsErrorState({ submissionId }: { submissionId: string | null }) {
+  return (
+    <div className="flex flex-col items-start gap-5 rounded-xl border border-status-critical/30 bg-bg-surface p-8 shadow-card sm:p-10">
+      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-status-critical">
+        Result unavailable
+      </span>
+      <h1 className="text-balance text-2xl font-semibold tracking-tight text-text-primary sm:text-3xl">
+        We couldn’t load that scorecard result.
+      </h1>
+      <p className="max-w-xl text-sm leading-relaxed text-text-secondary">
+        {submissionId
+          ? "The result link may have expired or the SLATE server hit a transient error. You can retry from the scorecard overview."
+          : "There was a problem reaching the SLATE server. Try again in a moment."}
+      </p>
+      <Link href="/scorecard">
+        <Button
+          variant="primary"
+          size="md"
+          trailingIcon={<ArrowRight className="h-4 w-4" />}
+        >
+          Back to scorecard overview
         </Button>
       </Link>
     </div>

@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-04 — Persistence/Auth Step 0 + Step 1 verified end-to-end (real Supabase + Mailgun SMTP)_
+_Last updated: 2026-05-04 — Persistence/Auth Step 2 (public scorecard submission persistence) verified end-to-end (real Supabase)_
 
 ## Sprint State
 
@@ -18,6 +18,7 @@ _Last updated: 2026-05-04 — Persistence/Auth Step 0 + Step 1 verified end-to-e
 | P0 | Persistence/Auth Architecture | ✅ Canon drafted |
 | P1 | Persistence/Auth Step 0 — Supabase setup + env scaffolding | ✅ Complete |
 | P1 | Persistence/Auth Step 1 — Auth shell + operator login | ✅ Complete |
+| P2 | Persistence/Auth Step 2 — Public scorecard submission persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -179,6 +180,70 @@ End-to-end magic-link verification revealed three small follow-ups, all closed i
 - **Diagnostic logging sanitized.** `logAuthError` in `lib/auth/actions.ts` whitelists exactly four Supabase response fields (`name`, `code`, `status`, `message`) and never logs the email, redirect target, or raw error object.
 - **Two dev-only Mgmt API helpers committed.** `scripts/dev/configure-supabase-smtp.cjs` and `scripts/dev/probe-smtp-auth.cjs`. Both read all secrets from `process.env`, redact known credential patterns from output, are clearly marked dev-only (`.cjs` under `scripts/dev/`), and are never imported by the app runtime.
 
+## Persistence/Auth Step 2 — what landed (2026-05-04)
+
+Public scorecard submissions now persist to Supabase server-side. Internal fit score never leaves the server.
+
+**Migration `0002_scorecard_leads.sql` (applied to live project).**
+
+- Enums: `practice_area`, `lead_source`, `lead_status`, `fit_dimension_id`, `qualification_signal_direction`, `scorecard_classification`.
+- Tables: `accounts`, `contacts` (citext email), `leads` (with internal `fit_score smallint`), `lead_fit_dimensions`, `lead_qualification_signals`, `scorecard_submissions` (with internal `internal_fit_score smallint` + deferred `lead_id` FK), `scorecard_answers`.
+- All idempotent (`create … if not exists` + `drop policy if exists`). RLS enabled with operator-full policies workspace-scoped via `profiles.id = auth.uid()`.
+- **No anon insert policies.** All public writes go through the service-role client on the server. This is a deliberate deviation from the canon "anon insert is fine" sketch — service-role-only is simpler to reason about and keeps the public schema completely unwritable to the browser.
+- Indexes: `accounts(workspace_id, lower(name))` unique, `contacts(account_id, email)` unique where email not null, `leads(workspace_id, status, last_activity_at desc)`, `submissions(submitted_at desc)`, `submissions(submitted_email)`, `answers(submission_id)`, `answers(submission_id, question_id)` unique.
+
+**Public/internal split.**
+
+- `lib/scorecard/public-result.ts` — `PublicScoreResult = Omit<ScoreResult, "fit">` plus `toPublicScoreResult()` with an explicit field allowlist (not destructure-and-discard, since the lint config rejects unused variable bindings). Anything the public scorecard API returns to the browser must conform to this shape — `fit` is operator-only.
+- `lib/leads/derive.ts` — `deriveFitDimensions(answers, result)` returns six dimensions (business_value, budget, pain_intensity, technical_readiness, buyer_readiness, expansion); `deriveQualificationSignals(answers, result)` returns 0–5 directional signals; `deriveLeadStatus(result)` maps classification + fit to status + recommended-action block.
+
+**Server endpoints.**
+
+- `POST /api/scorecard/submit`
+  - Validates contact fields (firstName/lastName/email/company required; email regex).
+  - Runs `scoreScorecard(answers)` server-side. The browser never computes the score for a real submission.
+  - Looks up the singleton workspace; upserts an `accounts` row by `ilike(name)` within workspace; upserts a `contacts` row by `(account_id, email)`.
+  - Inserts the submission, then `scorecard_answers` (with submission cleanup on partial failure), then the `leads` row, then `lead_fit_dimensions` + `lead_qualification_signals`, then back-fills `submissions.lead_id`.
+  - Returns **only** `{ submissionId, result: PublicScoreResult, displayContext: { firstName, company } }`. No fit, no lead id, no contact id.
+- `GET /api/scorecard/results/[id]`
+  - UUID validation.
+  - Selects only safe submission columns (`id, submitted_first_name, submitted_company, submitted_at`) — never `internal_fit_score` or `submitted_email`.
+  - Re-fetches answers from `scorecard_answers`, re-runs `scoreScorecard`, returns `toPublicScoreResult(result)`.
+- `lib/supabase/service.ts` — `createSupabaseServiceClient()` is server-only (`import "server-only"`), constructs a fresh client with `persistSession: false`, `autoRefreshToken: false`, `detectSessionInUrl: false`.
+
+**Client wiring.**
+
+- `components/scorecard/scorecard-stepper.tsx` — `submit()` now POSTs to `/api/scorecard/submit`. On success, redirects to `/scorecard/results?submission_id=<uuid>`. On failure, sets `submitError` state but keeps localStorage answers as a resume buffer. Continue button shows a spinner during submission.
+- `components/scorecard/scorecard-results-view.tsx` — uses `useSearchParams()` to read `submission_id`. If present, fetches `/api/scorecard/results/<id>`. If absent, falls back to localStorage answers (computes `scoreScorecard` locally for the resume case only). Added `ResultsErrorState`.
+- `components/scorecard/scorecard-result-hero.tsx` — prop type changed from `ScoreResult` to `PublicScoreResult`.
+- `app/scorecard/results/page.tsx` — `export const dynamic = "force-dynamic"` (required because `useSearchParams()` precludes static prerender).
+
+**Mock boundary preserved.**
+
+- `/app/leads*` continues to render mock data from `lib/leads/mock-leads.ts`. The new `leads` table is populated by submissions but the operator UI is not yet wired to read it. That's Step 3.
+- `/scorecard/start` and `/scorecard/results` remain unauth (only `/app/*` is gated).
+- Operator allowlist + Mailgun SMTP from Step 1 follow-ups still in place.
+
+**End-to-end smoke test (real Supabase).**
+
+POSTed a synthetic submission to `/api/scorecard/submit`. Verified via Mgmt API SQL:
+
+| field | value |
+| --- | --- |
+| submission classification | `automation_ready` |
+| `internal_fit_score` (DB only) | 55 |
+| lead status | `needs_review` |
+| answers persisted | 14 |
+| fit dimensions persisted | 6 |
+| qualification signals persisted | 5 |
+| account / contact upserts | 1 each |
+
+Public response from both `submit` and `results/[id]` confirmed to contain no `fit` field. `/scorecard/start` 200 unauth; `/app` 307 → `/login` unauth — auth posture unchanged.
+
+**Dev-only.**
+
+- `scripts/dev/apply-migration.cjs` — applies any `supabase/migrations/*.sql` file via the Mgmt API SQL endpoint. Mirrors the SMTP helper pattern: reads PAT + REF from `.env.local` via `@next/env`, redacts secrets from output, never logs the SQL body. Used to apply both `0001_…` and `0002_…` to the live project.
+
 ## Recommended Next Step
 
-**Step 2 — Public scorecard submission persistence.** Per `docs/persistence/02_MIGRATION_SEQUENCE.md`. Introduces `workspaces` (already seeded), `accounts`, `contacts`, `leads`, `lead_fit_dimensions`, `lead_qualification_signals`, `scorecard_submissions`, `scorecard_answers`. Server endpoint at `/api/scorecard/submit` does the scoring and inserts (service-role on server only); `/scorecard/results` switches to read-by-`submission_id` with localStorage as a resume buffer.
+**Step 3 — Lead persistence + operator dashboard wiring.** Replace `/app/leads*` mock reads with real `leads` queries (and joins to `accounts`, `contacts`, `lead_fit_dimensions`, `lead_qualification_signals`). Submissions written in Step 2 should appear in the inbox, with internal fit score and qualification signals visible to operators only. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.

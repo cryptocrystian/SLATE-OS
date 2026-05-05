@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "Your scorecard result",
 };
 
+// The result view reads `submission_id` from URL params and fetches the
+// persisted result at request time — never prerender.
+export const dynamic = "force-dynamic";
+
 export default function ScorecardResultsPage() {
   return (
     <PublicAssessmentShell>

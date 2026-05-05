@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Step 0 (Supabase setup + env scaffolding) and Step 1 (auth shell + operator login) are now implemented.** All `/app/*` routes are auth-protected; mock domain data still renders behind the guard.
+Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Steps 0, 1, and 2 are now implemented and verified end-to-end against a real Supabase project.** All `/app/*` routes are auth-protected (mock domain data still renders behind the guard). Public scorecard submissions now persist server-side with internal fit/lead derivation; the public response is type-narrowed to `PublicScoreResult` (no `fit` leak).
 
-Next planned: **Migration Sequence Step 2 — public scorecard submission persistence** (real `scorecard_submissions`, `scorecard_answers`, `accounts`, `contacts`, `leads`, `lead_fit_dimensions`, `lead_qualification_signals`; server-side scoring; `/scorecard/results` reads by `submission_id`). UI components stay; the localStorage-only path moves to a resume buffer.
+Next planned: **Migration Sequence Step 3 — Lead persistence + operator dashboard wiring.** Replace `/app/leads*` mock reads with real `leads` queries (joined to `accounts`, `contacts`, `lead_fit_dimensions`, `lead_qualification_signals`). Submissions written in Step 2 should appear in the operator inbox with internal fit score and qualification signals visible. Mock data file (`lib/leads/mock-leads.ts`) gets retired.
 
 ---
 

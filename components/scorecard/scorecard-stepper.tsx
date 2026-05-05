@@ -19,6 +19,14 @@ import {
   type Question,
 } from "@/lib/scorecard/types";
 
+function messageFor(status: number): string {
+  if (status === 400)
+    return "Some required fields didn't make it through. Please check the contact section and try again.";
+  if (status === 503)
+    return "SLATE submission is temporarily unavailable. Please try again in a moment.";
+  return "Something went wrong submitting your scorecard. Please try again.";
+}
+
 function isAnswered(q: Question, value: AnswerValue | undefined) {
   if (q.optional) return true;
   if (value == null) return false;
@@ -39,6 +47,7 @@ export function ScorecardStepper() {
   const [sectionIdx, setSectionIdx] = React.useState(0);
   const [answers, setAnswers] = React.useState<Answers>({});
   const [submitting, setSubmitting] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [showValidation, setShowValidation] = React.useState(false);
 
   React.useEffect(() => {
@@ -96,14 +105,42 @@ export function ScorecardStepper() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 });
   }
 
-  function submit() {
+  async function submit() {
     setSubmitting(true);
+    setSubmitError(null);
+    // Keep local answers as a resume buffer regardless of API outcome.
     saveScorecardState({
       answers,
       sectionIdx,
       completedAt: new Date().toISOString(),
     });
-    router.push("/scorecard/results");
+
+    try {
+      const resp = await fetch("/api/scorecard/submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ answers }),
+      });
+      if (!resp.ok) {
+        setSubmitting(false);
+        setSubmitError(messageFor(resp.status));
+        return;
+      }
+      const data = (await resp.json()) as { submissionId?: string };
+      if (!data?.submissionId) {
+        setSubmitting(false);
+        setSubmitError(
+          "We received your scorecard but couldn't open the result. Please try again.",
+        );
+        return;
+      }
+      router.push(`/scorecard/results?submission_id=${data.submissionId}`);
+    } catch {
+      setSubmitting(false);
+      setSubmitError(
+        "Couldn't reach the SLATE server. Check your connection and try again.",
+      );
+    }
   }
 
   if (!hydrated) {
@@ -152,6 +189,16 @@ export function ScorecardStepper() {
         </div>
       ) : null}
 
+      {submitError ? (
+        <div
+          role="alert"
+          className="rounded-md border border-status-critical/40 bg-status-critical/10 px-4 py-3 text-xs leading-relaxed text-status-critical"
+        >
+          {submitError} Your answers are still saved on this device — you can
+          retry without re-entering them.
+        </div>
+      ) : null}
+
       <footer className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {sectionIdx > 0 ? (
@@ -183,11 +230,22 @@ export function ScorecardStepper() {
           <Button
             variant="primary"
             size="md"
-            trailingIcon={<ArrowRight className="h-4 w-4" />}
+            leadingIcon={
+              submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : undefined
+            }
+            trailingIcon={
+              submitting ? null : <ArrowRight className="h-4 w-4" />
+            }
             onClick={next}
             disabled={submitting}
           >
-            {isLast ? "See my result" : "Continue"}
+            {submitting
+              ? "Submitting…"
+              : isLast
+                ? "See my result"
+                : "Continue"}
           </Button>
         </div>
       </footer>
