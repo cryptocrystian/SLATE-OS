@@ -11,37 +11,47 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities-workspace";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) return { title: "Opportunities not found" };
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) return { title: "Opportunities not found" };
   return {
-    title: `${engagement.companyName} · Opportunity matrix`,
+    title: `${loaded.engagement.companyName} · Opportunity matrix`,
   };
 }
 
-export default function EngagementOpportunitiesPage({
+export default async function EngagementOpportunitiesPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) notFound();
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) notFound();
+  const engagement = loaded.engagement;
+
+  if (loaded.kind === "real") {
+    return (
+      <EngagementPersistencePlaceholder
+        engagement={engagement}
+        eyebrow="AdvisoryOps · Opportunities"
+        title="Opportunity matrix."
+        description="Score and prioritize approved findings into Quick Wins, Strategic Builds, Low Priority, and Defer · Avoid."
+        activatesIn="Step 7 · Opportunities persistence"
+        currentPath={`/app/engagements/${engagement.id}/opportunities`}
+      />
+    );
+  }
 
   const opportunities = getOpportunitiesForEngagement(engagement.id);
   const findings = getFindingsForEngagement(engagement.id);

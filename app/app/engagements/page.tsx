@@ -5,25 +5,30 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/ui/metric-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { EngagementList } from "@/components/engagements/engagement-list";
-import { MOCK_ENGAGEMENTS } from "@/lib/engagements/mock-engagements";
+import { getAllEngagements } from "@/lib/engagements/queries";
 
 export const metadata: Metadata = {
   title: "Engagements",
 };
 
-export default function EngagementsPage() {
-  const total = MOCK_ENGAGEMENTS.length;
-  const intakeInProgress = MOCK_ENGAGEMENTS.filter(
+export const dynamic = "force-dynamic";
+
+export default async function EngagementsPage() {
+  const engagements = await getAllEngagements();
+
+  const total = engagements.length;
+  const intakeInProgress = engagements.filter(
     (e) => e.currentStage === "intake",
   ).length;
-  const findingsNeedReview = MOCK_ENGAGEMENTS.filter(
+  const findingsNeedReview = engagements.filter(
     (e) => e.findings.candidate > 0 && e.findings.approved === 0,
   ).length;
-  const reportsInProgress = MOCK_ENGAGEMENTS.filter(
+  const reportsInProgress = engagements.filter(
     (e) => e.currentStage === "report",
   ).length;
-  const proposalsInDraft = MOCK_ENGAGEMENTS.filter(
+  const proposalsInDraft = engagements.filter(
     (e) => e.currentStage === "proposal",
   ).length;
 
@@ -56,11 +61,12 @@ export default function EngagementsPage() {
               AI Systems · AI Opportunity Sprint
             </Badge>
             <span className="text-text-muted">
-              Engagement workspaces are seeded until persistence lands
+              Engagement workspaces persist; downstream advisory deliverables
+              activate as later steps land
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 4 · Mock data
+              Persistence Step 4 · Live
             </span>
           </>
         }
@@ -113,7 +119,26 @@ export default function EngagementsPage() {
             action obvious at a glance
           </p>
         </div>
-        <EngagementList engagements={MOCK_ENGAGEMENTS} />
+        {total === 0 ? (
+          <EmptyState
+            icon={<Briefcase className="h-4 w-4" />}
+            title="No engagements yet"
+            description="Start an AI Opportunity Sprint from a qualified lead to create the first workspace."
+            action={
+              <Link href="/app/leads">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  trailingIcon={<ArrowRight className="h-3 w-3" />}
+                >
+                  Open Leads
+                </Button>
+              </Link>
+            }
+          />
+        ) : (
+          <EngagementList engagements={engagements} />
+        )}
       </section>
     </div>
   );

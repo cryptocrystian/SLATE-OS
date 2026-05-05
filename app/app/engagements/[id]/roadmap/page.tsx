@@ -12,38 +12,48 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RoadmapPhaseColumn } from "@/components/roadmap/roadmap-phase-column";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import { PHASE_ORDER } from "@/lib/roadmap/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) return { title: "Roadmap not found" };
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) return { title: "Roadmap not found" };
   return {
-    title: `${engagement.companyName} · 30/60/90 roadmap`,
+    title: `${loaded.engagement.companyName} · 30/60/90 roadmap`,
   };
 }
 
-export default function EngagementRoadmapPage({
+export default async function EngagementRoadmapPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) notFound();
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) notFound();
+  const engagement = loaded.engagement;
+
+  if (loaded.kind === "real") {
+    return (
+      <EngagementPersistencePlaceholder
+        engagement={engagement}
+        eyebrow="AdvisoryOps · Roadmap"
+        title="30/60/90 roadmap."
+        description="Sequence prioritized opportunities into a 30/60/90-day implementation plan."
+        activatesIn="Step 7 · Roadmap persistence"
+        currentPath={`/app/engagements/${engagement.id}/roadmap`}
+      />
+    );
+  }
 
   const items = getRoadmapForEngagement(engagement.id);
   const opportunities = getOpportunitiesForEngagement(engagement.id);

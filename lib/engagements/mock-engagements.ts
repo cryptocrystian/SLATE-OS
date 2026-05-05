@@ -1,5 +1,13 @@
 import type { Engagement } from "./types";
 
+// Persistence/Auth Step 4: runtime engagement list/detail now read from
+// Supabase via `lib/engagements/queries.ts`. This file remains as the
+// fixture set for the legacy slug-keyed demo paths
+// (`atlas-aios-q2`, `helio-aios-q2`, `meridian-aios-q2`,
+// `quanta-aios-q2`, `caldera-aios-q2`) used by the mock-backed
+// downstream advisory workspaces (`/intake`, `/findings`,
+// `/opportunities`, `/roadmap`, `/report`, `/proposal`) until those
+// modules ship in Steps 5–8.
 export const MOCK_ENGAGEMENTS: Engagement[] = [
   // ── 1. Atlas Manufacturing — Setup ──────────────────────────────────────
   {

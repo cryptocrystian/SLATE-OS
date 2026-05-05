@@ -12,10 +12,7 @@ import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ReportWorkspace } from "@/components/reports/report-workspace";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getReportForEngagement } from "@/lib/reports/mock-reports";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
@@ -24,28 +21,43 @@ import {
   recommendedActionLabel,
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
+import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) return { title: "Report not found" };
-  return { title: `${engagement.companyName} · AI Opportunity Sprint Report` };
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) return { title: "Report not found" };
+  return {
+    title: `${loaded.engagement.companyName} · AI Opportunity Sprint Report`,
+  };
 }
 
-export default function EngagementReportPage({
+export default async function EngagementReportPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) notFound();
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) notFound();
+  const engagement = loaded.engagement;
+
+  if (loaded.kind === "real") {
+    return (
+      <EngagementPersistencePlaceholder
+        engagement={engagement}
+        eyebrow="AdvisoryOps · Report"
+        title="AI Opportunity Sprint report."
+        description="Assemble the AI Opportunity Sprint report section by section with linked evidence and approved findings."
+        activatesIn="Step 8 · Report persistence"
+        currentPath={`/app/engagements/${engagement.id}/report`}
+      />
+    );
+  }
 
   const report = getReportForEngagement(engagement.id);
   const findings = getFindingsForEngagement(engagement.id);

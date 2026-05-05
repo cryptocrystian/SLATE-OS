@@ -13,7 +13,7 @@ import { OpportunityAreaCard } from "@/components/scorecard/opportunity-area-car
 import { RiskReadinessNote } from "@/components/scorecard/risk-readiness-note";
 import { Card, CardBody } from "@/components/ui/card";
 import { getLeadById } from "@/lib/leads/queries";
-import { engagementForLead } from "@/lib/engagements/mock-engagements";
+import { getEngagementIdForLead } from "@/lib/engagements/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +37,7 @@ export default async function LeadDetailPage({
 }) {
   const lead = await getLeadById(params.id);
   if (!lead) notFound();
-  // Step 4 wires real engagement creation. For now this returns
-  // undefined for any UUID-keyed lead; the legacy mock engagements key
-  // off slug ids like "atlas-manufacturing" which no longer match.
-  const engagement = engagementForLead(lead.id);
+  const engagementId = await getEngagementIdForLead(lead.id);
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -94,7 +91,10 @@ export default async function LeadDetailPage({
         <aside className="flex flex-col gap-6">
           <RecommendedActionCard lead={lead} />
           <InternalFitScorePanel lead={lead} />
-          <LeadActionsPanel engagementId={engagement?.id} />
+          <LeadActionsPanel
+            leadId={lead.id}
+            engagementId={engagementId ?? undefined}
+          />
           <LeadSourceCard lead={lead} />
           <LeadNotesPanel notes={lead.notes} />
         </aside>

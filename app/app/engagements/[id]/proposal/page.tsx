@@ -14,10 +14,7 @@ import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip"
 import { ImplementationCreditPanel } from "@/components/proposals/implementation-credit-panel";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getProposalForEngagement } from "@/lib/proposals/mock-proposals";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
@@ -26,28 +23,43 @@ import {
   recommendedActionLabel,
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
+import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) return { title: "Proposal not found" };
-  return { title: `${engagement.companyName} · Proposal & SOW options` };
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) return { title: "Proposal not found" };
+  return {
+    title: `${loaded.engagement.companyName} · Proposal & SOW options`,
+  };
 }
 
-export default function EngagementProposalPage({
+export default async function EngagementProposalPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) notFound();
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) notFound();
+  const engagement = loaded.engagement;
+
+  if (loaded.kind === "real") {
+    return (
+      <EngagementPersistencePlaceholder
+        engagement={engagement}
+        eyebrow="AdvisoryOps · Proposal"
+        title="Proposal & SOW options."
+        description="Tiered SOW options (Quick-Win Build, AI Workflow System, Managed AI Partner) with implementation credit and pricing placeholders."
+        activatesIn="Step 8 · Proposal persistence"
+        currentPath={`/app/engagements/${engagement.id}/proposal`}
+      />
+    );
+  }
 
   const proposal = getProposalForEngagement(engagement.id);
   const opportunities = getOpportunitiesForEngagement(engagement.id);
