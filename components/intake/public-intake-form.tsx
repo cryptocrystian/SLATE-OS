@@ -5,6 +5,7 @@ import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PublicIntakeUploads } from "@/components/intake/public-intake-uploads";
 import { submitPublicIntake } from "@/app/intake/[token]/actions";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import {
@@ -93,6 +94,8 @@ export function PublicIntakeForm(props: PublicIntakeFormProps) {
             onChange={(v) => handleChange(q.id, v)}
           />
         ))}
+
+        <PublicIntakeUploads rawToken={props.rawToken} />
 
         {error ? (
           <p className="rounded-md border border-status-critical/40 bg-status-critical/10 p-3 text-xs text-status-critical">

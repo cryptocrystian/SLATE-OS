@@ -12,16 +12,20 @@ import { StakeholderList } from "@/components/intake/stakeholder-list";
 import { SupportingInputsPanel } from "@/components/intake/supporting-inputs-panel";
 import { FollowUpQueue } from "@/components/intake/follow-up-queue";
 import { CreateStakeholderForm } from "@/components/intake/create-stakeholder-form";
+import { OperatorUploadForm } from "@/components/intake/operator-upload-form";
+import { PersistedSupportingInputs } from "@/components/intake/persisted-supporting-inputs";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { EngagementRisksPanel } from "@/components/engagements/engagement-risks-panel";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getIntakeForEngagement } from "@/lib/intake/mock-intake";
 import { getIntakeRecordForEngagement } from "@/lib/intake/queries";
+import { getOperatorAssetsForEngagement } from "@/lib/assets/server";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { IntakeRecord } from "@/lib/intake/types";
+import type { OperatorAsset } from "@/lib/assets/types";
 
 export const dynamic = "force-dynamic";
 
@@ -53,19 +57,25 @@ export default async function EngagementIntakePage({
   let intake: IntakeRecord | null = null;
   let trustWarning: string | undefined;
   let isPersisted = false;
+  let persistedAssets: OperatorAsset[] = [];
 
   if (loaded.kind === "real") {
-    intake =
-      (await getIntakeRecordForEngagement(engagement.id)) ?? {
-        engagementId: engagement.id,
-        stakeholders: [],
-        roleCoverage: [],
-        supportingInputs: [],
-        followUps: [],
-        intakeRiskNotes: [],
-      };
+    [intake, trustWarning, persistedAssets] = await Promise.all([
+      getIntakeRecordForEngagement(engagement.id).then(
+        (record) =>
+          record ?? {
+            engagementId: engagement.id,
+            stakeholders: [],
+            roleCoverage: [],
+            supportingInputs: [],
+            followUps: [],
+            intakeRiskNotes: [],
+          },
+      ),
+      loadTrustWarning(engagement.linkedLeadId),
+      getOperatorAssetsForEngagement(engagement.id),
+    ]);
     isPersisted = true;
-    trustWarning = await loadTrustWarning(engagement.linkedLeadId);
   } else {
     intake = getIntakeForEngagement(engagement.id) ?? null;
     if (!intake) notFound();
@@ -90,9 +100,17 @@ export default async function EngagementIntakePage({
   const strongCount = intake.stakeholders.filter(
     (s) => s.responseQuality === "strong",
   ).length;
-  const inputsReceived = intake.supportingInputs.filter(
-    (d) => d.status === "received" || d.status === "reviewed",
+  const persistedReceived = persistedAssets.filter(
+    (a) => a.status === "received" || a.status === "reviewed",
   ).length;
+  const inputsReceived = isPersisted
+    ? persistedReceived
+    : intake.supportingInputs.filter(
+        (d) => d.status === "received" || d.status === "reviewed",
+      ).length;
+  const inputsTotalCount = isPersisted
+    ? persistedAssets.length
+    : intake.supportingInputs.length;
 
   const totalStakeholders = intake.stakeholders.length;
   const ratio = (n: number) =>
@@ -184,12 +202,12 @@ export default async function EngagementIntakePage({
         <MetricCard
           label="Inputs Received"
           value={
-            intake.supportingInputs.length === 0
+            inputsTotalCount === 0
               ? "—"
-              : `${inputsReceived}/${intake.supportingInputs.length}`
+              : `${inputsReceived}/${inputsTotalCount}`
           }
           hint={
-            intake.supportingInputs.length === 0
+            inputsTotalCount === 0
               ? "Document list opens with intake"
               : "Documents and evidence"
           }
@@ -227,7 +245,14 @@ export default async function EngagementIntakePage({
             <StakeholderList stakeholders={intake.stakeholders} />
           )}
 
-          <SupportingInputsPanel inputs={intake.supportingInputs} />
+          {isPersisted ? (
+            <>
+              <OperatorUploadForm engagementId={engagement.id} />
+              <PersistedSupportingInputs assets={persistedAssets} />
+            </>
+          ) : (
+            <SupportingInputsPanel inputs={intake.supportingInputs} />
+          )}
           <FollowUpQueue followUps={intake.followUps} />
 
           {needsFollowUp + notStarted > 0 ? (

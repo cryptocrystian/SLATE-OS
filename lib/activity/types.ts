@@ -22,7 +22,9 @@ export type ActivityEventType =
   | "proposal_status_changed"
   | "note_created"
   | "note_updated"
-  | "note_deleted";
+  | "note_deleted"
+  | "input_asset_uploaded"
+  | "input_asset_downloaded";
 
 export type ActivityEntityType =
   | "lead"
@@ -37,7 +39,8 @@ export type ActivityEntityType =
   | "proposal"
   | "proposal_option"
   | "note"
-  | "scorecard_submission";
+  | "scorecard_submission"
+  | "input_asset";
 
 export interface ActivityEvent {
   id: string;

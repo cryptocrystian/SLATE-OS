@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 9 (activity events + notes persistence) implemented; operator-only auditable trail across Steps 4–8 actions, internal notes on real leads + engagements with soft delete + pin, public scorecard / intake routes never expose notes or activity_
+_Last updated: 2026-05-05 — Persistence/Auth Step 10 (file / document binary storage) implemented; private `engagement-documents` Supabase Storage bucket, stakeholder + operator uploads with strict MIME / size validation, operator downloads via short-lived signed URLs, no OCR or parsing, public surfaces never list or download files_
 
 ## Sprint State
 
@@ -27,6 +27,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 9 (activity events + notes p
 | P7 | Persistence/Auth Step 7 — Opportunities + roadmap persistence | ✅ Complete |
 | P8 | Persistence/Auth Step 8 — Reports + proposals persistence | ✅ Complete |
 | P9 | Persistence/Auth Step 9 — Activity events + notes persistence | ✅ Complete |
+| P10 | Persistence/Auth Step 10 — File / document binary storage | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -690,6 +691,93 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 22 routes generate. `/app/leads/[id]` and `/app/engagements/[id]` First Load JS each grew slightly to accommodate the notes composer client component.
 - Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, stakeholder PII, finding excerpts, proposal pricing, or note body text printed during this sprint.
 
+## Persistence/Auth Step 10 — what landed (2026-05-05)
+
+`/intake/[token]` and `/app/engagements/[id]/intake` now read/write real Supabase Storage-backed supporting documents for UUID engagements. A private `engagement-documents` bucket holds the binaries; `input_assets` rows hold the metadata; operators download via short-lived signed URLs that never appear in client-side JS. Public stakeholder surfaces cannot list, browse, or download any file. No OCR, parsing, or summarization.
+
+**Migration `0010_file_storage.sql`.**
+
+- Adds storage columns to `input_assets` via `add column if not exists`: `storage_bucket text`, `storage_path text`, `original_filename text`, `mime_type text`, `size_bytes bigint`, `uploaded_by_profile_id uuid → profiles`, `uploaded_by_user_id uuid → auth.users`, `uploaded_by_session_id uuid → stakeholder_intake_sessions`, `uploaded_at timestamptz`, `download_count integer default 0`, `last_downloaded_at timestamptz`, `checksum_sha256 text`. Existing metadata-only rows from Step 5 keep working unchanged.
+- Adds an index on `(storage_bucket, storage_path)` for fast object-path lookups.
+- Provisions the `engagement-documents` bucket via `insert into storage.buckets … on conflict (id) do update`. Bucket is private (`public = false`), `file_size_limit = 10 MiB`, `allowed_mime_types` is the canonical 9-MIME allowlist (PDF, DOC/DOCX, XLS/XLSX, TXT, CSV, PNG, JPG).
+- **No `storage.objects` policies are added.** All read/write flows through server-only helpers under the existing token / auth boundary; broadening object-level access to `authenticated` here would leak the bucket to every signed-in client.
+
+**Storage path model.**
+
+- `lib/assets/paths.ts` — `sanitizeFilename` strips directory components and replaces anything outside `[A-Za-z0-9._-]` with `-`, lowercases, and trims to 96 chars.
+- Stakeholder uploads: `workspaces/<workspace_id>/engagements/<engagement_id>/sessions/<session_id>/<asset_id>/<safe_filename>`.
+- Operator uploads: `workspaces/<workspace_id>/engagements/<engagement_id>/operator/<asset_id>/<safe_filename>`.
+- The `asset_id` segment guarantees per-row uniqueness even when two operators upload identically-named files. Stakeholder email and raw token never appear in the path.
+
+**Validation.**
+
+- `lib/assets/limits.ts` — single source of truth. `MAX_FILE_SIZE_BYTES = 10 MiB`, `ALLOWED_MIME_TYPES` (9 values). `validateUpload({ size, mimeType, filename })` returns `{ ok: true }` or `{ ok: false, reason }`. Server route + client form both call it before any upload, plus the bucket layer enforces the same limits.
+
+**Public stakeholder upload — `/api/intake/[token]/assets` (POST, multipart/form-data).**
+
+- `lib/assets/public.ts` — `uploadStakeholderAsset({ rawToken, filename, mimeType, size, bytes })`.
+- Hashes the raw token, looks up the session by `token_hash`, rejects expired sessions. Validates file size + MIME + extension before any storage call.
+- Inserts the `input_assets` row with `source = 'stakeholder'`, `status = 'received'`, `evidence_quality = 'unverified'`, `linked_role` from the session, `uploaded_by_session_id` set. Then uploads to `engagement-documents` at the deterministic path. Patches `storage_path` after the upload succeeds. Rolls back the metadata row if the storage upload fails.
+- Service-role activity log: emits `input_asset_uploaded` with `metadata: { mimeType, sizeBytes, source: "stakeholder" }`. The raw token is never persisted in metadata.
+- Returns `{ ok: true, asset: { id, title, status, sizeBytes, mimeType } }`. **Never** returns the storage path or a signed URL.
+
+**Operator upload — `/api/app/engagements/[id]/assets` (POST, multipart/form-data).**
+
+- `lib/assets/server.ts` — `uploadOperatorAsset({ engagementId, filename, mimeType, size, bytes, title?, summary?, assetType? })`.
+- `auth.getUser()`-gates first; resolves engagement + workspace via the authenticated server client. Same validation as the public route.
+- Inserts the `input_assets` row with `source = 'operator'`, `status = 'received'`, `evidence_quality = 'adequate'`, `uploaded_by_profile_id` + `uploaded_by_user_id` set. Storage upload uses the service-role client (since Supabase Storage doesn't grant arbitrary `authenticated` reads/writes on private buckets without object-level policies that would over-broaden access).
+- Logs `input_asset_uploaded` with `metadata: { mimeType, sizeBytes, source: "operator" }`. Calls `revalidatePath` on `/app/engagements/<id>/intake` and `/app/engagements/<id>`.
+
+**Operator download — `/api/app/assets/[assetId]/download` (GET).**
+
+- `lib/assets/server.ts` — `createOperatorDownloadUrl(assetId)`.
+- `auth.getUser()`-gates. Looks up the asset, mints a signed URL with `createSignedUrl(path, 300, { download: original_filename })` via the service-role client. TTL is 5 minutes.
+- Bumps `download_count` and `last_downloaded_at` (best-effort). Logs `input_asset_downloaded` with `metadata: { ttlSeconds: 300 }`.
+- Route returns a 302 redirect to the signed URL — the URL appears once in the redirect response, never in app logs or activity metadata.
+
+**Activity events.**
+
+- `lib/activity/types.ts` — added `input_asset_uploaded` + `input_asset_downloaded` to `ActivityEventType`; added `input_asset` to `ActivityEntityType`.
+- `components/activity/activity-timeline.tsx` — added tone + label entries: `input_asset_uploaded → info / "Document uploaded"`, `input_asset_downloaded → neutral / "Document downloaded"`.
+- Existing `sanitizeMetadata` (Step 9) drops keys matching `/token|secret|password|apikey|authorization|cookie|email|body|raw|excerpt/i` and caps string lengths — sensitive context cannot accidentally leak even if a future caller adds it.
+
+**Public intake UI — `components/intake/public-intake-uploads.tsx`.**
+
+- Optional `<PublicIntakeUploads />` rendered inside `PublicIntakeForm`, between the question fields and the submit row.
+- Pre-flight size + MIME check before the network call so the user sees a controlled error immediately. POSTs to `/api/intake/[token]/assets`; on success appends a row showing original filename, size, "Upload complete" check.
+- Copy: *"Optional · upload supporting documents that help explain your workflows, handoffs, reporting, or system constraints. PDF, Word, Excel, CSV, TXT, PNG, or JPG. 10 MB per file."* Validation copy maps cleanly to the `FileValidationError` reasons.
+- Renders nothing about storage paths, signed URLs, or internal asset metadata.
+
+**Operator intake UI.**
+
+- New `components/intake/operator-upload-form.tsx` — operator file form with optional title + summary, controlled error/success states, POSTs to `/api/app/engagements/[id]/assets`. Locked to the same MIME / size limits.
+- New `components/intake/persisted-supporting-inputs.tsx` — replaces the static `SupportingInputsPanel` for persisted engagements. Each row shows title, status, evidence quality, source (Operator / Stakeholder), size, MIME type, source-label (operator display name or stakeholder name from the session), uploaded-at timestamp, download button (`/api/app/assets/<id>/download`, 5-min link), and download count. Mock slug engagements continue to render the legacy `SupportingInputsPanel`.
+- `app/app/engagements/[id]/intake/page.tsx` parallel-fetches `getOperatorAssetsForEngagement(engagement.id)` only on the persisted path. The "Inputs Received" metric now reflects the live asset count for UUID engagements.
+
+**Public/internal boundary.**
+
+- The bucket is `public = false`. There are no `storage.objects` policies — all access goes through server-side helpers gated by token validation or `auth.getUser()`.
+- Public stakeholder route can upload only to its own session via the token-hash boundary; cannot list, browse, or download anything.
+- Public scorecard surfaces cannot reach the asset routes — `/api/intake/[token]/assets` is the only public-facing asset endpoint and it requires a valid stakeholder token hash.
+- Operator download response is a 302 redirect to a 5-minute signed URL. The URL never appears in app logs, activity metadata, or the rendered HTML for the operator workspace; the operator workspace links directly to `/api/app/assets/<id>/download`, which redirects on each click.
+- `original_filename` is treated as already-operator-visible metadata (stakeholders see only their own filenames). It does not appear in activity metadata.
+- Service-role usage is confined to `lib/supabase/service.ts` callers in `lib/intake/public.ts`, `lib/assets/public.ts`, and `lib/assets/server.ts`. The key never appears in the browser bundle.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements continue to render the seeded `SupportingInputsPanel` from the existing fixtures. No mock files were deleted.
+- Real UUID engagements render the new `OperatorUploadForm` + `PersistedSupportingInputs`.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 25 routes generate (three new API routes: `/api/intake/[token]/assets`, `/api/app/engagements/[id]/assets`, `/api/app/assets/[assetId]/download`). `/intake/[token]` First Load grew from 113 kB to 115 kB; `/app/engagements/[id]/intake` from 109 kB to 110 kB.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, signed URLs, storage paths, file contents, stakeholder PII, or note body text printed during this sprint.
+
+**Setup note (manual, one-time).**
+
+- The migration provisions the bucket via `insert into storage.buckets … on conflict (id) do update`. Some Supabase regions deny the implicit storage-schema grants required for a regular SQL session; in that case the bucket can be created via the Supabase Dashboard with the same shape (private, 10 MiB limit, identical MIME allowlist) and the migration becomes a no-op.
+
 ## Recommended Next Step
 
-**Step 10 — File / document binary storage.** Wire the `documents.storage_path` column to a Supabase Storage bucket (`engagement-documents`) with an analogous bucket policy. Add stakeholder-side upload and operator-side download via signed URLs. Bucket policy mirrors the `documents` table RLS exactly. Per `docs/persistence/02_MIGRATION_SEQUENCE.md` Step 10.
+**Documentation mode for AI synthesis or storage hardening (operator-controlled).** The persistence sequence canon (`02_MIGRATION_SEQUENCE.md`) ends after Step 10 file storage. The natural next chunks — AI synthesis pipeline (real `aiDrafted` findings), document parsing (PDF text extraction), and production export — are explicit non-goals of the persistence workstream and need their own canon entries before any code lands. In the interim, the persisted MVP arc is complete end-to-end: a real engagement can be created from a real lead, walked through stakeholder intake, synthesized into findings, scored into opportunities, sequenced into a roadmap, assembled into a report, packaged as proposal options, audited via activity + notes, and now backed by real document storage.

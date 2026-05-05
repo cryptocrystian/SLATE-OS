@@ -40,6 +40,8 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   note_created: "neutral",
   note_updated: "neutral",
   note_deleted: "neutral",
+  input_asset_uploaded: "info",
+  input_asset_downloaded: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -67,6 +69,8 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   note_created: "Note",
   note_updated: "Note edited",
   note_deleted: "Note removed",
+  input_asset_uploaded: "Document uploaded",
+  input_asset_downloaded: "Document downloaded",
 };
 
 export function ActivityTimeline({
