@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
 import {
   dbPhaseFor,
   dbPriorityFor,
@@ -128,6 +129,21 @@ export async function createRoadmapItem(
 
   await bumpEngagement(supabase, engagement.id);
   revalidatePaths(engagement.id);
+
+  await logActivityEvent({
+    eventType: "roadmap_item_created",
+    entityType: "roadmap_item",
+    entityId: inserted.id,
+    engagementId: engagement.id,
+    title: "Roadmap item sequenced",
+    summary: "An operator added a roadmap item.",
+    metadata: {
+      phase: input.phase,
+      priority: input.priority,
+      linkedOpportunity: Boolean(input.opportunityId),
+    },
+  });
+
   return { ok: true, itemId: inserted.id };
 }
 
@@ -170,6 +186,17 @@ export async function setRoadmapItemStatus(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  await logActivityEvent({
+    eventType: "roadmap_item_status_changed",
+    entityType: "roadmap_item",
+    entityId: existing.id,
+    engagementId: existing.engagement_id,
+    title: `Roadmap item moved to ${status}`,
+    summary: "An operator changed a roadmap item's status.",
+    metadata: { status },
+  });
+
   return { ok: true };
 }
 

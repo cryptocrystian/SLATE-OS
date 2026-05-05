@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
+import type { ActivityEventType } from "@/lib/activity/types";
 import {
   dbCategoryFor,
   dbConfidenceFor,
@@ -191,6 +193,20 @@ export async function createManualFinding(
   await bumpEngagement(supabase, engagement.id);
   revalidatePaths(engagement.id);
 
+  await logActivityEvent({
+    eventType: "finding_created",
+    entityType: "finding",
+    entityId: inserted.id,
+    engagementId: engagement.id,
+    title: "Finding added",
+    summary: "An operator authored a manual finding.",
+    metadata: {
+      category: input.category,
+      confidence: input.confidence,
+      sourceRefsCount: refs.length,
+    },
+  });
+
   return { ok: true, findingId: inserted.id };
 }
 
@@ -245,8 +261,45 @@ async function setReviewStatus(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  const eventType = REVIEW_EVENT_TYPE[status];
+  if (eventType) {
+    await logActivityEvent({
+      eventType,
+      entityType: "finding",
+      entityId: existing.id,
+      engagementId: existing.engagement_id,
+      title: REVIEW_EVENT_TITLE[status],
+      summary: REVIEW_EVENT_SUMMARY[status],
+      metadata: { reviewStatus: status },
+    });
+  }
   return { ok: true };
 }
+
+const REVIEW_EVENT_TYPE: Partial<Record<FindingReviewStatus, ActivityEventType>> = {
+  approved: "finding_approved",
+  rejected: "finding_rejected",
+  "report-ready": "finding_report_ready",
+};
+
+const REVIEW_EVENT_TITLE: Record<FindingReviewStatus, string> = {
+  draft: "Finding moved to draft",
+  "needs-review": "Finding flagged for review",
+  approved: "Finding approved",
+  edited: "Finding edited",
+  rejected: "Finding rejected",
+  "report-ready": "Finding marked report-ready",
+};
+
+const REVIEW_EVENT_SUMMARY: Record<FindingReviewStatus, string> = {
+  draft: "An operator moved a finding back to draft.",
+  "needs-review": "An operator flagged a finding for additional review.",
+  approved: "An operator approved a finding for report consideration.",
+  edited: "An operator edited a finding.",
+  rejected: "An operator rejected a finding.",
+  "report-ready": "An operator locked a finding as report-ready.",
+};
 
 export async function approveFinding(
   findingId: string,

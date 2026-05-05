@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 8 (reports + proposals persistence) implemented; operators initialize a 12-section report and 3-option proposal per UUID engagement, section approve / needs-review / final actions and option recommendation persist, implementation credit lands as a bounded commercial lever, export / SOW / send remain locked_
+_Last updated: 2026-05-05 — Persistence/Auth Step 9 (activity events + notes persistence) implemented; operator-only auditable trail across Steps 4–8 actions, internal notes on real leads + engagements with soft delete + pin, public scorecard / intake routes never expose notes or activity_
 
 ## Sprint State
 
@@ -26,6 +26,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 8 (reports + proposals persi
 | P6 | Persistence/Auth Step 6 — Findings persistence | ✅ Complete |
 | P7 | Persistence/Auth Step 7 — Opportunities + roadmap persistence | ✅ Complete |
 | P8 | Persistence/Auth Step 8 — Reports + proposals persistence | ✅ Complete |
+| P9 | Persistence/Auth Step 9 — Activity events + notes persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -628,6 +629,67 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 22 routes generate. `/app/engagements/[id]/report` at 6.89 kB / 110 kB First Load; `/app/engagements/[id]/proposal` at 5.97 kB / 109 kB First Load.
 - Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, or stakeholder PII printed during this sprint.
 
+## Persistence/Auth Step 9 — what landed (2026-05-05)
+
+`/app/leads/[id]` and `/app/engagements/[id]` now expose operator-only persisted internal notes and a per-entity activity timeline. Core operator actions across Steps 4–8 emit best-effort activity events under operator-only RLS. Public scorecard and stakeholder intake routes never expose notes or activity rows; the public stakeholder-intake submit path emits a single safe service-role activity event without surfacing it back to the stakeholder.
+
+**Migration `0009_activity_notes.sql`.**
+
+- `activity_events` — workspace-scoped, polymorphic `entity_type` + `entity_id`, optional `engagement_id` / `lead_id` / `account_id` / `contact_id` for fast per-entity queries. Operator profile + auth user references on the actor side. Text-typed `event_type` so vocabulary can evolve. `metadata jsonb` stays small + safe (sanitized at the helper level). Indexes on `(workspace_id, created_at desc)`, `(engagement_id, created_at desc)`, `(lead_id, created_at desc)`, `(entity_type, entity_id)`, and `(event_type, created_at desc)`. RLS posture: operator-only `select` + operator-only `insert` (service-role bypass for the public-server logger).
+- `notes` — workspace-scoped polymorphic notes against any persisted entity. Author tracked via both `author_profile_id` and `author_user_id`. `body text not null`, `visibility text default 'internal'` (only `internal` used in Step 9), `pinned boolean default false`, soft delete via `deleted_at timestamptz`. `lead_id` / `engagement_id` denormalized for fast per-entity reads. `set_updated_at` trigger reused. Indexes on `(workspace_id, created_at desc)`, `(engagement_id, created_at desc)`, `(lead_id, created_at desc)`, `(entity_type, entity_id)`, and a partial pin index on non-deleted notes. RLS operator-full (workspace-scoped); no anon policies.
+
+**Activity logger.**
+
+- `lib/activity/log.ts` (`import "server-only"`) exposes `logActivityEvent(input, options)`. Defaults to the cookie-bound authenticated server client so operator-side logging records the actor's `auth.uid()` under RLS. Public-server contexts (intake submit) opt in via `{ viaServiceRole: true }`. The logger is best-effort — every error is swallowed after a sanitized `console.error`; the primary business action never fails because of a failed log write.
+- `sanitizeMetadata` shallow-clones the caller's metadata, drops keys matching `/token|secret|password|apikey|authorization|cookie|email|body|raw|excerpt/i`, truncates strings to 200 chars, caps array length to 10, caps key count to 12. This is a defense-in-depth surface — callers are still expected to pass safe metadata, but accidental leakage is contained.
+- `lib/activity/queries.ts` (`import "server-only"`) exposes `getActivityForEngagement(uuid, limit = 25)` and `getActivityForLead(uuid, limit = 15)`. Both use the authenticated server client so RLS evaluates with the operator's session. Actor display name is hydrated via a lightweight `profiles` join keyed off `actor_profile_id`.
+- `lib/activity/types.ts` exports the `ActivityEventType` (24 values) + `ActivityEntityType` (13 values) text unions and the `ActivityEvent` UI shape (no raw metadata rendered by default; the timeline shows `actorDisplayName ?? "System"` as a fallback).
+
+**Notes layer.**
+
+- `lib/notes/queries.ts` (`import "server-only"`) — `getNotesForEntity(entityType, entityId)` returns non-deleted notes ordered by `pinned desc, created_at desc` with author display names hydrated.
+- `lib/notes/actions.ts` (`"use server"`) — `createNote`, `updateNote`, `deleteNote` (soft delete via `deleted_at`), `toggleNotePinned`. Every action `auth.getUser()`-gates and routes through `resolveEntityContext` which validates the entity exists, returns its `workspace_id`, and pre-populates the note's `lead_id` / `engagement_id` so per-entity queries stay simple. Each create/update/delete fires a `note_created` / `note_updated` / `note_deleted` activity event. `revalidatePath` covers both `/app/leads/<lead>` and `/app/engagements/<engagement>` so the timeline refreshes immediately.
+
+**Activity wiring across Steps 4–8 actions.**
+
+- Step 4 — `createOrOpenEngagementForLead` logs `engagement_created` only on the new-row path (the existing-engagement path falls through to `redirect` without emitting a duplicate). Lead-status forward push logs `lead_status_changed` with previous/next status metadata.
+- Step 5 — `createStakeholderSession` logs `intake_session_created`. The public-server `submitStakeholderResponses` emits `intake_response_submitted` via the service-role logger with response-quality + count metadata. The raw intake token is never persisted in metadata.
+- Step 6 — `createManualFinding` logs `finding_created`; `setReviewStatus` logs `finding_approved` / `finding_rejected` / `finding_report_ready` keyed off the resulting status (`needs-review`, `draft`, `edited` do not emit dedicated events).
+- Step 7 — `createOpportunity` logs `opportunity_created`; `setStatus` logs `opportunity_selected` / `opportunity_deferred` / `opportunity_rejected`. `createRoadmapItem` logs `roadmap_item_created`; `setRoadmapItemStatus` logs `roadmap_item_status_changed`.
+- Step 8 — `initializeReportForEngagement` logs `report_initialized`; `setSectionStatus` logs `report_section_status_changed`. `initializeProposalForEngagement` logs `proposal_initialized`; `markProposalOptionRecommended` logs `proposal_option_recommended`; `setProposalStatus` logs `proposal_status_changed`.
+
+**UI surfaces.**
+
+- `components/activity/activity-timeline.tsx` — server-rendered compact timeline. Each row shows an event-type badge (24 typed labels mapped to badge tones), short timestamp, actor display name (falls back to "System"), title, and optional summary. Raw metadata is intentionally never rendered — the panel is for shape, not debug.
+- `components/notes/notes-panel.tsx` (`"use client"`) — composer with internal-only label, pin/unpin, edit-in-place, soft delete. Uses `useTransition` for inline pending + error feedback. Empty state copy is configurable per-entity; defaults follow the Step 9 spec.
+
+**Lead detail integration.**
+
+- `app/app/leads/[id]/page.tsx` parallel-fetches `getNotesForEntity("lead", lead.id)` + `getActivityForLead(lead.id)` alongside the existing engagement-id lookup. The static `LeadNotesPanel` is replaced with `<NotesPanel />`, and the sidebar gains a `<ActivityTimeline heading="Lead activity" />` with copy: *"No activity yet — Events will appear here as operators triage the lead and convert it into an engagement."*
+
+**Engagement detail integration.**
+
+- `app/app/engagements/[id]/page.tsx` parallel-fetches notes + activity only for UUID engagements (mock slug engagements still render the legacy `<EngagementNotesPanel notes={engagement.notes} />`). For UUID engagements the sidebar swaps in `<NotesPanel entityType="engagement" />` and renders `<ActivityTimeline heading="Engagement activity" />` with copy: *"No activity yet — Events will appear here as operators move the engagement through intake, findings, opportunities, roadmap, report, and proposal."*
+
+**Public/internal boundary.**
+
+- Public scorecard routes (`/scorecard/*`) never read notes or activity.
+- Public stakeholder route (`/intake/[token]`) never reads notes or activity.
+- Public stakeholder submit emits a single service-role activity event but does not surface it to the stakeholder.
+- Operator-only RLS (workspace-scoped) on both `notes` and `activity_events`; only the `select` policy on `activity_events` is `to authenticated` plus a same-scope `insert` policy. No anon policies on either table.
+- Service-role usage is confined to `lib/activity/log.ts` for the explicit `viaServiceRole: true` callers (currently only the public stakeholder submit). The service-role key never appears in the browser bundle.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements (`atlas-aios-q2`, `helio-aios-q2`, `meridian-aios-q2`, `quanta-aios-q2`, `caldera-aios-q2`) skip the notes + activity queries entirely and continue rendering the static `EngagementNotesPanel` from the seeded fixture. No mock domain files were deleted in this sprint.
+- Real UUID leads always use persisted notes + activity (the previous static `LeadNotesPanel` was retired from the lead detail route).
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 22 routes generate. `/app/leads/[id]` and `/app/engagements/[id]` First Load JS each grew slightly to accommodate the notes composer client component.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, stakeholder PII, finding excerpts, proposal pricing, or note body text printed during this sprint.
+
 ## Recommended Next Step
 
-**Step 9 — Activity events + notes persistence.** Capture engagement-scoped activity events (intake invites, finding decisions, opportunity selections, roadmap moves, report approvals, proposal recommendations) and operator-authored notes into a unified `activity_events` table with a thin `notes` table for free-form text. Wire the engagement detail timeline + the per-domain notes panels. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.
+**Step 10 — File / document binary storage.** Wire the `documents.storage_path` column to a Supabase Storage bucket (`engagement-documents`) with an analogous bucket policy. Add stakeholder-side upload and operator-side download via signed URLs. Bucket policy mirrors the `documents` table RLS exactly. Per `docs/persistence/02_MIGRATION_SEQUENCE.md` Step 10.

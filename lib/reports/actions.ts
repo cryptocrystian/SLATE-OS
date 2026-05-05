@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
 import {
   dbConfidenceFor,
   dbSectionStatusFor,
@@ -152,6 +153,17 @@ export async function initializeReportForEngagement(
 
   await bumpEngagement(supabase, engagement.id);
   revalidatePaths(engagement.id);
+
+  await logActivityEvent({
+    eventType: "report_initialized",
+    entityType: "report",
+    entityId: inserted.id,
+    engagementId: engagement.id,
+    title: "Report outline initialized",
+    summary: "Twelve canonical sections seeded as not-started.",
+    metadata: { sectionsSeeded: sectionRows.length },
+  });
+
   return { ok: true, reportId: inserted.id, created: true };
 }
 
@@ -206,6 +218,17 @@ async function setSectionStatus(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  await logActivityEvent({
+    eventType: "report_section_status_changed",
+    entityType: "report_section",
+    entityId: existing.id,
+    engagementId: existing.engagement_id,
+    title: `Report section moved to ${status}`,
+    summary: "An operator updated a report section's review state.",
+    metadata: { sectionStatus: status },
+  });
+
   return { ok: true };
 }
 

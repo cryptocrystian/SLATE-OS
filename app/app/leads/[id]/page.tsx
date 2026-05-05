@@ -8,12 +8,15 @@ import { QualificationSignalsPanel } from "@/components/leads/qualification-sign
 import { RecommendedActionCard } from "@/components/leads/recommended-action-card";
 import { LeadActionsPanel } from "@/components/leads/lead-actions-panel";
 import { LeadSourceCard } from "@/components/leads/lead-source-card";
-import { LeadNotesPanel } from "@/components/leads/lead-notes-panel";
+import { NotesPanel } from "@/components/notes/notes-panel";
+import { ActivityTimeline } from "@/components/activity/activity-timeline";
 import { OpportunityAreaCard } from "@/components/scorecard/opportunity-area-card";
 import { RiskReadinessNote } from "@/components/scorecard/risk-readiness-note";
 import { Card, CardBody } from "@/components/ui/card";
 import { getLeadById } from "@/lib/leads/queries";
 import { getEngagementIdForLead } from "@/lib/engagements/queries";
+import { getNotesForEntity } from "@/lib/notes/queries";
+import { getActivityForLead } from "@/lib/activity/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +40,11 @@ export default async function LeadDetailPage({
 }) {
   const lead = await getLeadById(params.id);
   if (!lead) notFound();
-  const engagementId = await getEngagementIdForLead(lead.id);
+  const [engagementId, notes, activity] = await Promise.all([
+    getEngagementIdForLead(lead.id),
+    getNotesForEntity("lead", lead.id),
+    getActivityForLead(lead.id),
+  ]);
 
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -96,7 +103,19 @@ export default async function LeadDetailPage({
             engagementId={engagementId ?? undefined}
           />
           <LeadSourceCard lead={lead} />
-          <LeadNotesPanel notes={lead.notes} />
+          <NotesPanel
+            entityType="lead"
+            entityId={lead.id}
+            notes={notes}
+            emptyTitle="No notes yet"
+            emptyDescription="Add an internal note to capture qualification context, follow-up details, or handoff decisions."
+          />
+          <ActivityTimeline
+            events={activity}
+            heading="Lead activity"
+            emptyTitle="No activity yet"
+            emptyDescription="Events will appear here as operators triage the lead and convert it into an engagement."
+          />
         </aside>
       </div>
     </div>

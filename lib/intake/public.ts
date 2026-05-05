@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
+import { logActivityEvent } from "@/lib/activity/log";
 import {
   hashIntakeToken,
   isPlausibleRawToken,
@@ -288,6 +289,24 @@ export async function submitStakeholderResponses(
     .from("engagements")
     .update({ last_activity_at: nowIso })
     .eq("id", session.engagement_id);
+
+  // Service-role activity event — no operator session here. The raw
+  // token is never persisted in the metadata.
+  await logActivityEvent(
+    {
+      eventType: "intake_response_submitted",
+      entityType: "intake_session",
+      entityId: session.id,
+      engagementId: session.engagement_id,
+      title: "Stakeholder submitted intake responses",
+      summary: `Quality classified as ${responseQuality}.`,
+      metadata: {
+        responseQuality,
+        responsesCount: sanitized.length,
+      },
+    },
+    { viaServiceRole: true },
+  );
 
   return { ok: true };
 }

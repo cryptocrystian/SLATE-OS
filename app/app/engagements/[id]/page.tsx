@@ -21,6 +21,11 @@ import { getOpportunityStatusSummary } from "@/lib/opportunities/queries";
 import { getRoadmapStatusSummary } from "@/lib/roadmap/queries";
 import { getReportStatusSummary } from "@/lib/reports/queries";
 import { getProposalStatusSummary } from "@/lib/proposals/queries";
+import { getNotesForEntity } from "@/lib/notes/queries";
+import { getActivityForEngagement } from "@/lib/activity/queries";
+import { NotesPanel } from "@/components/notes/notes-panel";
+import { ActivityTimeline } from "@/components/activity/activity-timeline";
+import { isUuid as isEngagementUuid } from "@/lib/engagements/mappers";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
@@ -55,6 +60,7 @@ export default async function EngagementDetailPage({
   const engagement = await getEngagementById(params.id);
   if (!engagement) notFound();
 
+  const isPersistedEngagement = isEngagementUuid(engagement.id);
   const [
     intakeSummary,
     findingsSummary,
@@ -62,6 +68,8 @@ export default async function EngagementDetailPage({
     roadmapSummary,
     reportSummary,
     proposalSummary,
+    engagementNotes,
+    engagementActivity,
   ] = await Promise.all([
     getIntakeStatusSummary(engagement.id),
     getFindingsStatusSummary(engagement.id),
@@ -69,6 +77,12 @@ export default async function EngagementDetailPage({
     getRoadmapStatusSummary(engagement.id),
     getReportStatusSummary(engagement.id),
     getProposalStatusSummary(engagement.id),
+    isPersistedEngagement
+      ? getNotesForEntity("engagement", engagement.id)
+      : Promise.resolve([]),
+    isPersistedEngagement
+      ? getActivityForEngagement(engagement.id)
+      : Promise.resolve([]),
   ]);
   const intake = mergeIntakeStatus(engagement, intakeSummary);
   const findings = mergeFindingsStatus(engagement, findingsSummary);
@@ -289,7 +303,25 @@ export default async function EngagementDetailPage({
             lockedNote={recAction.lockedNote}
           />
           <EngagementContextCard engagement={engagement} />
-          <EngagementNotesPanel notes={engagement.notes} />
+          {isPersistedEngagement ? (
+            <NotesPanel
+              entityType="engagement"
+              entityId={engagement.id}
+              notes={engagementNotes}
+              emptyTitle="No engagement notes yet"
+              emptyDescription="Add an internal note for scope assumptions, stakeholder context, or delivery decisions."
+            />
+          ) : (
+            <EngagementNotesPanel notes={engagement.notes} />
+          )}
+          {isPersistedEngagement ? (
+            <ActivityTimeline
+              events={engagementActivity}
+              heading="Engagement activity"
+              emptyTitle="No activity yet"
+              emptyDescription="Events will appear here as operators move the engagement through intake, findings, opportunities, roadmap, report, and proposal."
+            />
+          ) : null}
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
               <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">

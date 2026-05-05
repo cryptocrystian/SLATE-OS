@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
+import type { ActivityEventType } from "@/lib/activity/types";
 import {
   dbPriorityFor,
   dbQuadrantFor,
@@ -193,6 +195,23 @@ export async function createOpportunity(
 
   await bumpEngagement(supabase, engagement.id);
   revalidatePaths(engagement.id);
+
+  await logActivityEvent({
+    eventType: "opportunity_created",
+    entityType: "opportunity",
+    entityId: inserted.id,
+    engagementId: engagement.id,
+    title: "Opportunity scored",
+    summary: "An operator scored a new opportunity from approved findings.",
+    metadata: {
+      category: input.category,
+      quadrant,
+      priority,
+      evidenceStrength: input.evidenceStrength,
+      findingLinkCount: findingIds.length,
+    },
+  });
+
   return { ok: true, opportunityId: inserted.id };
 }
 
@@ -356,8 +375,43 @@ async function setStatus(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  const eventType = STATUS_EVENT_TYPE[status];
+  if (eventType) {
+    await logActivityEvent({
+      eventType,
+      entityType: "opportunity",
+      entityId: existing.id,
+      engagementId: existing.engagement_id,
+      title: STATUS_EVENT_TITLE[status],
+      summary: STATUS_EVENT_SUMMARY[status],
+      metadata: { status },
+    });
+  }
   return { ok: true };
 }
+
+const STATUS_EVENT_TYPE: Partial<Record<OpportunityStatus, ActivityEventType>> = {
+  selected: "opportunity_selected",
+  deferred: "opportunity_deferred",
+  rejected: "opportunity_rejected",
+};
+
+const STATUS_EVENT_TITLE: Record<OpportunityStatus, string> = {
+  draft: "Opportunity moved to draft",
+  scored: "Opportunity scoring updated",
+  selected: "Opportunity selected",
+  deferred: "Opportunity deferred",
+  rejected: "Opportunity rejected",
+};
+
+const STATUS_EVENT_SUMMARY: Record<OpportunityStatus, string> = {
+  draft: "An operator moved an opportunity back to draft.",
+  scored: "An operator updated opportunity scoring.",
+  selected: "An operator promoted an opportunity into the roadmap candidate list.",
+  deferred: "An operator deferred an opportunity for a future engagement.",
+  rejected: "An operator rejected an opportunity.",
+};
 
 export async function markOpportunitySelected(
   opportunityId: string,

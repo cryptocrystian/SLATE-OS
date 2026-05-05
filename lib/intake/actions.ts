@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
 import { getSiteUrl } from "@/lib/env";
 import { buildIntakeUrl, generateIntakeToken } from "./tokens";
 import {
@@ -142,6 +143,16 @@ export async function createStakeholderSession(
     .eq("id", engagement.id);
 
   const intakeUrl = buildIntakeUrl(getSiteUrl(), token);
+
+  await logActivityEvent({
+    eventType: "intake_session_created",
+    entityType: "intake_session",
+    entityId: inserted.id,
+    engagementId: engagement.id,
+    title: `Stakeholder intake invited · ${title}`,
+    summary: "An intake link was minted for a new stakeholder.",
+    metadata: { role: input.role },
+  });
 
   revalidatePath(`/app/engagements/${engagement.id}/intake`);
   revalidatePath(`/app/engagements/${engagement.id}`);

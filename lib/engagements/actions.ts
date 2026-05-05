@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
 import {
   defaultDocumentStatus,
   defaultFindingsStatus,
@@ -211,6 +212,25 @@ export async function createOrOpenEngagementForLead(
     redirect(`/app/leads/${leadId}?error=engagement-create`);
   }
 
+  await logActivityEvent({
+    eventType: "engagement_created",
+    entityType: "engagement",
+    entityId: inserted.id,
+    engagementId: inserted.id,
+    leadId: leadRow.id,
+    accountId: leadRow.account_id,
+    contactId: leadRow.contact_id,
+    title: `Engagement created · ${accountName}`,
+    summary:
+      initialStage === "intake"
+        ? "Engagement opened in intake stage."
+        : "Engagement opened in setup stage; awaiting stakeholder list.",
+    metadata: {
+      initialStage,
+      initialStatus,
+    },
+  });
+
   // Move the lead status forward in the same flow.
   const nextLeadStatus =
     leadRow.status === "needs_review" ||
@@ -232,6 +252,17 @@ export async function createOrOpenEngagementForLead(
         name: leadUpdateError.name,
         code: leadUpdateError.code,
         message: leadUpdateError.message,
+      });
+    } else {
+      await logActivityEvent({
+        eventType: "lead_status_changed",
+        entityType: "lead",
+        entityId: leadRow.id,
+        leadId: leadRow.id,
+        engagementId: inserted.id,
+        title: "Lead moved to diagnostic-requested",
+        summary: "Lead status advanced after engagement creation.",
+        metadata: { previousStatus: leadRow.status, nextStatus: nextLeadStatus },
       });
     }
   }

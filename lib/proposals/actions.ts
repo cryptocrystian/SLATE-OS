@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { logActivityEvent } from "@/lib/activity/log";
 import {
   dbOptionTypeFor,
   dbProposalStatusFor,
@@ -221,6 +222,19 @@ export async function initializeProposalForEngagement(
 
   await bumpEngagement(supabase, engagement.id);
   revalidatePaths(engagement.id);
+
+  await logActivityEvent({
+    eventType: "proposal_initialized",
+    entityType: "proposal",
+    entityId: insertedProposal.id,
+    engagementId: engagement.id,
+    title: "Proposal initialized",
+    summary: "Three canonical SOW options seeded; AI Workflow System pre-recommended.",
+    metadata: {
+      seededOptions: SEED_OPTIONS.length,
+    },
+  });
+
   return { ok: true, proposalId: insertedProposal.id, created: true };
 }
 
@@ -269,6 +283,17 @@ async function setProposalStatus(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  await logActivityEvent({
+    eventType: "proposal_status_changed",
+    entityType: "proposal",
+    entityId: existing.id,
+    engagementId: existing.engagement_id,
+    title: `Proposal moved to ${status}`,
+    summary: "An operator changed the proposal's review status.",
+    metadata: { proposalStatus: status },
+  });
+
   return { ok: true };
 }
 
@@ -426,6 +451,17 @@ export async function markProposalOptionRecommended(
 
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
+
+  await logActivityEvent({
+    eventType: "proposal_option_recommended",
+    entityType: "proposal_option",
+    entityId: existing.id,
+    engagementId: existing.engagement_id,
+    title: "Proposal option recommended",
+    summary: "An operator marked a proposal option as recommended.",
+    metadata: {},
+  });
+
   return { ok: true };
 }
 
