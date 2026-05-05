@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Steps 0, 1, and 2 are now implemented and verified end-to-end against a real Supabase project.** All `/app/*` routes are auth-protected (mock domain data still renders behind the guard). Public scorecard submissions now persist server-side with internal fit/lead derivation; the public response is type-narrowed to `PublicScoreResult` (no `fit` leak).
+Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Steps 0, 1, and 2 are verified end-to-end against a real Supabase project; Step 3 ships the lead inbox + lead detail on real data and is build-clean.** All `/app/*` routes are auth-protected. Public scorecard submissions persist server-side with internal fit/lead derivation; the public response is type-narrowed to `PublicScoreResult` (no `fit` leak). `/app/leads*` reads real Supabase rows under operator-only RLS via the authenticated server client; `lib/leads/mock-leads.ts` is retired. All other `/app/*` surfaces still render mock domain data.
 
-Next planned: **Migration Sequence Step 3 — Lead persistence + operator dashboard wiring.** Replace `/app/leads*` mock reads with real `leads` queries (joined to `accounts`, `contacts`, `lead_fit_dimensions`, `lead_qualification_signals`). Submissions written in Step 2 should appear in the operator inbox with internal fit score and qualification signals visible. Mock data file (`lib/leads/mock-leads.ts`) gets retired.
+Next planned: **Migration Sequence Step 4 — Engagement creation + engagement detail.** Migrate `/app/engagements*` to a real `engagements` table joined on the persisted `leads.account_id`. Wire the lead detail "Start AI Opportunity Sprint" CTA to a real `createEngagementFromLead(leadId)` server action that ties `linked_lead_id` to the real lead UUID, snapshots scorecard summary, and updates the lead's status to `converted`. Retires `lib/engagements/mock-engagements.ts`.
 
 ---
 
@@ -143,7 +143,9 @@ lib/
   leads/
     types.ts               # Lead, LeadStatus, FitDimension, QualificationSignal
     helpers.ts             # fitCategoryFor, status labels/tones, filter set
-    mock-leads.ts          # 6 seeded leads spanning the qualification range
+    queries.ts             # server-only: getAllLeads, getLeadById (Step 3)
+    mappers.ts             # DB ↔ TS shape translators + formatRelative (Step 3)
+    derive.ts              # Step 2 fit-dimension/signal/status derivations
   engagements/
     types.ts               # Engagement + 6 panel-status types, ScorecardSnapshot
     helpers.ts             # STAGES, STAGE_LABEL/DESCRIPTION, STATUS labels/tones, filters

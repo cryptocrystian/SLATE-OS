@@ -1,31 +1,34 @@
 import type { Metadata } from "next";
-import { ArrowRight, ClipboardCheck, ExternalLink } from "lucide-react";
+import { ArrowRight, ClipboardCheck, ExternalLink, Inbox } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MetricCard } from "@/components/ui/metric-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { LeadList } from "@/components/leads/lead-list";
-import { MOCK_LEADS } from "@/lib/leads/mock-leads";
+import { getAllLeads } from "@/lib/leads/queries";
 import { fitCategoryFor } from "@/lib/leads/helpers";
 
 export const metadata: Metadata = {
   title: "Leads",
 };
 
-export default function LeadsPage() {
-  const total = MOCK_LEADS.length;
-  const newCount = MOCK_LEADS.filter((l) => l.status === "new").length;
-  const highFit = MOCK_LEADS.filter((l) => l.status === "high-fit").length;
-  const needsReview = MOCK_LEADS.filter(
-    (l) => l.status === "needs-review",
-  ).length;
-  const diagnosticRequested = MOCK_LEADS.filter(
+export const dynamic = "force-dynamic";
+
+export default async function LeadsPage() {
+  const leads = await getAllLeads();
+
+  const total = leads.length;
+  const newCount = leads.filter((l) => l.status === "new").length;
+  const highFit = leads.filter((l) => l.status === "high-fit").length;
+  const needsReview = leads.filter((l) => l.status === "needs-review").length;
+  const diagnosticRequested = leads.filter(
     (l) => l.status === "diagnostic-requested",
   ).length;
-  const nurture = MOCK_LEADS.filter((l) => l.status === "nurture").length;
+  const nurture = leads.filter((l) => l.status === "nurture").length;
 
-  const primeCount = MOCK_LEADS.filter(
+  const primeCount = leads.filter(
     (l) => fitCategoryFor(l.internalFitScore).id === "prime",
   ).length;
 
@@ -69,7 +72,7 @@ export default function LeadsPage() {
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 3 · Mock data
+              Persistence Step 3 · Live
             </span>
           </>
         }
@@ -120,11 +123,30 @@ export default function LeadsPage() {
             All leads
           </h2>
           <p className="text-xs text-text-muted">
-            {total} scorecard completions · best leads should be obvious at a
-            glance
+            {total} scorecard completion{total === 1 ? "" : "s"} · best leads
+            should be obvious at a glance
           </p>
         </div>
-        <LeadList leads={MOCK_LEADS} />
+        {total === 0 ? (
+          <EmptyState
+            icon={<Inbox className="h-4 w-4" />}
+            title="No scorecard submissions yet"
+            description="When someone completes the AI Workflow Scorecard, their lead record will appear here for review."
+            action={
+              <Link href="/scorecard" target="_blank" rel="noreferrer">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  trailingIcon={<ExternalLink className="h-3 w-3" />}
+                >
+                  Open public scorecard
+                </Button>
+              </Link>
+            }
+          />
+        ) : (
+          <LeadList leads={leads} />
+        )}
       </section>
     </div>
   );

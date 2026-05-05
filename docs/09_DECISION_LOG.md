@@ -4,6 +4,33 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-05 — Persistence/Auth Step 3: lead inbox + detail read real Supabase rows under operator-only RLS
+
+**Decision.** `/app/leads` and `/app/leads/[id]` now read real Supabase-backed lead records via an authenticated server client (anon key + cookies) so RLS is exercised on every read. Mock lead data (`lib/leads/mock-leads.ts`) is deleted. Engagement / intake / findings / opportunities / roadmap / reports / proposals continue to render mock data; only the lead surface migrates this sprint. The internal fit score, fit dimensions, and qualification signals stay server-side and operator-only.
+
+**Context.** Step 3 of `docs/persistence/02_MIGRATION_SEQUENCE.md`. Step 2 already persists submissions and writes `leads`/`lead_fit_dimensions`/`lead_qualification_signals` rows with derived internal qualification. This step closes the public-to-internal handoff loop: a scorecard submitted on `/scorecard/start` now appears in the operator inbox after sign-in, with the internal Saipien Fit Score and qualification signals visible only inside the auth-protected `/app/*` chrome. The TS `Lead` shape predates persistence, so the query layer translates DB enums (underscores) to the existing TS unions (hyphens) rather than reshape every component.
+
+**Implementation.**
+- `lib/leads/queries.ts` (server-only via `import "server-only"`) — `getAllLeads()` and `getLeadById(id)`. Both use `createSupabaseServerClient()` (cookie-bound anon key) so RLS evaluates with `auth.role() = 'authenticated'`. `getLeadById` UUID-guards before any DB call. The list selects `leads` joined to `accounts`, `contacts`, and `scorecard_submissions.submitted_at`, ordered by `last_activity_at desc`. The detail layer additionally fetches `lead_fit_dimensions`, `lead_qualification_signals`, and `scorecard_answers`; the answers feed a server-side `scoreScorecard()` re-run to re-derive `opportunityAreas` + `riskNotes` so the existing `OpportunityAreaCard` + `RiskReadinessNote` keep working without persisting that derivation on the lead row.
+- `lib/leads/mappers.ts` — pure DB↔TS shape translators (status / source / practice / fit-dimension enum mappers, prospect-scores clamp, recommended-action with safe defaults, `formatRelative()` for the relative-time string the existing UI expects, canonical fit-dimension ordering).
+- `app/app/leads/page.tsx` — `force-dynamic`, server component. Reuses the existing `MetricCard`s + `LeadList`. New empty state when there are no submissions (no fake CRM stats). Eyebrow updated to `Persistence Step 3 · Live`.
+- `app/app/leads/[id]/page.tsx` — `force-dynamic`, server component. `generateStaticParams` removed (UUID ids replace slugs). `notFound()` on missing or RLS-denied. Conditionally renders `OpportunityAreaCard` / `RiskReadinessNote` / `QualificationSignalsPanel` only when their arrays are non-empty so a freshly-created lead with no signals doesn't ship empty headers.
+- `lib/leads/mock-leads.ts` — deleted; no other importers. Other domain mock files (`lib/engagements`, `lib/intake`, `lib/findings`, `lib/opportunities`, `lib/roadmap`, `lib/reports`, `lib/proposals`) are intentionally kept; they're retired in Steps 4–8.
+
+**No new migration.** Step 2's `0002_scorecard_leads.sql` already enables RLS on every affected table with operator-full policies workspace-scoped via `(select id from public.workspaces limit 1)`. The intended `0003_lead_query_policy_fix.sql` was scoped but not authored — the existing posture covers the new authenticated reads.
+
+**Tradeoffs.**
+- *Re-running `scoreScorecard` on detail reads vs persisting the derived opportunity areas + risk notes on the lead row.* Re-running is cheap, deterministic from the persisted answers, and keeps `lib/scorecard/scoring.ts` as the single source of truth. If the rules ever become "the contract" we'd snapshot the derivation on insert and read it back verbatim — same tradeoff already taken for the public results page in Step 2.
+- *Authenticated server client (anon key + cookies + RLS) instead of service role for these reads.* The canon explicitly prefers this so RLS is the boundary, not application code. Service role is reserved for the public submit endpoint where there is no authenticated principal.
+- *UUID ids break the legacy `engagementForLead(slug)` lookup.* That's expected: the mock engagement-to-lead linkage was always slug-keyed (`atlas-manufacturing`, `helio-health`). Step 4's real engagement creation will key off the new UUID. Until then `LeadActionsPanel` continues to render its "Mock — not wired" affordance for any UUID-keyed lead.
+- *Removed `generateStaticParams`* — `/app/leads/[id]` is now `ƒ` dynamic. SSG of operator routes was already at the boundary of correctness once auth landed in Step 1; with real lead IDs there's nothing meaningful to prerender.
+
+**Boundary preserved.** Public `/api/scorecard/results/[id]` continues to strip `fit` via `toPublicScoreResult()`. `internal_fit_score`, `lead_fit_dimensions`, and `lead_qualification_signals` are read only from server-rendered `/app/*` pages. `/app/leads*` remains middleware-gated. No real engagement creation, no AI Opportunity Sprint creation, no deliverable workspace migration. No BuildOps surfaces.
+
+**Verified.** `npm run lint` clean; `NEXT_TELEMETRY_DISABLED=1 npm run build` clean; `git status --short --ignored` shows `.env.local` as `!!` (ignored, untracked); no secrets staged. Manual smoke-test deferred to a real Supabase round-trip — the authenticated server client requires a signed-in operator session that this environment does not have a magic-link round-trip for.
+
+---
+
 ## 2026-05-04 — Persistence/Auth Step 2: public scorecard submissions persist via service role; internal fit never leaves the server
 
 **Decision.** Public scorecard submissions are now written to Supabase server-side via a service-role client. The browser never holds the service-role key, never computes the score for a real submission, and never receives the internal fit score in any response. A new `POST /api/scorecard/submit` endpoint does the scoring + insert chain (account → contact → submission → answers → lead → fit dimensions → qualification signals); a new `GET /api/scorecard/results/[id]` endpoint re-runs scoring from persisted answers and returns a `PublicScoreResult` (an explicit `Omit<ScoreResult, "fit">` allowlist).

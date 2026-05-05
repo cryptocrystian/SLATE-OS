@@ -12,19 +12,17 @@ import { LeadNotesPanel } from "@/components/leads/lead-notes-panel";
 import { OpportunityAreaCard } from "@/components/scorecard/opportunity-area-card";
 import { RiskReadinessNote } from "@/components/scorecard/risk-readiness-note";
 import { Card, CardBody } from "@/components/ui/card";
-import { MOCK_LEADS, getLeadById } from "@/lib/leads/mock-leads";
+import { getLeadById } from "@/lib/leads/queries";
 import { engagementForLead } from "@/lib/engagements/mock-engagements";
 
-export function generateStaticParams() {
-  return MOCK_LEADS.map((l) => ({ id: l.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const lead = getLeadById(params.id);
+  const lead = await getLeadById(params.id);
   if (!lead) return { title: "Lead not found" };
   return {
     title: `${lead.companyName} · Lead`,
@@ -32,13 +30,16 @@ export async function generateMetadata({
   };
 }
 
-export default function LeadDetailPage({
+export default async function LeadDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const lead = getLeadById(params.id);
+  const lead = await getLeadById(params.id);
   if (!lead) notFound();
+  // Step 4 wires real engagement creation. For now this returns
+  // undefined for any UUID-keyed lead; the legacy mock engagements key
+  // off slug ids like "atlas-manufacturing" which no longer match.
   const engagement = engagementForLead(lead.id);
 
   return (
@@ -50,23 +51,29 @@ export default function LeadDetailPage({
         <div className="flex flex-col gap-6 lg:col-span-2">
           <ScorecardSummaryPanel lead={lead} />
 
-          <section className="flex flex-col gap-4">
-            <header className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-practice-ai" />
-              <h2 className="text-sm font-semibold tracking-tight text-text-primary">
-                Likely opportunity areas
-              </h2>
-            </header>
-            <div className="flex flex-col gap-3">
-              {lead.opportunityAreas.map((o, i) => (
-                <OpportunityAreaCard key={o.id} rank={i + 1} opportunity={o} />
-              ))}
-            </div>
-          </section>
+          {lead.opportunityAreas.length > 0 ? (
+            <section className="flex flex-col gap-4">
+              <header className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-practice-ai" />
+                <h2 className="text-sm font-semibold tracking-tight text-text-primary">
+                  Likely opportunity areas
+                </h2>
+              </header>
+              <div className="flex flex-col gap-3">
+                {lead.opportunityAreas.map((o, i) => (
+                  <OpportunityAreaCard key={o.id} rank={i + 1} opportunity={o} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
-          <RiskReadinessNote notes={lead.riskNotes} />
+          {lead.riskNotes.length > 0 ? (
+            <RiskReadinessNote notes={lead.riskNotes} />
+          ) : null}
 
-          <QualificationSignalsPanel signals={lead.qualificationSignals} />
+          {lead.qualificationSignals.length > 0 ? (
+            <QualificationSignalsPanel signals={lead.qualificationSignals} />
+          ) : null}
 
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
