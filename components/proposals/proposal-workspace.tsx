@@ -32,12 +32,14 @@ export interface ProposalWorkspaceProps {
   proposal: Proposal;
   opportunities: Opportunity[];
   roadmap: RoadmapItem[];
+  renderOptionActionBar?: (option: ProposalOption) => React.ReactNode;
 }
 
 export function ProposalWorkspace({
   proposal,
   opportunities,
   roadmap,
+  renderOptionActionBar,
 }: ProposalWorkspaceProps) {
   const initialId =
     proposal.recommendedOptionId ?? proposal.options[0]?.id ?? null;
@@ -91,6 +93,9 @@ export function ProposalWorkspace({
           option={selected}
           opportunities={linkedOpportunities}
           roadmapItems={linkedRoadmapItems}
+          actionBar={
+            renderOptionActionBar ? renderOptionActionBar(selected) : null
+          }
         />
       ) : null}
     </div>
@@ -171,10 +176,12 @@ function ProposalOptionDetail({
   option,
   opportunities,
   roadmapItems,
+  actionBar,
 }: {
   option: ProposalOption;
   opportunities: Opportunity[];
   roadmapItems: RoadmapItem[];
+  actionBar?: React.ReactNode;
 }) {
   const tone = OPTION_TYPE_TONE_MAP[OPTION_TYPE_TONE[option.type]] ?? "brand";
   return (
@@ -338,20 +345,23 @@ function ProposalOptionDetail({
           </p>
         </div>
 
+        {actionBar ? <div className="border-t border-border-subtle pt-3">{actionBar}</div> : null}
+
         <div className="flex flex-wrap gap-2 border-t border-border-subtle pt-3">
           <LockedActionButton
             label="Prepare SOW Draft"
-            lockedNote="Mock"
+            lockedNote="Locked"
             size="sm"
           />
           <LockedActionButton
             label="Send to Client"
-            lockedNote="Mock"
+            lockedNote="Locked"
             size="sm"
           />
           <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">
             <ArrowRight aria-hidden className="h-3 w-3" />
-            Action wiring lands with backend persistence.
+            SOW draft, send, and signature stay locked behind a later
+            commercial sprint.
           </span>
         </div>
       </CardBody>

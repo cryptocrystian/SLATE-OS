@@ -19,6 +19,8 @@ import { getIntakeStatusSummary } from "@/lib/intake/queries";
 import { getFindingsStatusSummary } from "@/lib/findings/queries";
 import { getOpportunityStatusSummary } from "@/lib/opportunities/queries";
 import { getRoadmapStatusSummary } from "@/lib/roadmap/queries";
+import { getReportStatusSummary } from "@/lib/reports/queries";
+import { getProposalStatusSummary } from "@/lib/proposals/queries";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
@@ -53,13 +55,21 @@ export default async function EngagementDetailPage({
   const engagement = await getEngagementById(params.id);
   if (!engagement) notFound();
 
-  const [intakeSummary, findingsSummary, opportunitySummary, roadmapSummary] =
-    await Promise.all([
-      getIntakeStatusSummary(engagement.id),
-      getFindingsStatusSummary(engagement.id),
-      getOpportunityStatusSummary(engagement.id),
-      getRoadmapStatusSummary(engagement.id),
-    ]);
+  const [
+    intakeSummary,
+    findingsSummary,
+    opportunitySummary,
+    roadmapSummary,
+    reportSummary,
+    proposalSummary,
+  ] = await Promise.all([
+    getIntakeStatusSummary(engagement.id),
+    getFindingsStatusSummary(engagement.id),
+    getOpportunityStatusSummary(engagement.id),
+    getRoadmapStatusSummary(engagement.id),
+    getReportStatusSummary(engagement.id),
+    getProposalStatusSummary(engagement.id),
+  ]);
   const intake = mergeIntakeStatus(engagement, intakeSummary);
   const findings = mergeFindingsStatus(engagement, findingsSummary);
   const opportunitiesPanel = mergeOpportunityStatus(
@@ -67,6 +77,8 @@ export default async function EngagementDetailPage({
     opportunitySummary,
     roadmapSummary,
   );
+  const reportPanel = mergeReportStatus(engagement, reportSummary);
+  const proposalPanel = mergeProposalStatus(engagement, proposalSummary);
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
@@ -186,12 +198,16 @@ export default async function EngagementDetailPage({
         />
         <MetricCard
           label="Report"
-          value={`${engagement.report.sectionsApproved}/${engagement.report.sectionsTotal}`}
+          value={
+            reportPanel.sectionsTotal === 0
+              ? "—"
+              : `${reportPanel.sectionsApproved}/${reportPanel.sectionsTotal}`
+          }
           hint="Sections approved"
           tone={
-            engagement.report.status.tone === "warning"
+            reportPanel.status.tone === "warning"
               ? "warning"
-              : engagement.report.status.tone === "success"
+              : reportPanel.status.tone === "success"
                 ? "success"
                 : "neutral"
           }
@@ -199,19 +215,21 @@ export default async function EngagementDetailPage({
         <MetricCard
           label="Proposal"
           value={
-            engagement.proposal.options === 0
+            proposalPanel.options === 0
               ? "—"
-              : String(engagement.proposal.options)
+              : String(proposalPanel.options)
           }
           hint={
-            engagement.proposal.options === 0
+            proposalPanel.options === 0
               ? "Awaiting report"
-              : (engagement.proposal.recommendedOption ?? "Awaiting report")
+              : (proposalPanel.recommendedOption ?? "Awaiting recommendation")
           }
           tone={
-            engagement.proposal.status.tone === "warning"
+            proposalPanel.status.tone === "warning"
               ? "warning"
-              : "neutral"
+              : proposalPanel.status.tone === "success"
+                ? "success"
+                : "neutral"
           }
         />
       </section>
@@ -250,11 +268,11 @@ export default async function EngagementDetailPage({
             }
           />
           <ReportStatusPanel
-            report={engagement.report}
+            report={reportPanel}
             reportHref={isReportStageOrLater ? reportHref : undefined}
           />
           <ProposalStatusPanel
-            proposal={engagement.proposal}
+            proposal={proposalPanel}
             proposalHref={isProposalStageOrLater ? proposalHref : undefined}
           />
           <EngagementRisksPanel
@@ -497,4 +515,134 @@ function pickOpportunityNextAction(
     return "Score drafted opportunities before promoting them.";
   }
   return "Continue refining opportunity scoring.";
+}
+
+function mergeReportStatus(
+  engagement: Engagement,
+  summary: Awaited<ReturnType<typeof getReportStatusSummary>>,
+): Engagement["report"] {
+  if (!summary || !summary.exists) {
+    return engagement.report;
+  }
+  const drafted =
+    summary.drafted + summary.needsReview + summary.approved + summary.final;
+  const approved = summary.approved + summary.final;
+  return {
+    status: pickReportStatusBadge(summary),
+    sectionsTotal: summary.total,
+    sectionsDrafted: drafted,
+    sectionsApproved: approved,
+    state: pickReportState(summary),
+    nextAction: pickReportNextAction(summary),
+  };
+}
+
+function pickReportStatusBadge(
+  summary: NonNullable<Awaited<ReturnType<typeof getReportStatusSummary>>>,
+): Engagement["report"]["status"] {
+  if (summary.total === 0) {
+    return { tone: "info", label: "Initialized" };
+  }
+  if (summary.final > 0 && summary.needsReview === 0 && summary.notStarted === 0) {
+    return { tone: "success", label: "Final" };
+  }
+  if (summary.needsReview > 0) {
+    return { tone: "warning", label: "Sections in review" };
+  }
+  if (summary.approved > 0) {
+    return { tone: "info", label: "Sections approved" };
+  }
+  if (summary.drafted > 0) {
+    return { tone: "info", label: "Drafting" };
+  }
+  return { tone: "info", label: "Outline ready" };
+}
+
+function pickReportState(
+  summary: NonNullable<Awaited<ReturnType<typeof getReportStatusSummary>>>,
+): string {
+  if (summary.total === 0) return "Outline awaiting initialization.";
+  const approved = summary.approved + summary.final;
+  return `${approved} approved · ${summary.needsReview} in review · ${summary.evidenceLinks} evidence link${summary.evidenceLinks === 1 ? "" : "s"}.`;
+}
+
+function pickReportNextAction(
+  summary: NonNullable<Awaited<ReturnType<typeof getReportStatusSummary>>>,
+): string {
+  if (summary.total === 0) {
+    return "Initialize the report outline to seed the twelve canonical sections.";
+  }
+  if (summary.needsReview > 0) {
+    return `Review ${summary.needsReview} section${summary.needsReview === 1 ? "" : "s"} flagged for consultant approval.`;
+  }
+  if (summary.notStarted > 0) {
+    return `Draft ${summary.notStarted} not-started section${summary.notStarted === 1 ? "" : "s"}.`;
+  }
+  if (summary.approved > 0 && summary.final === 0) {
+    return "Lock approved sections as final, or open the proposal builder.";
+  }
+  return "Open the proposal builder.";
+}
+
+function mergeProposalStatus(
+  engagement: Engagement,
+  summary: Awaited<ReturnType<typeof getProposalStatusSummary>>,
+): Engagement["proposal"] {
+  if (!summary || !summary.exists) {
+    return engagement.proposal;
+  }
+  return {
+    status: pickProposalStatusBadge(summary),
+    options: summary.options,
+    recommendedOption: summary.recommendedOptionTitle,
+    state: pickProposalState(summary),
+    nextAction: pickProposalNextAction(summary),
+  };
+}
+
+function pickProposalStatusBadge(
+  summary: NonNullable<Awaited<ReturnType<typeof getProposalStatusSummary>>>,
+): Engagement["proposal"]["status"] {
+  if (summary.options === 0) {
+    return { tone: "info", label: "Initialized" };
+  }
+  switch (summary.status) {
+    case "approved":
+      return { tone: "success", label: "Approved" };
+    case "needs_review":
+      return { tone: "warning", label: "Needs review" };
+    case "sent_placeholder":
+      return { tone: "brand", label: "Sent · placeholder" };
+    case "accepted_placeholder":
+      return { tone: "success", label: "Accepted · placeholder" };
+    case "draft":
+    default:
+      return { tone: "info", label: "Draft" };
+  }
+}
+
+function pickProposalState(
+  summary: NonNullable<Awaited<ReturnType<typeof getProposalStatusSummary>>>,
+): string {
+  if (summary.options === 0) return "Awaiting initialization.";
+  const credit = summary.creditEligible ? "credit eligible" : "credit not set";
+  return `${summary.options} option${summary.options === 1 ? "" : "s"} · ${summary.totalDependencies} dependency note${summary.totalDependencies === 1 ? "" : "s"} · ${credit}.`;
+}
+
+function pickProposalNextAction(
+  summary: NonNullable<Awaited<ReturnType<typeof getProposalStatusSummary>>>,
+): string {
+  if (summary.options === 0) {
+    return "Initialize the proposal to seed the three canonical SOW options.";
+  }
+  if (!summary.recommendedOptionTitle) {
+    return "Mark a recommended option to anchor the commercial conversation.";
+  }
+  if (summary.status === "draft") {
+    return "Move the proposal into review when option scope is set.";
+  }
+  if (summary.status === "needs_review") {
+    return "Approve the proposal once option scope and credit are validated.";
+  }
+  return "Validate scope before quoting; export and send remain locked.";
 }

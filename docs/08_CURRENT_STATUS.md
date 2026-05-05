@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 7 (opportunities + roadmap persistence) implemented; operators score opportunities from approved findings and sequence them into a manual 30/60/90 roadmap, engagement Opportunities panel reflects live quadrant + roadmap counts_
+_Last updated: 2026-05-05 — Persistence/Auth Step 8 (reports + proposals persistence) implemented; operators initialize a 12-section report and 3-option proposal per UUID engagement, section approve / needs-review / final actions and option recommendation persist, implementation credit lands as a bounded commercial lever, export / SOW / send remain locked_
 
 ## Sprint State
 
@@ -25,6 +25,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 7 (opportunities + roadmap p
 | P5 | Persistence/Auth Step 5 — Stakeholder intake + documents persistence | ✅ Complete |
 | P6 | Persistence/Auth Step 6 — Findings persistence | ✅ Complete |
 | P7 | Persistence/Auth Step 7 — Opportunities + roadmap persistence | ✅ Complete |
+| P8 | Persistence/Auth Step 8 — Reports + proposals persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -561,6 +562,72 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
 - Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, stakeholder PII, or finding excerpts printed during this sprint.
 
+## Persistence/Auth Step 8 — what landed (2026-05-05)
+
+`/app/engagements/[id]/report` and `/app/engagements/[id]/proposal` now read/write real reports, report sections, and proposals + options for UUID engagements. Operators initialize a 12-section report and a 3-option proposal per engagement, approve sections, mark a recommended option, and edit implementation credit copy — all under operator-only RLS. Production export, SOW draft, send, and e-signature remain locked behind `LockedActionButton`. Engagement detail's Report and Proposal panels reflect live counts via two new derived overlays.
+
+**Migration `0008_reports_proposals.sql`.**
+
+- `reports` — workspace + engagement scoped, unique `(engagement_id)`, text-typed `status` / `export_status`, `recommended_next_step`, `consultant_notes` text[], `reviewed_by` / `last_reviewed_at`. RLS operator-only `for all to authenticated using/with check (workspace_id = (select id from public.workspaces limit 1))`.
+- `report_sections` — workspace + engagement + report scoped, unique `(report_id, section_type)`, text-typed `section_type` / `status` / `confidence`, `summary` / `draft_preview` / `evidence_notes` / `reviewer_note`, `ai_drafted` bool, `position` for canonical ordering. RLS operator-only.
+- `report_section_finding_links`, `report_section_opportunity_links`, `report_section_roadmap_links` — three join tables with `(report_section_id, ref_id)` unique pairs and cascading `on delete cascade` from both sides. Each has its own engagement-scoped index for cross-section evidence queries. RLS operator-only.
+- `proposals` — workspace + engagement scoped, unique `(engagement_id)`, text-typed `status` / `export_status`, `recommended_option_id` (nullable FK on delete `set null` to `proposal_options`), text/array columns for `assumptions` / `dependencies` / `next_step`, plus four implementation-credit columns (`credit_eligible bool`, `credit_amount_placeholder`, `credit_window`, `credit_notes`) defaulting to the canonical commercial-lever copy. RLS operator-only.
+- `proposal_options` — workspace + engagement + proposal scoped, unique `(proposal_id, option_type)`, text-typed `option_type` (`quick_win_build` / `ai_workflow_system` / `managed_ai_partner`) / `confidence`, `recommended` bool, `best_fit_scenario` / `scope_summary` / `timeline` / `pricing_placeholder`, four text[] columns (`deliverables` / `assumptions` / `dependencies` / `risks`). RLS operator-only.
+- `proposal_option_opportunity_links`, `proposal_option_roadmap_links` — two join tables with `(proposal_option_id, ref_id)` unique pairs and cascading deletes. RLS operator-only.
+- The `proposals.recommended_option_id` FK is added inside an idempotent `do $$ … end $$` block after `proposal_options` exists, so a fresh install applies cleanly without circular dependency ordering.
+
+**Report query / action layer.**
+
+- `lib/reports/queries.ts` (server-only) — `getReportForEngagementPersisted(uuid)` joins the report row with sections + the three link tables and returns the existing TS `Report` shape with sections sorted by canonical `SECTION_ORDER`. `getReportStatusSummary(uuid)` returns `{ exists, status, total, notStarted, drafted, needsReview, approved, final, evidenceLinks, exportStatus }` — `evidenceLinks` is computed via three `count: "exact", head: true` reads against the join tables so we never hydrate rows we don't need.
+- `lib/reports/mappers.ts` — DB↔TS translators for section type / status / report status / confidence / export status (underscored ↔ hyphenated), `mapReportSectionRow` filters the three link arrays by section id and emits `linkedFindingIds` / `linkedOpportunityIds` / `linkedRoadmapItemIds` on the existing TS shape.
+- `lib/reports/actions.ts` (`"use server"`) — `initializeReportForEngagement` (idempotent: returns the existing report id when one is present, otherwise inserts the report row plus all 12 canonical sections at `not_started` with the SECTION_LABEL titles), `approveReportSection`, `markReportSectionNeedsReview`, `markReportSectionFinal`, `markReportSectionDrafted`, `updateReportSectionDraft` (auto-promotes `not_started` → `drafted` when summary or draft preview lands), `updateReportSectionNote`, plus `linkReportSection` / `unlinkReportSection` for the three link kinds (treats unique-violation `23505` as benign). Every action `auth.getUser()`-gates, stamps `reviewed_by` + `last_reviewed_at`, bumps engagement activity, and `revalidatePath`s report + proposal + engagement detail.
+
+**Proposal query / action layer.**
+
+- `lib/proposals/queries.ts` (server-only) — `getProposalForEngagementPersisted(uuid)` joins proposal + options + the two link tables and returns the existing TS `Proposal` shape. `getProposalStatusSummary(uuid)` returns `{ exists, status, options, recommendedOptionTitle, exportStatus, totalDependencies, creditEligible, creditWindow }`.
+- `lib/proposals/mappers.ts` — DB↔TS translators for option type / status / confidence / export status. `mapProposalRow` always synthesizes the canonical `ImplementationCredit` block (falling back to the canonical copy when columns are null), so the public ImplementationCreditPanel keeps rendering verbatim.
+- `lib/proposals/actions.ts` (`"use server"`) — `initializeProposalForEngagement` (idempotent: seeds proposal + three canonical options pre-pointing AI Workflow System as recommended), `approveProposal`, `markProposalNeedsReview`, `reopenProposal`, `markProposalOptionRecommended` (atomically demotes other options first, then promotes), `updateProposalOption` (per-field), `updateImplementationCredit` (treats blank fields as a request to restore the canonical default copy), plus `linkProposalOption` / `unlinkProposalOption` for opportunities and roadmap items.
+
+**Workspace components.**
+
+- `components/reports/report-workspace.tsx` gained a `renderActionBar?: (section: ReportSection) => React.ReactNode` prop that replaces the static "Review actions · mock" block in the section preview when supplied.
+- `components/reports/report-section-action-bar.tsx` (new, `"use client"`) — Approve section / Needs review / Mark drafted / Lock as final via `useTransition` with status badge and inline error/saved feedback.
+- `components/reports/initialize-report-form.tsx` (new, `"use client"`) — operator CTA explaining the 12-section seed; calls `initializeReportForEngagement` and reveals the workspace immediately on success via `revalidatePath`.
+- `components/proposals/proposal-workspace.tsx` gained `renderOptionActionBar?: (option: ProposalOption) => React.ReactNode` rendered above the locked SOW button row.
+- `components/proposals/proposal-option-action-bar.tsx` (new, `"use client"`) — Mark recommended action with recommended/non-recommended badge.
+- `components/proposals/initialize-proposal-form.tsx` (new, `"use client"`) — operator CTA explaining the 3-option seed and the canonical implementation-credit copy.
+
+**Routes.**
+
+- `app/app/engagements/[id]/report/page.tsx` branches on `loadEngagementForSubroute`. UUID engagements parallel-fetch report + findings + opportunities + roadmap from the persisted queries, render the initialize CTA when no report exists, and render `ReportWorkspace` with the persisted action bar when one does. Mock slug engagements continue to render seeded `MOCK_REPORTS`. Meta strip toggles between "Persistence Step 8 · Live" and "Sprint 7 · Mock data". The header `Export Report` button stays a `LockedActionButton`.
+- `app/app/engagements/[id]/proposal/page.tsx` mirrors the same shape: persisted parallel fetch, initialize CTA, `ProposalWorkspace` with the persisted recommendation action bar, and `ImplementationCreditPanel` rendering the canonical copy. The header `Prepare Client Review` plus the in-detail `Prepare SOW Draft` and `Send to Client` actions all stay `LockedActionButton`s.
+
+**Engagement detail status panels.**
+
+- `app/app/engagements/[id]/page.tsx` adds `mergeReportStatus(engagement, summary)` and `mergeProposalStatus(engagement, summary)`. Both run via `Promise.all` alongside the existing intake / findings / opportunities / roadmap status reads. The Report panel surfaces `<approved>/<total>` plus a state line counting evidence links, and rotates next-action copy through "Initialize the report outline → Review N sections → Draft N not-started sections → Lock approved as final → Open the proposal builder". The Proposal panel surfaces option count, the recommended option title, and rotates next-action copy through "Initialize the proposal → Mark a recommended option → Move into review → Approve → Validate scope before quoting". Engagements with zero rows fall back to the persisted `report_status` / `proposal_status` jsonb defaults.
+
+**Mock boundary preserved.**
+
+- Legacy slug engagements continue to render `MOCK_REPORTS` and `MOCK_PROPOSALS` unchanged. The visual workspaces are byte-identical for mock paths; the persisted paths get the action bars + initialize CTA injected via the new render-prop.
+
+**Locked commercial boundary.**
+
+- `LockedActionButton` retained on every external/commercial action: `Export Report`, `Prepare Client Review`, `Prepare SOW Draft`, `Send to Client`. No e-signature, no payment, no PDF export, no email automation in this step. The locked CTA copy was tightened from "Mock" to "Locked" so the affordance reads accurately on persisted engagements.
+
+**RLS / security.**
+
+- Operators have full CRUD on `reports`, `report_sections`, all three report-section join tables, `proposals`, `proposal_options`, and both proposal-option join tables, workspace-scoped via the existing single-workspace policy shape.
+- No anon policies; public `/intake/[token]` and `/scorecard/*` routes never read reports or proposals.
+- All actions evaluate under RLS with the operator's `auth.uid()`. No service-role client touches the reports / proposals code path.
+- Section drafts, reviewer notes, recommended-next-step copy, and proposal assumptions / dependencies are operator-only — public surfaces never reach them.
+- Implementation-credit copy stays constant across all engagements unless the operator explicitly edits it; clearing a credit field restores the canonical commercial-lever copy.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 22 routes generate. `/app/engagements/[id]/report` at 6.89 kB / 110 kB First Load; `/app/engagements/[id]/proposal` at 5.97 kB / 109 kB First Load.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, or stakeholder PII printed during this sprint.
+
 ## Recommended Next Step
 
-**Step 8 — Reports + proposals persistence.** Migrate `/app/engagements/[id]/report` and `/app/engagements/[id]/proposal` from mock fixtures to real `reports`, `report_sections`, `report_section_*_links`, `proposals`, `proposal_options`, and `proposal_option_*_links` tables. Wire section + option review actions; keep production export and SOW execution locked behind `LockedActionButton`. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.
+**Step 9 — Activity events + notes persistence.** Capture engagement-scoped activity events (intake invites, finding decisions, opportunity selections, roadmap moves, report approvals, proposal recommendations) and operator-authored notes into a unified `activity_events` table with a thin `notes` table for free-form text. Wire the engagement detail timeline + the per-domain notes panels. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.

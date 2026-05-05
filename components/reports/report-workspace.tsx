@@ -39,6 +39,7 @@ export interface ReportWorkspaceProps {
   findings: Finding[];
   opportunities: Opportunity[];
   roadmap: RoadmapItem[];
+  renderActionBar?: (section: ReportSection) => React.ReactNode;
 }
 
 export function ReportWorkspace({
@@ -47,6 +48,7 @@ export function ReportWorkspace({
   findings,
   opportunities,
   roadmap,
+  renderActionBar,
 }: ReportWorkspaceProps) {
   const sections = report.sections;
   const [active, setActive] = React.useState<ReportFilterId>("all");
@@ -196,6 +198,7 @@ export function ReportWorkspace({
             linkedFindingsCount={linkedFindings.length}
             linkedOpportunitiesCount={linkedOpportunities.length}
             linkedRoadmapItemsCount={linkedRoadmapItems.length}
+            actionBar={renderActionBar ? renderActionBar(selected) : null}
           />
         ) : (
           <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
@@ -224,11 +227,13 @@ export function ReportWorkspace({
     linkedFindingsCount,
     linkedOpportunitiesCount,
     linkedRoadmapItemsCount,
+    actionBar,
   }: {
     section: ReportSection;
     linkedFindingsCount: number;
     linkedOpportunitiesCount: number;
     linkedRoadmapItemsCount: number;
+    actionBar?: React.ReactNode;
   }) {
     return (
       <Card variant="base">
@@ -326,44 +331,50 @@ export function ReportWorkspace({
           ) : null}
 
           <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-              Review actions · mock
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                leadingIcon={<Check className="h-3.5 w-3.5" />}
-              >
-                Approve section
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                leadingIcon={<Pencil className="h-3.5 w-3.5" />}
-              >
-                Edit section
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
-              >
-                Regenerate draft
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
-              >
-                Add note
-              </Button>
-            </div>
-            <p className="text-[11px] leading-relaxed text-text-muted">
-              Review actions are mock until persistence ships. Approving a
-              section locks it for the report; editing keeps the consultant in
-              control of the language.
-            </p>
+            {actionBar ? (
+              actionBar
+            ) : (
+              <>
+                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                  Review actions · mock
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leadingIcon={<Check className="h-3.5 w-3.5" />}
+                  >
+                    Approve section
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leadingIcon={<Pencil className="h-3.5 w-3.5" />}
+                  >
+                    Edit section
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
+                  >
+                    Regenerate draft
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
+                  >
+                    Add note
+                  </Button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-text-muted">
+                  Review actions are mock until persistence ships. Approving a
+                  section locks it for the report; editing keeps the consultant
+                  in control of the language.
+                </p>
+              </>
+            )}
           </div>
         </CardBody>
       </Card>

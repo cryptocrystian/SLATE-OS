@@ -10,18 +10,27 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ReportWorkspace } from "@/components/reports/report-workspace";
+import { ReportSectionActionBar } from "@/components/reports/report-section-action-bar";
+import { InitializeReportForm } from "@/components/reports/initialize-report-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getReportForEngagement } from "@/lib/reports/mock-reports";
+import { getReportForEngagementPersisted } from "@/lib/reports/queries";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
+import { getFindingsForEngagementPersisted } from "@/lib/findings/queries";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
+import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
+import { getRoadmapForEngagementPersisted } from "@/lib/roadmap/queries";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
-import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
+import type { Report } from "@/lib/reports/types";
+import type { Finding } from "@/lib/findings/types";
+import type { Opportunity } from "@/lib/opportunities/types";
+import type { RoadmapItem } from "@/lib/roadmap/types";
 
 export const dynamic = "force-dynamic";
 
@@ -45,24 +54,26 @@ export default async function EngagementReportPage({
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
   const engagement = loaded.engagement;
+  const isPersisted = loaded.kind === "real";
 
-  if (loaded.kind === "real") {
-    return (
-      <EngagementPersistencePlaceholder
-        engagement={engagement}
-        eyebrow="AdvisoryOps · Report"
-        title="AI Opportunity Sprint report."
-        description="Assemble the AI Opportunity Sprint report section by section with linked evidence and approved findings."
-        activatesIn="Step 8 · Report persistence"
-        currentPath={`/app/engagements/${engagement.id}/report`}
-      />
-    );
+  let report: Report | null | undefined;
+  let findings: Finding[];
+  let opportunities: Opportunity[];
+  let roadmap: RoadmapItem[];
+
+  if (isPersisted) {
+    [report, findings, opportunities, roadmap] = await Promise.all([
+      getReportForEngagementPersisted(engagement.id),
+      getFindingsForEngagementPersisted(engagement.id),
+      getOpportunitiesForEngagementPersisted(engagement.id),
+      getRoadmapForEngagementPersisted(engagement.id),
+    ]);
+  } else {
+    report = getReportForEngagement(engagement.id);
+    findings = getFindingsForEngagement(engagement.id);
+    opportunities = getOpportunitiesForEngagement(engagement.id);
+    roadmap = getRoadmapForEngagement(engagement.id);
   }
-
-  const report = getReportForEngagement(engagement.id);
-  const findings = getFindingsForEngagement(engagement.id);
-  const opportunities = getOpportunitiesForEngagement(engagement.id);
-  const roadmap = getRoadmapForEngagement(engagement.id);
 
   const proposalHref = `/app/engagements/${engagement.id}/proposal`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
@@ -128,7 +139,7 @@ export default async function EngagementReportPage({
                 </Button>
               </Link>
             ) : null}
-            <LockedActionButton label="Export Report" lockedNote="Mock" />
+            <LockedActionButton label="Export Report" lockedNote="Locked" />
           </>
         }
         meta={
@@ -142,7 +153,7 @@ export default async function EngagementReportPage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 7 · Mock data
+              {isPersisted ? "Persistence Step 8 · Live" : "Sprint 7 · Mock data"}
             </span>
           </>
         }
@@ -186,7 +197,7 @@ export default async function EngagementReportPage({
           label="Export Status"
           value={
             report?.exportStatus === "ready-for-export-placeholder"
-              ? "Ready · mock"
+              ? "Ready · placeholder"
               : report?.exportStatus === "preview-only"
                 ? "Preview only"
                 : "Locked"
@@ -199,41 +210,45 @@ export default async function EngagementReportPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
           {!report ? (
-            <EmptyState
-              icon={<ScrollText className="h-4 w-4" />}
-              title="Approve findings and score opportunities before report assembly begins."
-              description="The report draws on approved findings, prioritized opportunities, and the 30/60/90 roadmap. Once those land, the outline and section drafts populate here."
-              action={
-                <div className="flex flex-wrap gap-2">
-                  {recAction.href ? (
-                    <Link href={recAction.href}>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        trailingIcon={<ArrowRight className="h-4 w-4" />}
-                      >
-                        {recommendedActionLabel(recAction.href)}
+            isPersisted ? (
+              <InitializeReportForm engagementId={engagement.id} />
+            ) : (
+              <EmptyState
+                icon={<ScrollText className="h-4 w-4" />}
+                title="Approve findings and score opportunities before report assembly begins."
+                description="The report draws on approved findings, prioritized opportunities, and the 30/60/90 roadmap. Once those land, the outline and section drafts populate here."
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    {recAction.href ? (
+                      <Link href={recAction.href}>
+                        <Button
+                          variant="primary"
+                          size="md"
+                          trailingIcon={<ArrowRight className="h-4 w-4" />}
+                        >
+                          {recommendedActionLabel(recAction.href)}
+                        </Button>
+                      </Link>
+                    ) : (
+                      <Link href={findingsHref}>
+                        <Button
+                          variant="primary"
+                          size="md"
+                          trailingIcon={<ArrowRight className="h-4 w-4" />}
+                        >
+                          Open findings
+                        </Button>
+                      </Link>
+                    )}
+                    <Link href={opportunitiesHref}>
+                      <Button variant="secondary" size="md">
+                        Open opportunities
                       </Button>
                     </Link>
-                  ) : (
-                    <Link href={findingsHref}>
-                      <Button
-                        variant="primary"
-                        size="md"
-                        trailingIcon={<ArrowRight className="h-4 w-4" />}
-                      >
-                        Open findings
-                      </Button>
-                    </Link>
-                  )}
-                  <Link href={opportunitiesHref}>
-                    <Button variant="secondary" size="md">
-                      Open opportunities
-                    </Button>
-                  </Link>
-                </div>
-              }
-            />
+                  </div>
+                }
+              />
+            )
           ) : (
             <ReportWorkspace
               engagementId={engagement.id}
@@ -241,6 +256,16 @@ export default async function EngagementReportPage({
               findings={findings}
               opportunities={opportunities}
               roadmap={roadmap}
+              renderActionBar={
+                isPersisted
+                  ? (section) => (
+                      <ReportSectionActionBar
+                        sectionId={section.id}
+                        status={section.status}
+                      />
+                    )
+                  : undefined
+              }
             />
           )}
 

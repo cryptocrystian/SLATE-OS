@@ -12,18 +12,27 @@ import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip";
 import { ImplementationCreditPanel } from "@/components/proposals/implementation-credit-panel";
+import { ProposalOptionActionBar } from "@/components/proposals/proposal-option-action-bar";
+import { InitializeProposalForm } from "@/components/proposals/initialize-proposal-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getProposalForEngagement } from "@/lib/proposals/mock-proposals";
+import { getProposalForEngagementPersisted } from "@/lib/proposals/queries";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
+import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
+import { getRoadmapForEngagementPersisted } from "@/lib/roadmap/queries";
 import { getReportForEngagement } from "@/lib/reports/mock-reports";
+import { getReportForEngagementPersisted } from "@/lib/reports/queries";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
-import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
+import type { Proposal } from "@/lib/proposals/types";
+import type { Report } from "@/lib/reports/types";
+import type { Opportunity } from "@/lib/opportunities/types";
+import type { RoadmapItem } from "@/lib/roadmap/types";
 
 export const dynamic = "force-dynamic";
 
@@ -47,24 +56,26 @@ export default async function EngagementProposalPage({
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
   const engagement = loaded.engagement;
+  const isPersisted = loaded.kind === "real";
 
-  if (loaded.kind === "real") {
-    return (
-      <EngagementPersistencePlaceholder
-        engagement={engagement}
-        eyebrow="AdvisoryOps · Proposal"
-        title="Proposal & SOW options."
-        description="Tiered SOW options (Quick-Win Build, AI Workflow System, Managed AI Partner) with implementation credit and pricing placeholders."
-        activatesIn="Step 8 · Proposal persistence"
-        currentPath={`/app/engagements/${engagement.id}/proposal`}
-      />
-    );
+  let proposal: Proposal | null | undefined;
+  let opportunities: Opportunity[];
+  let roadmap: RoadmapItem[];
+  let report: Report | null | undefined;
+
+  if (isPersisted) {
+    [proposal, opportunities, roadmap, report] = await Promise.all([
+      getProposalForEngagementPersisted(engagement.id),
+      getOpportunitiesForEngagementPersisted(engagement.id),
+      getRoadmapForEngagementPersisted(engagement.id),
+      getReportForEngagementPersisted(engagement.id),
+    ]);
+  } else {
+    proposal = getProposalForEngagement(engagement.id);
+    opportunities = getOpportunitiesForEngagement(engagement.id);
+    roadmap = getRoadmapForEngagement(engagement.id);
+    report = getReportForEngagement(engagement.id);
   }
-
-  const proposal = getProposalForEngagement(engagement.id);
-  const opportunities = getOpportunitiesForEngagement(engagement.id);
-  const roadmap = getRoadmapForEngagement(engagement.id);
-  const report = getReportForEngagement(engagement.id);
 
   const reportHref = `/app/engagements/${engagement.id}/report`;
   const recAction = recommendedActionRoute(
@@ -107,7 +118,7 @@ export default async function EngagementProposalPage({
             </Link>
             <LockedActionButton
               label="Prepare Client Review"
-              lockedNote="Mock"
+              lockedNote="Locked"
             />
           </>
         }
@@ -124,7 +135,7 @@ export default async function EngagementProposalPage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 7 · Mock data
+              {isPersisted ? "Persistence Step 8 · Live" : "Sprint 7 · Mock data"}
             </span>
           </>
         }
@@ -172,7 +183,7 @@ export default async function EngagementProposalPage({
           value={
             proposal?.implementationCredit.creditEligible ? "Eligible" : "—"
           }
-          hint={proposal?.implementationCredit.creditWindow ?? "Mock lever"}
+          hint={proposal?.implementationCredit.creditWindow ?? "Commercial lever"}
           tone={proposal?.implementationCredit.creditEligible ? "success" : "neutral"}
         />
       </section>
@@ -180,35 +191,49 @@ export default async function EngagementProposalPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
           {!proposal ? (
-            <EmptyState
-              icon={<FileSignature className="h-4 w-4" />}
-              title="Build the report and roadmap before proposal options are assembled."
-              description={
-                recAction.lockedNote
-                  ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The next step in this engagement isn't yet wired."
-                  : recAction.href === reportHref
-                    ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. Once the report is at least half-approved, the option workspace populates here."
-                    : "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The engagement is still earlier in the workflow — pick up where the work currently is."
-              }
-              action={
-                recAction.href ? (
-                  <Link href={recAction.href}>
-                    <Button
-                      variant="primary"
-                      size="md"
-                      trailingIcon={<ArrowRight className="h-4 w-4" />}
-                    >
-                      {recommendedActionLabel(recAction.href)}
-                    </Button>
-                  </Link>
-                ) : null
-              }
-            />
+            isPersisted ? (
+              <InitializeProposalForm engagementId={engagement.id} />
+            ) : (
+              <EmptyState
+                icon={<FileSignature className="h-4 w-4" />}
+                title="Build the report and roadmap before proposal options are assembled."
+                description={
+                  recAction.lockedNote
+                    ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The next step in this engagement isn't yet wired."
+                    : recAction.href === reportHref
+                      ? "Proposal options pull from approved opportunities and the 30/60/90 roadmap. Once the report is at least half-approved, the option workspace populates here."
+                      : "Proposal options pull from approved opportunities and the 30/60/90 roadmap. The engagement is still earlier in the workflow — pick up where the work currently is."
+                }
+                action={
+                  recAction.href ? (
+                    <Link href={recAction.href}>
+                      <Button
+                        variant="primary"
+                        size="md"
+                        trailingIcon={<ArrowRight className="h-4 w-4" />}
+                      >
+                        {recommendedActionLabel(recAction.href)}
+                      </Button>
+                    </Link>
+                  ) : null
+                }
+              />
+            )
           ) : (
             <ProposalWorkspace
               proposal={proposal}
               opportunities={opportunities}
               roadmap={roadmap}
+              renderOptionActionBar={
+                isPersisted
+                  ? (option) => (
+                      <ProposalOptionActionBar
+                        optionId={option.id}
+                        recommended={option.recommended}
+                      />
+                    )
+                  : undefined
+              }
             />
           )}
 
@@ -265,7 +290,7 @@ export default async function EngagementProposalPage({
             </Card>
           ) : null}
 
-          {proposal ? (
+          {proposal && proposal.assumptions.length > 0 ? (
             <Card variant="base">
               <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
                 <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
