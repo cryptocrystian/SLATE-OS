@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 5 (stakeholder intake + documents persistence) implemented; operator workspace creates token-gated intake sessions, public `/intake/[token]` route accepts stakeholder responses, raw tokens never stored_
+_Last updated: 2026-05-05 — Persistence/Auth Step 6 (findings persistence) implemented; operators author findings tied to stakeholder intake evidence, review actions persist (approve / reject / report-ready / note), engagement Findings panel reflects live counts_
 
 ## Sprint State
 
@@ -23,6 +23,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 5 (stakeholder intake + docu
 | P4 | Persistence/Auth Step 4 — Engagement creation + engagement detail persistence | ✅ Complete |
 | P4.5 | Persistence/Auth Step 4.5 — Public scorecard anti-abuse + email quality | ✅ Complete |
 | P5 | Persistence/Auth Step 5 — Stakeholder intake + documents persistence | ✅ Complete |
+| P6 | Persistence/Auth Step 6 — Findings persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -457,6 +458,51 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
 - Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, or raw intake tokens printed during this sprint.
 
+## Persistence/Auth Step 6 — what landed (2026-05-05)
+
+`/app/engagements/[id]/findings` now reads/writes real findings and source references for UUID engagements. Operators author findings manually with optional links to existing stakeholder intake responses or input assets; review actions (approve / reject / mark report-ready / reopen / reviewer note) persist to Supabase. Engagement detail's Findings panel reflects live counts via a derived overlay.
+
+**Migration `0006_findings.sql`.**
+
+- `findings` — workspace + engagement scoped, `category` / `confidence` / `review_status` as text columns so vocabulary can evolve, `assumption_flag` (bool) + `assumption_note` for reviewer flags, `reviewer_note`, `ai_drafted` (default false for manual findings), `position` for stable ordering, `reviewed_by` FK + `last_reviewed_at`, `created_at` / `updated_at` with the shared trigger.
+- `finding_source_refs` — workspace + engagement + finding scoped, `source_type` (text) for `stakeholder_response` / `input_asset` / `scorecard_answer` / `consultant_note`, optional `source_id` (uuid) plus display fields (`source_label`, `source_role`), `excerpt`, `strength` (text), `metadata jsonb`. Cascades on finding delete.
+- RLS enabled with operator-only `for all to authenticated using/with check (workspace_id = (select id from public.workspaces limit 1))` on both tables. **No anon policies.** Findings are operator-only — public `/intake/[token]` cannot read them.
+
+**Query / action layer.**
+
+- `lib/findings/queries.ts` (server-only) — `getFindingsForEngagementPersisted(uuid)`, `getFindingByIdPersisted(uuid)`, `getFindingsStatusSummary(uuid)`, and `getEvidenceCandidatesForEngagement(uuid)` returning intake-response + input-asset candidates the operator can attach as source refs.
+- `lib/findings/mappers.ts` — DB↔TS translators for category / review-status / confidence / source-type / strength enums (underscored ↔ hyphenated). `mapFindingRow(row, refs)` returns the existing TS `Finding` shape so the visual workspace components stay unchanged.
+- `lib/findings/actions.ts` (`"use server"`) — `createManualFinding`, `approveFinding`, `rejectFinding`, `markFindingReportReady`, `markFindingNeedsReview`, `updateFindingNote`, `editFinding`. Every action `auth.getUser()`-gates, stamps `reviewed_by` + `last_reviewed_at`, bumps the engagement's `last_activity_at`, and `revalidatePath`s both the findings route and the engagement detail.
+
+**Findings workspace.**
+
+- `components/findings/findings-workspace.tsx` (existing) gained an optional `renderActionBar?: (finding) => React.ReactNode` prop. Mock paths render the existing static action bar; persisted paths inject the real action bar.
+- `components/findings/review-action-bar.tsx` (new, `"use client"`) — wires Approve / Mark report-ready / Add note / Reopen / Reject buttons to the server actions via `useTransition`, with inline note editor and compact pending / error / saved feedback. Reviewer-note edit is operator-only.
+- `components/findings/create-finding-form.tsx` (new, `"use client"`) — operator form with category, statement, summary, evidence summary, confidence, suggested impact, assumption flag + note, reviewer note, and an evidence multi-selector that lists intake responses + input assets from the same engagement. Selected candidates persist as `finding_source_refs` rows on save.
+- `app/app/engagements/[id]/findings/page.tsx` — branches on `loadEngagementForSubroute`. UUID engagements load real findings + evidence candidates, render the create-finding form, and render the workspace with persisted review actions; legacy slug engagements continue to render seeded `MOCK_FINDINGS`. Empty state for UUID engagements with zero findings: "Add a manual finding from stakeholder intake evidence above, or wait for AI-assisted synthesis in a later sprint." Meta strip toggles between "Persistence Step 6 · Live" and "Sprint 5 · Mock data".
+
+**Engagement detail status panel.**
+
+- `app/app/engagements/[id]/page.tsx` overlays a derived findings summary on top of the persisted `findings_status` jsonb when `getFindingsStatusSummary` returns rows. Approved + report-ready counts merge into the panel's `approved` total; tone / next-action copy reflect the live triage state. Engagements with zero findings keep their existing default copy.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements continue to render seeded `MOCK_FINDINGS` with the existing static action bar.
+- `/opportunities`, `/roadmap`, `/report`, `/proposal` remain placeholder-rendered for UUID engagements until Steps 7–8.
+
+**RLS / security.**
+
+- Operators have full CRUD on `findings` and `finding_source_refs`, workspace-scoped via the existing single-workspace policy shape.
+- No anon policies; the public `/intake/[token]` route never authenticates and has no path to findings reads.
+- All review actions evaluate under RLS with the operator's `auth.uid()`. No service-role client touches the findings code path.
+- Reviewer-note text and stakeholder excerpts surfaced in `EvidencePanel` are operator-only — public surfaces never reach them.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, or stakeholder PII printed during this sprint.
+
 ## Recommended Next Step
 
-**Step 6 — Findings persistence.** Migrate `/app/engagements/[id]/findings` from `MOCK_FINDINGS` to real `findings` and `finding_source_refs` tables. Wire the review action bar (Approve / Edit / Reject / Add note) to real server actions and reflect approved counts on the engagement detail's Findings panel. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.
+**Step 7 — Opportunities + roadmap persistence.** Migrate `/app/engagements/[id]/opportunities` and `/app/engagements/[id]/roadmap` from mock fixtures to real `opportunities`, `opportunity_finding_links`, and `roadmap_items` tables. Wire opportunity scoring + roadmap sequencing to real server actions; surface live counts on the engagement detail's Opportunities and Roadmap panels. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.

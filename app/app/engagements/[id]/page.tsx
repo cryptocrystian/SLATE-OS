@@ -16,6 +16,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { getEngagementById } from "@/lib/engagements/queries";
 import { getIntakeStatusSummary } from "@/lib/intake/queries";
+import { getFindingsStatusSummary } from "@/lib/findings/queries";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
@@ -50,8 +51,12 @@ export default async function EngagementDetailPage({
   const engagement = await getEngagementById(params.id);
   if (!engagement) notFound();
 
-  const intakeSummary = await getIntakeStatusSummary(engagement.id);
+  const [intakeSummary, findingsSummary] = await Promise.all([
+    getIntakeStatusSummary(engagement.id),
+    getFindingsStatusSummary(engagement.id),
+  ]);
   const intake = mergeIntakeStatus(engagement, intakeSummary);
+  const findings = mergeFindingsStatus(engagement, findingsSummary);
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
@@ -132,19 +137,19 @@ export default async function EngagementDetailPage({
         <MetricCard
           label="Findings"
           value={
-            engagement.findings.candidate === 0
+            findings.candidate === 0
               ? "—"
-              : `${engagement.findings.approved}/${engagement.findings.candidate}`
+              : `${findings.approved}/${findings.candidate}`
           }
           hint={
-            engagement.findings.candidate === 0
+            findings.candidate === 0
               ? "Synthesis follows intake"
               : "Approved"
           }
           tone={
-            engagement.findings.status.tone === "warning"
+            findings.status.tone === "warning"
               ? "warning"
-              : engagement.findings.status.tone === "success"
+              : findings.status.tone === "success"
                 ? "success"
                 : "neutral"
           }
@@ -211,9 +216,9 @@ export default async function EngagementDetailPage({
             intakeHref={intakeHref}
           />
           <FindingsStatusPanel
-            findings={engagement.findings}
+            findings={findings}
             findingsHref={
-              engagement.findings.candidate > 0 ||
+              findings.candidate > 0 ||
               engagement.currentStage === "synthesis" ||
               engagement.currentStage === "scoring" ||
               engagement.currentStage === "report" ||
@@ -334,4 +339,75 @@ function pickIntakeNextAction(
 
 function roleLabel(role: string): string {
   return ROLE_LABEL[role as StakeholderRole] ?? role;
+}
+
+function mergeFindingsStatus(
+  engagement: Engagement,
+  summary: Awaited<ReturnType<typeof getFindingsStatusSummary>>,
+): Engagement["findings"] {
+  if (!summary || summary.total === 0) {
+    return engagement.findings;
+  }
+  return {
+    status: pickFindingsStatusBadge(summary),
+    candidate: summary.total,
+    approved: summary.approved + summary.reportReady,
+    rejected: summary.rejected,
+    reviewState: pickFindingsReviewState(summary),
+    nextAction: pickFindingsNextAction(summary),
+  };
+}
+
+function pickFindingsStatusBadge(
+  summary: NonNullable<Awaited<ReturnType<typeof getFindingsStatusSummary>>>,
+): Engagement["findings"]["status"] {
+  if (summary.reportReady > 0 && summary.needsReview === 0) {
+    return { tone: "success", label: "Report-ready" };
+  }
+  if (summary.needsReview > 0) {
+    return { tone: "warning", label: "Needs review" };
+  }
+  if (summary.approved > 0) {
+    return { tone: "info", label: "Approved" };
+  }
+  if (summary.rejected === summary.total) {
+    return { tone: "neutral", label: "All rejected" };
+  }
+  return { tone: "info", label: "In progress" };
+}
+
+function pickFindingsReviewState(
+  summary: NonNullable<Awaited<ReturnType<typeof getFindingsStatusSummary>>>,
+): string {
+  if (summary.total === 0) {
+    return "Synthesis runs after intake responses are in.";
+  }
+  if (summary.needsReview > 0) {
+    return `${summary.needsReview} finding${summary.needsReview === 1 ? "" : "s"} awaiting consultant decision.`;
+  }
+  if (summary.reportReady > 0) {
+    return `${summary.reportReady} finding${summary.reportReady === 1 ? "" : "s"} locked for the report.`;
+  }
+  if (summary.approved > 0) {
+    return `${summary.approved} approved finding${summary.approved === 1 ? "" : "s"} pending report-ready confirmation.`;
+  }
+  return "All candidate findings have been triaged.";
+}
+
+function pickFindingsNextAction(
+  summary: NonNullable<Awaited<ReturnType<typeof getFindingsStatusSummary>>>,
+): string {
+  if (summary.needsReview > 0) {
+    return `Review ${summary.needsReview} candidate finding${summary.needsReview === 1 ? "" : "s"}.`;
+  }
+  if (summary.approved > 0 && summary.reportReady === 0) {
+    return "Mark approved findings report-ready before scoring opens.";
+  }
+  if (summary.reportReady > 0) {
+    return "Open opportunity scoring.";
+  }
+  if (summary.total === summary.rejected) {
+    return "All candidate findings rejected — capture a new finding or revisit intake.";
+  }
+  return "Continue triaging findings.";
 }

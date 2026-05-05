@@ -37,9 +37,16 @@ const CATEGORY_TONE_MAP: Record<string, BadgeTone> = {
 
 export interface FindingsWorkspaceProps {
   findings: Finding[];
+  /** Optional override for the per-finding action bar. When provided,
+   *  the persisted finding actions render here instead of the static
+   *  mock affordance. */
+  renderActionBar?: (finding: Finding) => React.ReactNode;
 }
 
-export function FindingsWorkspace({ findings }: FindingsWorkspaceProps) {
+export function FindingsWorkspace({
+  findings,
+  renderActionBar,
+}: FindingsWorkspaceProps) {
   const [active, setActive] = React.useState<FindingFilterId>(
     findings.some((f) => f.reviewStatus === "needs-review")
       ? "needs-review"
@@ -177,7 +184,7 @@ export function FindingsWorkspace({ findings }: FindingsWorkspaceProps) {
       {/* Detail panel */}
       <div className="flex flex-col gap-4 lg:col-span-5">
         {selected ? (
-          <FindingDetail finding={selected} />
+          <FindingDetail finding={selected} renderActionBar={renderActionBar} />
         ) : (
           <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
             Select a finding to review.
@@ -193,7 +200,13 @@ export function FindingsWorkspace({ findings }: FindingsWorkspaceProps) {
   );
 }
 
-function FindingDetail({ finding }: { finding: Finding }) {
+function FindingDetail({
+  finding,
+  renderActionBar,
+}: {
+  finding: Finding;
+  renderActionBar?: (finding: Finding) => React.ReactNode;
+}) {
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
@@ -275,53 +288,59 @@ function FindingDetail({ finding }: { finding: Finding }) {
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-            Review actions · mock
-          </span>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              leadingIcon={<Check className="h-3.5 w-3.5" />}
-            >
-              Approve
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              leadingIcon={<Pencil className="h-3.5 w-3.5" />}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
-            >
-              Regenerate
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
-            >
-              Add note
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              leadingIcon={<X className="h-3.5 w-3.5" />}
-              className="text-status-risk hover:text-status-risk"
-            >
-              Reject
-            </Button>
+        {renderActionBar ? (
+          <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+            {renderActionBar(finding)}
           </div>
-          <p className="text-[11px] leading-relaxed text-text-muted">
-            Review actions are mock for now. Approvals, edits, and rejections
-            persist with the backend.
-          </p>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+              Review actions · mock
+            </span>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                size="sm"
+                leadingIcon={<Check className="h-3.5 w-3.5" />}
+              >
+                Approve
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                leadingIcon={<Pencil className="h-3.5 w-3.5" />}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
+              >
+                Regenerate
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
+              >
+                Add note
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                leadingIcon={<X className="h-3.5 w-3.5" />}
+                className="text-status-risk hover:text-status-risk"
+              >
+                Reject
+              </Button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-text-muted">
+              Review actions are mock for now. Approvals, edits, and rejections
+              persist with the backend.
+            </p>
+          </div>
+        )}
       </CardBody>
     </Card>
   );

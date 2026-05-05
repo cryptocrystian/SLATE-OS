@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,18 @@ import {
   FindingsWorkspace,
   ManualFindingPlaceholder,
 } from "@/components/findings/findings-workspace";
+import { FindingReviewActionBar } from "@/components/findings/review-action-bar";
+import { CreateFindingForm } from "@/components/findings/create-finding-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
-import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
+import { getFindingsForEngagement as getMockFindings } from "@/lib/findings/mock-findings";
+import {
+  getEvidenceCandidatesForEngagement,
+  getFindingsForEngagementPersisted,
+} from "@/lib/findings/queries";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
-import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
+import type { Finding } from "@/lib/findings/types";
 
 export const dynamic = "force-dynamic";
 
@@ -38,21 +44,18 @@ export default async function EngagementFindingsPage({
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
   const engagement = loaded.engagement;
+  const isPersisted = loaded.kind === "real";
 
-  if (loaded.kind === "real") {
-    return (
-      <EngagementPersistencePlaceholder
-        engagement={engagement}
-        eyebrow="AdvisoryOps · Findings"
-        title="Findings review."
-        description="Approve, edit, or reject AI-drafted findings before they enter scoring."
-        activatesIn="Step 6 · Findings persistence"
-        currentPath={`/app/engagements/${engagement.id}/findings`}
-      />
-    );
+  let findings: Finding[];
+  let candidates: Awaited<ReturnType<typeof getEvidenceCandidatesForEngagement>> = [];
+  if (isPersisted) {
+    [findings, candidates] = await Promise.all([
+      getFindingsForEngagementPersisted(engagement.id),
+      getEvidenceCandidatesForEngagement(engagement.id),
+    ]);
+  } else {
+    findings = getMockFindings(engagement.id);
   }
-
-  const findings = getFindingsForEngagement(engagement.id);
 
   const counts = {
     total: findings.length,
@@ -70,26 +73,17 @@ export default async function EngagementFindingsPage({
       <PageHeader
         eyebrow="AdvisoryOps · Findings"
         title="Findings review."
-        description="Review AI-assisted findings before they become report-ready recommendations. Each finding is approved, edited, regenerated, or rejected by a consultant — never auto-promoted to the report."
+        description="Review findings before they become report-ready recommendations. Each finding is approved, edited, or rejected by a consultant — never auto-promoted to the report."
         actions={
-          <>
-            <Link href={`/app/engagements/${engagement.id}`}>
-              <Button
-                variant="secondary"
-                size="md"
-                leadingIcon={<ArrowLeft className="h-4 w-4" />}
-              >
-                Back to engagement
-              </Button>
-            </Link>
+          <Link href={`/app/engagements/${engagement.id}`}>
             <Button
-              variant="primary"
+              variant="secondary"
               size="md"
-              leadingIcon={<Check className="h-4 w-4" />}
+              leadingIcon={<ArrowLeft className="h-4 w-4" />}
             >
-              Approve selected
+              Back to engagement
             </Button>
-          </>
+          </Link>
         }
         meta={
           <>
@@ -98,11 +92,13 @@ export default async function EngagementFindingsPage({
             </Badge>
             <span className="text-text-muted">
               <Sparkles className="mr-1 inline h-3 w-3 text-practice-ai align-text-bottom" />
-              AI-drafted · awaits human approval
+              {isPersisted
+                ? "Operator-authored · AI synthesis activates later"
+                : "AI-drafted · awaits human approval"}
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 5 · Mock data
+              {isPersisted ? "Persistence Step 6 · Live" : "Sprint 5 · Mock data"}
             </span>
           </>
         }
@@ -115,7 +111,7 @@ export default async function EngagementFindingsPage({
         <MetricCard
           label="Candidate Findings"
           value={String(counts.total)}
-          hint="AI drafts in flight"
+          hint={isPersisted ? "Captured for this engagement" : "AI drafts in flight"}
           tone="info"
         />
         <MetricCard
@@ -152,8 +148,37 @@ export default async function EngagementFindingsPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
-          <FindingsWorkspace findings={findings} />
-          <ManualFindingPlaceholder />
+          {isPersisted ? (
+            <CreateFindingForm
+              engagementId={engagement.id}
+              candidates={candidates}
+            />
+          ) : null}
+
+          {findings.length === 0 && isPersisted ? (
+            <Card variant="base">
+              <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
+                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                  No findings yet
+                </span>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  Add a manual finding from stakeholder intake evidence above,
+                  or wait for AI-assisted synthesis in a later sprint.
+                </p>
+              </CardBody>
+            </Card>
+          ) : (
+            <FindingsWorkspace
+              findings={findings}
+              renderActionBar={
+                isPersisted
+                  ? (finding) => <FindingReviewActionBar finding={finding} />
+                  : undefined
+              }
+            />
+          )}
+
+          {isPersisted ? null : <ManualFindingPlaceholder />}
 
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
@@ -161,10 +186,9 @@ export default async function EngagementFindingsPage({
                 Boundary reminder
               </span>
               <p className="text-xs leading-relaxed text-text-muted">
-                AI-drafted findings are clearly labeled and require human
-                approval before becoming report-ready. The consultant edits,
-                approves, regenerates, or rejects each one. Report assembly
-                and proposal generation arrive in Sprint 7.
+                Findings are always reviewed by a consultant before they
+                become report-ready. AI synthesis, document parsing, and
+                opportunity scoring activate in later sprints.
               </p>
             </CardBody>
           </Card>
