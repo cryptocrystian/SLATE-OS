@@ -17,6 +17,8 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { getEngagementById } from "@/lib/engagements/queries";
 import { getIntakeStatusSummary } from "@/lib/intake/queries";
 import { getFindingsStatusSummary } from "@/lib/findings/queries";
+import { getOpportunityStatusSummary } from "@/lib/opportunities/queries";
+import { getRoadmapStatusSummary } from "@/lib/roadmap/queries";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
@@ -51,12 +53,20 @@ export default async function EngagementDetailPage({
   const engagement = await getEngagementById(params.id);
   if (!engagement) notFound();
 
-  const [intakeSummary, findingsSummary] = await Promise.all([
-    getIntakeStatusSummary(engagement.id),
-    getFindingsStatusSummary(engagement.id),
-  ]);
+  const [intakeSummary, findingsSummary, opportunitySummary, roadmapSummary] =
+    await Promise.all([
+      getIntakeStatusSummary(engagement.id),
+      getFindingsStatusSummary(engagement.id),
+      getOpportunityStatusSummary(engagement.id),
+      getRoadmapStatusSummary(engagement.id),
+    ]);
   const intake = mergeIntakeStatus(engagement, intakeSummary);
   const findings = mergeFindingsStatus(engagement, findingsSummary);
+  const opportunitiesPanel = mergeOpportunityStatus(
+    engagement,
+    opportunitySummary,
+    roadmapSummary,
+  );
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
@@ -157,19 +167,21 @@ export default async function EngagementDetailPage({
         <MetricCard
           label="Opportunities"
           value={
-            engagement.opportunities.identified === 0
+            opportunitiesPanel.identified === 0
               ? "—"
-              : String(engagement.opportunities.identified)
+              : String(opportunitiesPanel.identified)
           }
           hint={
-            engagement.opportunities.identified === 0
+            opportunitiesPanel.identified === 0
               ? "Scoring follows findings"
-              : `${engagement.opportunities.quickWins} quick wins · ${engagement.opportunities.strategicBuilds} strategic`
+              : `${opportunitiesPanel.quickWins} quick wins · ${opportunitiesPanel.strategicBuilds} strategic`
           }
           tone={
-            engagement.opportunities.status.tone === "success"
+            opportunitiesPanel.status.tone === "success"
               ? "success"
-              : "neutral"
+              : opportunitiesPanel.status.tone === "warning"
+                ? "warning"
+                : "neutral"
           }
         />
         <MetricCard
@@ -228,7 +240,7 @@ export default async function EngagementDetailPage({
             }
           />
           <OpportunityStatusPanel
-            opportunities={engagement.opportunities}
+            opportunities={opportunitiesPanel}
             opportunitiesHref={
               engagement.currentStage === "scoring" ||
               engagement.currentStage === "report" ||
@@ -410,4 +422,79 @@ function pickFindingsNextAction(
     return "All candidate findings rejected — capture a new finding or revisit intake.";
   }
   return "Continue triaging findings.";
+}
+
+function mergeOpportunityStatus(
+  engagement: Engagement,
+  summary: Awaited<ReturnType<typeof getOpportunityStatusSummary>>,
+  roadmapSummary: Awaited<ReturnType<typeof getRoadmapStatusSummary>>,
+): Engagement["opportunities"] {
+  if (!summary || summary.total === 0) {
+    return engagement.opportunities;
+  }
+  return {
+    status: pickOpportunityStatusBadge(summary),
+    identified: summary.total,
+    quickWins: summary.quickWins,
+    strategicBuilds: summary.strategicBuilds,
+    defer: summary.deferAvoid + summary.deferred,
+    scoringState: pickOpportunityScoringState(summary, roadmapSummary),
+    nextAction: pickOpportunityNextAction(summary, roadmapSummary),
+  };
+}
+
+function pickOpportunityStatusBadge(
+  summary: NonNullable<Awaited<ReturnType<typeof getOpportunityStatusSummary>>>,
+): Engagement["opportunities"]["status"] {
+  if (summary.selected > 0) {
+    return { tone: "success", label: "Selections in" };
+  }
+  if (summary.scored > 0 || summary.quickWins > 0 || summary.strategicBuilds > 0) {
+    return { tone: "info", label: "Scoring in flight" };
+  }
+  if (summary.draft > 0) {
+    return { tone: "warning", label: "Drafts pending" };
+  }
+  return { tone: "neutral", label: "Awaiting findings" };
+}
+
+function pickOpportunityScoringState(
+  summary: NonNullable<Awaited<ReturnType<typeof getOpportunityStatusSummary>>>,
+  roadmap: Awaited<ReturnType<typeof getRoadmapStatusSummary>>,
+): string {
+  if (summary.total === 0) {
+    return "Scoring begins once findings are approved.";
+  }
+  if (roadmap && roadmap.total > 0) {
+    return `${roadmap.total} roadmap item${roadmap.total === 1 ? "" : "s"} sequenced (${roadmap.first30} · ${roadmap.days3160} · ${roadmap.days6190}).`;
+  }
+  if (summary.selected > 0) {
+    return `${summary.selected} opportunity${summary.selected === 1 ? "" : "ies"} selected for the roadmap.`;
+  }
+  if (summary.quickWins + summary.strategicBuilds > 0) {
+    return `${summary.quickWins} quick win${summary.quickWins === 1 ? "" : "s"} · ${summary.strategicBuilds} strategic build${summary.strategicBuilds === 1 ? "" : "s"} scored.`;
+  }
+  return "Score opportunities to position them on the matrix.";
+}
+
+function pickOpportunityNextAction(
+  summary: NonNullable<Awaited<ReturnType<typeof getOpportunityStatusSummary>>>,
+  roadmap: Awaited<ReturnType<typeof getRoadmapStatusSummary>>,
+): string {
+  if (roadmap && roadmap.blocked > 0) {
+    return `${roadmap.blocked} blocked roadmap item${roadmap.blocked === 1 ? "" : "s"} need attention.`;
+  }
+  if (summary.selected > 0 && (!roadmap || roadmap.total === 0)) {
+    return "Sequence selected opportunities into the 30/60/90 roadmap.";
+  }
+  if (roadmap && roadmap.total > 0 && roadmap.completed === roadmap.total) {
+    return "Roadmap complete — open the report builder when ready.";
+  }
+  if (summary.scored > 0 && summary.selected === 0) {
+    return "Mark scored opportunities as selected before sequencing the roadmap.";
+  }
+  if (summary.draft > 0) {
+    return "Score drafted opportunities before promoting them.";
+  }
+  return "Continue refining opportunity scoring.";
 }

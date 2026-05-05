@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 6 (findings persistence) implemented; operators author findings tied to stakeholder intake evidence, review actions persist (approve / reject / report-ready / note), engagement Findings panel reflects live counts_
+_Last updated: 2026-05-05 — Persistence/Auth Step 7 (opportunities + roadmap persistence) implemented; operators score opportunities from approved findings and sequence them into a manual 30/60/90 roadmap, engagement Opportunities panel reflects live quadrant + roadmap counts_
 
 ## Sprint State
 
@@ -24,6 +24,7 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 6 (findings persistence) imp
 | P4.5 | Persistence/Auth Step 4.5 — Public scorecard anti-abuse + email quality | ✅ Complete |
 | P5 | Persistence/Auth Step 5 — Stakeholder intake + documents persistence | ✅ Complete |
 | P6 | Persistence/Auth Step 6 — Findings persistence | ✅ Complete |
+| P7 | Persistence/Auth Step 7 — Opportunities + roadmap persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -503,6 +504,63 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
 - Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, or stakeholder PII printed during this sprint.
 
+## Persistence/Auth Step 7 — what landed (2026-05-05)
+
+`/app/engagements/[id]/opportunities` and `/app/engagements/[id]/roadmap` now read/write real opportunities, opportunity↔finding links, and 30/60/90 roadmap items for UUID engagements. Operators score opportunities from approved or report-ready findings, defer/select/reject them, and manually sequence selected opportunities into a roadmap. Engagement detail's Opportunities panel reflects live quadrant + selection + roadmap-progress counts via a derived overlay.
+
+**Migration `0007_opportunities_roadmap.sql`.**
+
+- `opportunities` — workspace + engagement scoped, six 0–100 score columns (`business_impact_score`, `complexity_score`, `risk_score`, `time_to_value_score`, `adoption_likelihood_score`, `strategic_value_score`), text-typed `category` / `priority` / `quadrant` / `evidence_strength` / `status` (`draft` / `scored` / `selected` / `deferred` / `rejected`), array columns for `dependencies` / `risks` / `success_signals`, plus `position` / `reviewed_by` / `last_reviewed_at` / standard timestamps. RLS enabled with operator-only `for all to authenticated` policy.
+- `opportunity_finding_links` — workspace + engagement + opportunity + finding scoped, with a unique `(opportunity_id, finding_id)` index. RLS operator-only.
+- `roadmap_items` — workspace + engagement scoped, `phase` (`first_30` / `days_31_60` / `days_61_90`), `priority`, `status` (`planned` / `ready` / `blocked` / `deferred` / `completed`), array columns for `key_actions` / `dependencies` / `success_criteria` / `risks`, optional `opportunity_id` FK on delete `set null`. RLS operator-only.
+
+**Opportunity query / action layer.**
+
+- `lib/opportunities/queries.ts` (server-only) — `getOpportunitiesForEngagementPersisted(uuid)`, `getOpportunityStatusSummary(uuid)`, `getFindingCandidatesForEngagement(uuid)` (approved + report-ready findings only), and `getMinimalFindingsForEngagement(uuid)` to feed the related-findings panel without re-loading source refs.
+- `lib/opportunities/mappers.ts` — DB↔TS translators for priority / quadrant / category / evidence-strength / status, score clamping (0–100), TS Opportunity emission.
+- `lib/opportunities/actions.ts` (`"use server"`) — `createOpportunity`, `updateOpportunityScores`, `markOpportunitySelected`, `deferOpportunity`, `rejectOpportunity`, `reopenOpportunity`. Quadrant + priority are derived server-side from impact + complexity + risk via `computeQuadrant` (with a high-risk override → `defer-avoid` when `risk >= 85`). Every action `auth.getUser()`-gates, stamps `reviewed_by` / `last_reviewed_at`, bumps engagement activity, and `revalidatePath`s opportunities + roadmap + engagement detail.
+- `lib/opportunities/types.ts` — `Opportunity` gained an optional `status?: OpportunityStatus`. Mock fixtures omit it; persisted records always set it.
+
+**Roadmap query / action layer.**
+
+- `lib/roadmap/queries.ts` (server-only) — `getRoadmapForEngagementPersisted(uuid)`, `getRoadmapStatusSummary(uuid)`, `getOpportunityCandidatesForEngagement(uuid)`.
+- `lib/roadmap/mappers.ts` — DB↔TS translators for phase / priority / status, TS RoadmapItem emission.
+- `lib/roadmap/actions.ts` (`"use server"`) — `createRoadmapItem`, `setRoadmapItemStatus`, `removeRoadmapItem`. Each action authenticates, bumps engagement activity, and revalidates the roadmap + engagement detail.
+
+**Opportunity workspace.**
+
+- `components/opportunities/opportunities-workspace.tsx` got a new optional `renderActionBar?: (opportunity: Opportunity) => React.ReactNode` render-prop that injects a per-opportunity action panel inside the detail column.
+- `components/opportunities/create-opportunity-form.tsx` (new, `"use client"`) — operator form with title / category / description, six 0–100 score inputs, evidence strength selector, source summary / recommended action / implementation shape, three textareas (dependencies / risks / success signals) split on newlines, and a finding multi-selector listing approved + report-ready findings.
+- `components/opportunities/opportunity-action-bar.tsx` (new, `"use client"`) — Mark selected / Defer / Reopen / Reject buttons via `useTransition`, with status badge.
+- `app/app/engagements/[id]/opportunities/page.tsx` — branches on `loadEngagementForSubroute`. UUID engagements load real opportunities + finding candidates and render the create form + persisted action bar. Empty state for UUID engagements with zero opportunities: "Create opportunities from approved or report-ready findings using the form above. Quadrant placement is derived from impact + complexity + risk on save." Meta strip toggles between "Persistence Step 7 · Live" and "Sprint 6 · Mock data".
+
+**Roadmap workspace.**
+
+- `components/roadmap/create-roadmap-item-form.tsx` (new, `"use client"`) — operator form with phase / priority selectors, optional opportunity link (drawn from the candidates query), title + objective inputs, four textareas (key actions / dependencies / success criteria / risks) split on newlines, and owner placeholder + readiness note.
+- `app/app/engagements/[id]/roadmap/page.tsx` — branches on `loadEngagementForSubroute`. UUID engagements load real roadmap items + opportunity candidates and render the create form + phase columns. Empty state for UUID engagements with zero items: "Add roadmap items from selected opportunities using the form above. Each item lives in 30, 60, or 90-day sequencing and links back to its source opportunity." Meta strip toggles between "Persistence Step 7 · Live" and "Sprint 6 · Mock data".
+
+**Engagement detail status panel.**
+
+- `app/app/engagements/[id]/page.tsx` overlays a derived opportunity summary on top of `engagement.opportunities` when at least one opportunity exists. Total / quick wins / strategic builds / defer counts and the status badge tone reflect live data; when at least one roadmap item exists, the scoring-state copy switches to a 30/60/90 breakdown ("X · Y · Z roadmap items sequenced") and the next-action copy bumps to roadmap milestones (blocked items, sequencing prompts, completion). Engagements with zero opportunities keep their existing default copy.
+
+**Mock boundary preserved.**
+
+- Legacy slug engagements continue to render `MOCK_OPPORTUNITIES` and `MOCK_ROADMAP` fixtures unchanged, with no create-form rendered.
+- `/report`, `/proposal` remain placeholder-rendered for UUID engagements until Step 8.
+
+**RLS / security.**
+
+- Operators have full CRUD on `opportunities`, `opportunity_finding_links`, and `roadmap_items`, workspace-scoped via the existing single-workspace policy shape.
+- No anon policies; the public `/intake/[token]` route never authenticates and has no path to opportunities or roadmap reads.
+- All actions evaluate under RLS with the operator's `auth.uid()`. No service-role client touches the opportunities/roadmap code path.
+- Finding evidence linked to an opportunity is operator-only — finding statements / source-ref excerpts never leak to public surfaces.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, raw intake tokens, stakeholder PII, or finding excerpts printed during this sprint.
+
 ## Recommended Next Step
 
-**Step 7 — Opportunities + roadmap persistence.** Migrate `/app/engagements/[id]/opportunities` and `/app/engagements/[id]/roadmap` from mock fixtures to real `opportunities`, `opportunity_finding_links`, and `roadmap_items` tables. Wire opportunity scoring + roadmap sequencing to real server actions; surface live counts on the engagement detail's Opportunities and Roadmap panels. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.
+**Step 8 — Reports + proposals persistence.** Migrate `/app/engagements/[id]/report` and `/app/engagements/[id]/proposal` from mock fixtures to real `reports`, `report_sections`, `report_section_*_links`, `proposals`, `proposal_options`, and `proposal_option_*_links` tables. Wire section + option review actions; keep production export and SOW execution locked behind `LockedActionButton`. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.

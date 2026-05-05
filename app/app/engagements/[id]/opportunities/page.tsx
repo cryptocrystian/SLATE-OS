@@ -9,13 +9,21 @@ import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities-workspace";
+import { CreateOpportunityForm } from "@/components/opportunities/create-opportunity-form";
+import { OpportunityActionBar } from "@/components/opportunities/opportunity-action-bar";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
+import {
+  getFindingCandidatesForEngagement,
+  getMinimalFindingsForEngagement,
+  getOpportunitiesForEngagementPersisted,
+} from "@/lib/opportunities/queries";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
-import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
+import type { Opportunity } from "@/lib/opportunities/types";
+import type { Finding } from "@/lib/findings/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,22 +47,25 @@ export default async function EngagementOpportunitiesPage({
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
   const engagement = loaded.engagement;
+  const isPersisted = loaded.kind === "real";
 
-  if (loaded.kind === "real") {
-    return (
-      <EngagementPersistencePlaceholder
-        engagement={engagement}
-        eyebrow="AdvisoryOps · Opportunities"
-        title="Opportunity matrix."
-        description="Score and prioritize approved findings into Quick Wins, Strategic Builds, Low Priority, and Defer · Avoid."
-        activatesIn="Step 7 · Opportunities persistence"
-        currentPath={`/app/engagements/${engagement.id}/opportunities`}
-      />
-    );
+  let opportunities: Opportunity[];
+  let findings: Finding[];
+  let findingCandidates: Awaited<
+    ReturnType<typeof getFindingCandidatesForEngagement>
+  > = [];
+
+  if (isPersisted) {
+    [opportunities, findings, findingCandidates] = await Promise.all([
+      getOpportunitiesForEngagementPersisted(engagement.id),
+      getMinimalFindingsForEngagement(engagement.id),
+      getFindingCandidatesForEngagement(engagement.id),
+    ]);
+  } else {
+    opportunities = getOpportunitiesForEngagement(engagement.id);
+    findings = getFindingsForEngagement(engagement.id);
   }
 
-  const opportunities = getOpportunitiesForEngagement(engagement.id);
-  const findings = getFindingsForEngagement(engagement.id);
   const approvedFindings = findings.filter(
     (f) => f.reviewStatus === "approved" || f.reviewStatus === "report-ready",
   );
@@ -123,7 +134,7 @@ export default async function EngagementOpportunitiesPage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 6 · Mock data
+              {isPersisted ? "Persistence Step 7 · Live" : "Sprint 6 · Mock data"}
             </span>
           </>
         }
@@ -165,9 +176,7 @@ export default async function EngagementOpportunitiesPage({
         />
         <MetricCard
           label="Strong Evidence"
-          value={
-            total === 0 ? "—" : `${strongEvidence}/${total}`
-          }
+          value={total === 0 ? "—" : `${strongEvidence}/${total}`}
           hint="Backed by primary sources"
           tone={strongEvidence === total && total > 0 ? "success" : "info"}
         />
@@ -175,36 +184,77 @@ export default async function EngagementOpportunitiesPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
-          {total === 0 ? (
-            <EmptyState
-              icon={<Sparkles className="h-4 w-4" />}
-              title={
-                approvedFindings.length === 0
-                  ? "Approve findings before opportunity scoring begins."
-                  : "No opportunities scored yet."
-              }
-              description={
-                approvedFindings.length === 0
-                  ? "Findings need consultant approval before they can be turned into opportunities. Open the findings workspace to review."
-                  : "Approved findings are ready. Scoring opens once the consultant promotes findings into opportunities."
-              }
-              action={
-                <Link href={findingsHref}>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    trailingIcon={<ArrowRight className="h-4 w-4" />}
-                  >
-                    Open findings workspace
-                  </Button>
-                </Link>
-              }
+          {isPersisted ? (
+            <CreateOpportunityForm
+              engagementId={engagement.id}
+              findingCandidates={findingCandidates}
             />
+          ) : null}
+
+          {total === 0 ? (
+            isPersisted ? (
+              <Card variant="base">
+                <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                    No opportunities yet
+                  </span>
+                  <p className="text-xs leading-relaxed text-text-muted">
+                    Create opportunities from approved or report-ready
+                    findings using the form above. Quadrant placement is
+                    derived from impact + complexity + risk on save.
+                  </p>
+                  {findingCandidates.length === 0 ? (
+                    <Link
+                      href={findingsHref}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+                    >
+                      Open findings workspace
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  ) : null}
+                </CardBody>
+              </Card>
+            ) : (
+              <EmptyState
+                icon={<Sparkles className="h-4 w-4" />}
+                title={
+                  approvedFindings.length === 0
+                    ? "Approve findings before opportunity scoring begins."
+                    : "No opportunities scored yet."
+                }
+                description={
+                  approvedFindings.length === 0
+                    ? "Findings need consultant approval before they can be turned into opportunities. Open the findings workspace to review."
+                    : "Approved findings are ready. Scoring opens once the consultant promotes findings into opportunities."
+                }
+                action={
+                  <Link href={findingsHref}>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      trailingIcon={<ArrowRight className="h-4 w-4" />}
+                    >
+                      Open findings workspace
+                    </Button>
+                  </Link>
+                }
+              />
+            )
           ) : (
             <OpportunitiesWorkspace
               engagementId={engagement.id}
               opportunities={opportunities}
               findings={findings}
+              renderActionBar={
+                isPersisted
+                  ? (opportunity) => (
+                      <OpportunityActionBar
+                        opportunityId={opportunity.id}
+                        status={opportunity.status ?? "draft"}
+                      />
+                    )
+                  : undefined
+              }
             />
           )}
 
@@ -216,8 +266,8 @@ export default async function EngagementOpportunitiesPage({
               <p className="text-xs leading-relaxed text-text-muted">
                 Scoring is directional and human-judgment based. Opportunities
                 are validated during scoping, not auto-promoted into the
-                roadmap. Report assembly and proposal generation arrive in
-                Sprint 7.
+                roadmap. AI opportunity generation and report assembly
+                activate in later sprints.
               </p>
             </CardBody>
           </Card>

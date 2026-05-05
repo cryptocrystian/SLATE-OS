@@ -24,6 +24,13 @@ export type OpportunityQuadrant =
 
 export type EvidenceStrength = "strong" | "adequate" | "thin";
 
+export type OpportunityStatus =
+  | "draft"
+  | "scored"
+  | "selected"
+  | "deferred"
+  | "rejected";
+
 export interface Opportunity {
   id: string;
   engagementId: string;
@@ -48,4 +55,7 @@ export interface Opportunity {
   dependencies: string[];
   risks: string[];
   successSignals: string[];
+  /** Lifecycle status for persisted opportunities. Mock fixtures may
+   *  omit this. */
+  status?: OpportunityStatus;
 }

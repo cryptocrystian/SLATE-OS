@@ -10,14 +10,21 @@ import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RoadmapPhaseColumn } from "@/components/roadmap/roadmap-phase-column";
+import { CreateRoadmapItemForm } from "@/components/roadmap/create-roadmap-item-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
+import {
+  getOpportunityCandidatesForEngagement,
+  getRoadmapForEngagementPersisted,
+} from "@/lib/roadmap/queries";
+import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
 import { PHASE_ORDER } from "@/lib/roadmap/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
-import { EngagementPersistencePlaceholder } from "@/components/engagements/persistence-placeholder";
+import type { RoadmapItem } from "@/lib/roadmap/types";
+import type { Opportunity } from "@/lib/opportunities/types";
 
 export const dynamic = "force-dynamic";
 
@@ -41,22 +48,24 @@ export default async function EngagementRoadmapPage({
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
   const engagement = loaded.engagement;
+  const isPersisted = loaded.kind === "real";
 
-  if (loaded.kind === "real") {
-    return (
-      <EngagementPersistencePlaceholder
-        engagement={engagement}
-        eyebrow="AdvisoryOps · Roadmap"
-        title="30/60/90 roadmap."
-        description="Sequence prioritized opportunities into a 30/60/90-day implementation plan."
-        activatesIn="Step 7 · Roadmap persistence"
-        currentPath={`/app/engagements/${engagement.id}/roadmap`}
-      />
-    );
+  let items: RoadmapItem[];
+  let opportunities: Opportunity[];
+  let opportunityCandidates: Awaited<
+    ReturnType<typeof getOpportunityCandidatesForEngagement>
+  > = [];
+
+  if (isPersisted) {
+    [items, opportunities, opportunityCandidates] = await Promise.all([
+      getRoadmapForEngagementPersisted(engagement.id),
+      getOpportunitiesForEngagementPersisted(engagement.id),
+      getOpportunityCandidatesForEngagement(engagement.id),
+    ]);
+  } else {
+    items = getRoadmapForEngagement(engagement.id);
+    opportunities = getOpportunitiesForEngagement(engagement.id);
   }
-
-  const items = getRoadmapForEngagement(engagement.id);
-  const opportunities = getOpportunitiesForEngagement(engagement.id);
 
   const counts = {
     total: items.length,
@@ -123,7 +132,7 @@ export default async function EngagementRoadmapPage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 6 · Mock data
+              {isPersisted ? "Persistence Step 7 · Live" : "Sprint 6 · Mock data"}
             </span>
           </>
         }
@@ -173,31 +182,62 @@ export default async function EngagementRoadmapPage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
-          {counts.total === 0 ? (
-            <EmptyState
-              icon={<Calendar className="h-4 w-4" />}
-              title={
-                opportunities.length === 0
-                  ? "Score opportunities before sequencing the roadmap."
-                  : "No roadmap items yet."
-              }
-              description={
-                opportunities.length === 0
-                  ? "Approved findings need to be promoted into opportunities before the 30/60/90-day roadmap can be sequenced."
-                  : "Promote opportunities into the 30/60/90 roadmap when the engagement reaches scoping."
-              }
-              action={
-                <Link href={opportunitiesHref}>
-                  <Button
-                    variant="primary"
-                    size="md"
-                    trailingIcon={<ArrowRight className="h-4 w-4" />}
-                  >
-                    Open opportunities
-                  </Button>
-                </Link>
-              }
+          {isPersisted ? (
+            <CreateRoadmapItemForm
+              engagementId={engagement.id}
+              opportunityCandidates={opportunityCandidates}
             />
+          ) : null}
+
+          {counts.total === 0 ? (
+            isPersisted ? (
+              <Card variant="base">
+                <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                    No roadmap yet
+                  </span>
+                  <p className="text-xs leading-relaxed text-text-muted">
+                    Add roadmap items from selected opportunities using the
+                    form above. Each item lives in 30, 60, or 90-day
+                    sequencing and links back to its source opportunity.
+                  </p>
+                  {opportunityCandidates.length === 0 ? (
+                    <Link
+                      href={opportunitiesHref}
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-primary hover:underline"
+                    >
+                      Open opportunities
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  ) : null}
+                </CardBody>
+              </Card>
+            ) : (
+              <EmptyState
+                icon={<Calendar className="h-4 w-4" />}
+                title={
+                  opportunities.length === 0
+                    ? "Score opportunities before sequencing the roadmap."
+                    : "No roadmap items yet."
+                }
+                description={
+                  opportunities.length === 0
+                    ? "Approved findings need to be promoted into opportunities before the 30/60/90-day roadmap can be sequenced."
+                    : "Promote opportunities into the 30/60/90 roadmap when the engagement reaches scoping."
+                }
+                action={
+                  <Link href={opportunitiesHref}>
+                    <Button
+                      variant="primary"
+                      size="md"
+                      trailingIcon={<ArrowRight className="h-4 w-4" />}
+                    >
+                      Open opportunities
+                    </Button>
+                  </Link>
+                }
+              />
+            )
           ) : (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {PHASE_ORDER.map((phase) => (
@@ -218,10 +258,10 @@ export default async function EngagementRoadmapPage({
               </span>
               <p className="text-xs leading-relaxed text-text-muted">
                 The 30/60/90 roadmap is an advisory implementation-readiness
-                plan, not a project-management board. Report assembly and
-                proposal generation arrive in Sprint 7. Each roadmap item
+                plan, not a project-management board. Each roadmap item
                 stays linked to its source opportunity and underlying
-                evidence so the trail is intact through to the SOW.
+                evidence so the trail is intact through to the SOW. Report
+                and proposal assembly activate in a later sprint.
               </p>
             </CardBody>
           </Card>

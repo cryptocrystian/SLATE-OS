@@ -39,12 +39,17 @@ export interface OpportunitiesWorkspaceProps {
   engagementId: string;
   opportunities: Opportunity[];
   findings: Finding[];
+  /** Optional render-prop for the per-opportunity action bar. When
+   *  provided, the persisted action bar renders inside the detail panel
+   *  in place of the static placeholder. */
+  renderActionBar?: (opportunity: Opportunity) => React.ReactNode;
 }
 
 export function OpportunitiesWorkspace({
   engagementId,
   opportunities,
   findings,
+  renderActionBar,
 }: OpportunitiesWorkspaceProps) {
   const [active, setActive] = React.useState<OpportunityFilterId>("all");
   const [selectedId, setSelectedId] = React.useState<string | null>(
@@ -160,6 +165,9 @@ export function OpportunitiesWorkspace({
               Select an opportunity to review.
             </p>
           )}
+          {selected && renderActionBar ? (
+            <div>{renderActionBar(selected)}</div>
+          ) : null}
           {selected ? (
             <RelatedFindingsPanel
               engagementId={engagementId}

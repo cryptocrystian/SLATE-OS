@@ -4,6 +4,38 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-05 — Persistence/Auth Step 7: operator-scored opportunities persist with finding links; manual 30/60/90 roadmap sequenced from selected opportunities; AI opportunity generation deferred
+
+**Decision.** `/app/engagements/[id]/opportunities` and `/app/engagements/[id]/roadmap` now read/write real `opportunities`, `opportunity_finding_links`, and `roadmap_items` for UUID engagements. Operators score opportunities from approved/report-ready findings via a compact form; quadrant + priority are derived server-side from impact + complexity + risk (high-risk override → defer-avoid). Selected opportunities are sequenced into a manual 30/60/90 roadmap. Engagement detail's Opportunities panel reflects live counts and shifts copy to roadmap milestones once items exist. AI opportunity generation, drag-and-drop reordering, and automated roadmap creation stay deferred.
+
+**Context.** Step 7 of `docs/persistence/02_MIGRATION_SEQUENCE.md`. Steps 0–6 closed the public-scorecard → lead inbox → engagement creation → stakeholder intake → findings loop. Without persisted opportunities and roadmap, Step 8 (reports + proposals) has no scored opportunities or sequenced roadmap items to attach report sections + proposal options to. Step 7 closes the findings → opportunities → roadmap chain so the next migration step is purely additive.
+
+**Implementation.**
+- `supabase/migrations/0007_opportunities_roadmap.sql` — three tables. `opportunities` with six 0–100 score columns, text-typed enums, `position` for ordering, lifecycle `status` (`draft` / `scored` / `selected` / `deferred` / `rejected`). `opportunity_finding_links` with a unique `(opportunity_id, finding_id)` constraint. `roadmap_items` with `phase` / `status` / `priority` text columns, optional `opportunity_id` FK on delete `set null`. RLS operator-full on all three.
+- `lib/opportunities/{queries,mappers,actions}.ts` (server-only / `"use server"`) — list / status summary / finding candidates / minimal findings, plus actions (create, update scores, mark selected, defer, reject, reopen). Quadrant computed server-side via `computeQuadrant` from `lib/opportunities/helpers.ts`, with a high-risk override (`risk >= 85`) that collapses into `defer-avoid` regardless of impact.
+- `lib/roadmap/{queries,mappers,actions}.ts` (server-only / `"use server"`) — list / status summary / opportunity candidates, plus actions (create, set status, remove).
+- `lib/opportunities/types.ts` — added optional `status?: OpportunityStatus` to the existing `Opportunity` shape. Mock fixtures still typecheck unchanged because the field is optional.
+- `components/opportunities/opportunities-workspace.tsx` — extended with `renderActionBar?: (opportunity) => React.ReactNode` so persisted paths inject the real action bar without forking the workspace component.
+- `components/opportunities/{create-opportunity-form,opportunity-action-bar}.tsx` (new, `"use client"`).
+- `components/roadmap/create-roadmap-item-form.tsx` (new, `"use client"`).
+- `app/app/engagements/[id]/opportunities/page.tsx` and `app/app/engagements/[id]/roadmap/page.tsx` — branch on `loadEngagementForSubroute`. UUID engagements render persisted workspace + create form + persisted empty state; legacy slugs continue rendering the seeded mock workspaces unchanged.
+- `app/app/engagements/[id]/page.tsx` — `mergeOpportunityStatus(engagement, summary, roadmapSummary)` overlays derived counts on the engagement's `opportunities` jsonb. When at least one roadmap item exists, the panel's scoring-state copy switches to a 30/60/90 breakdown and the next-action copy reflects roadmap milestones (blocked items, sequencing prompts, completion).
+
+**Tradeoffs.**
+- *Quadrant + priority derived server-side from impact + complexity + risk.* Keeps the matrix coherent: the operator can set scores; quadrant placement is automatic. The high-risk override (`risk >= 85` → `defer-avoid`) prevents an obviously high-risk opportunity from sneaking into Quick Wins on the strength of impact alone. Drag-and-drop reordering is intentionally out of scope — `position` exists in the schema but is set to insertion order until a future sprint surfaces a sequencer.
+- *Status / phase / priority / quadrant / category / evidence stored as `text` not `enum`.* Mirrors Steps 4.5 / 5 / 6. The vocabulary is still evolving (e.g. an opportunity may eventually need a `pinned-for-report` state). App code is the single source of truth; mappers reject unknown values with safe defaults.
+- *No automatic roadmap generation.* The canon defers automation. Step 7 ships manual sequencing only; the create form lets the operator pick a phase, link an opportunity, and capture key actions / dependencies / success criteria. When AI sequencing lands, it can populate the same tables additively.
+- *`Opportunity.status` made optional, not required.* The legacy mock `MOCK_OPPORTUNITIES` fixtures don't define a lifecycle status (they were authored before Step 7). Making the field optional avoids a wide refactor of the mock files; persisted records always set it via the mapper. The action bar safely defaults `undefined → "draft"`.
+- *Renamed persisted queries (`getOpportunitiesForEngagementPersisted`, `getRoadmapForEngagementPersisted`).* Mock helpers `getOpportunitiesForEngagement` and `getRoadmapForEngagement` from the legacy `mock-*.ts` files still feed the slug branch. Renaming the persisted query keeps both helpers callable from the route without conditional imports. Mock retirement waits for Step 8+.
+- *No drag-drop or matrix repositioning UI.* Out of scope — explicit canon decision that v1 sequencing stays manual via `position` ordering.
+- *`opportunity_finding_links.strength` defaults to `adequate`.* The form persists the opportunity-level evidence strength on each link for now. A per-link strength selector can ship in a follow-up.
+
+**Boundary preserved.** Opportunities and roadmap are operator-only. Public `/intake/[token]` and `/scorecard*` cannot reach them (no anon policies, no service-role usage in this code path). `/app/*` middleware-gated as before. No real AI synthesis, no automated roadmap, no report or proposal persistence, no production export, no BuildOps surfaces.
+
+**Verified.** `npm run lint` clean; `NEXT_TELEMETRY_DISABLED=1 npm run build` clean; `git status --short --ignored` shows `.env.local` as `!!` (ignored, untracked); no secrets, raw intake tokens, magic-link URLs, service-role keys, stakeholder PII, or finding excerpts printed during this sprint. End-to-end manual exercise (apply migration → operator scores opportunity from approved finding → marks selected → adds roadmap item linked to it → confirms engagement detail panel updates → confirms public route cannot reach opportunities/roadmap) deferred to a real Supabase round-trip.
+
+---
+
 ## 2026-05-05 — Persistence/Auth Step 6: operator-authored findings persist with typed source references; AI synthesis remains deferred
 
 **Decision.** `/app/engagements/[id]/findings` now reads/writes real `findings` and `finding_source_refs` for UUID engagements. Operators author findings manually and can attach existing stakeholder intake responses or input assets as typed source references in the same form. Review actions (approve, reject, mark report-ready, reopen, reviewer note) persist via authenticated server actions and reflect on the engagement detail's Findings panel via a derived overlay. AI-drafted findings stay deferred — `findings.ai_drafted` defaults to `false` and the schema is forward-compatible with a future synthesis pipeline.
