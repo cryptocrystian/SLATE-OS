@@ -11,46 +11,65 @@ import { RoleCoverageMap } from "@/components/intake/role-coverage-map";
 import { StakeholderList } from "@/components/intake/stakeholder-list";
 import { SupportingInputsPanel } from "@/components/intake/supporting-inputs-panel";
 import { FollowUpQueue } from "@/components/intake/follow-up-queue";
+import { CreateStakeholderForm } from "@/components/intake/create-stakeholder-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { EngagementRisksPanel } from "@/components/engagements/engagement-risks-panel";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getIntakeForEngagement } from "@/lib/intake/mock-intake";
+import { getIntakeRecordForEngagement } from "@/lib/intake/queries";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { IntakeRecord } from "@/lib/intake/types";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) return { title: "Intake not found" };
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) return { title: "Intake not found" };
   return {
-    title: `${engagement.companyName} · Stakeholder intake`,
+    title: `${loaded.engagement.companyName} · Stakeholder intake`,
   };
 }
 
-export default function EngagementIntakePage({
+export default async function EngagementIntakePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
-  if (!engagement) notFound();
-  const intake = getIntakeForEngagement(engagement.id);
-  if (!intake) notFound();
+  const loaded = await loadEngagementForSubroute(params.id);
+  if (!loaded) notFound();
+  const engagement = loaded.engagement;
 
   const findings = getFindingsForEngagement(engagement.id);
   const findingsHref =
     findings.length > 0 ? `/app/engagements/${engagement.id}/findings` : undefined;
+
+  let intake: IntakeRecord | null = null;
+  let trustWarning: string | undefined;
+  let isPersisted = false;
+
+  if (loaded.kind === "real") {
+    intake =
+      (await getIntakeRecordForEngagement(engagement.id)) ?? {
+        engagementId: engagement.id,
+        stakeholders: [],
+        roleCoverage: [],
+        supportingInputs: [],
+        followUps: [],
+        intakeRiskNotes: [],
+      };
+    isPersisted = true;
+    trustWarning = await loadTrustWarning(engagement.linkedLeadId);
+  } else {
+    intake = getIntakeForEngagement(engagement.id) ?? null;
+    if (!intake) notFound();
+  }
 
   const completed = intake.stakeholders.filter(
     (s) => s.status === "completed",
@@ -120,7 +139,7 @@ export default function EngagementIntakePage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Sprint 5 · Mock data
+              {isPersisted ? "Persistence Step 5 · Live" : "Sprint 5 · Mock data"}
             </span>
           </>
         }
@@ -180,8 +199,34 @@ export default function EngagementIntakePage({
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <RoleCoverageMap rows={intake.roleCoverage} />
-          <StakeholderList stakeholders={intake.stakeholders} />
+          {isPersisted ? (
+            <CreateStakeholderForm
+              engagementId={engagement.id}
+              trustWarning={trustWarning}
+            />
+          ) : null}
+
+          {intake.roleCoverage.length > 0 ? (
+            <RoleCoverageMap rows={intake.roleCoverage} />
+          ) : null}
+
+          {intake.stakeholders.length === 0 && isPersisted ? (
+            <Card variant="base">
+              <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
+                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                  No stakeholders yet
+                </span>
+                <p className="text-xs leading-relaxed text-text-muted">
+                  Invite stakeholders above. Each invite generates a unique
+                  token-gated link that lets them complete intake without a
+                  SLATE login.
+                </p>
+              </CardBody>
+            </Card>
+          ) : (
+            <StakeholderList stakeholders={intake.stakeholders} />
+          )}
+
           <SupportingInputsPanel inputs={intake.supportingInputs} />
           <FollowUpQueue followUps={intake.followUps} />
 
@@ -240,4 +285,24 @@ export default function EngagementIntakePage({
       </div>
     </div>
   );
+}
+
+async function loadTrustWarning(
+  linkedLeadId: string | undefined,
+): Promise<string | undefined> {
+  if (!linkedLeadId) return undefined;
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select("trust_status, trust_reasons")
+    .eq("id", linkedLeadId)
+    .maybeSingle<{
+      trust_status: string | null;
+      trust_reasons: string[] | null;
+    }>();
+  if (error || !data) return undefined;
+  if (data.trust_status === "flagged" || data.trust_status === "rejected") {
+    return "This lead was flagged during public scorecard submission. Confirm before sending stakeholder intake.";
+  }
+  return undefined;
 }

@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — Persistence/Auth Step 3 (lead inbox + lead detail persistence) implemented; `/app/leads*` reads real Supabase rows under RLS_
+_Last updated: 2026-05-05 — Persistence/Auth Step 5 (stakeholder intake + documents persistence) implemented; operator workspace creates token-gated intake sessions, public `/intake/[token]` route accepts stakeholder responses, raw tokens never stored_
 
 ## Sprint State
 
@@ -20,6 +20,9 @@ _Last updated: 2026-05-05 — Persistence/Auth Step 3 (lead inbox + lead detail 
 | P1 | Persistence/Auth Step 1 — Auth shell + operator login | ✅ Complete |
 | P2 | Persistence/Auth Step 2 — Public scorecard submission persistence | ✅ Complete |
 | P3 | Persistence/Auth Step 3 — Lead inbox + lead detail persistence | ✅ Complete |
+| P4 | Persistence/Auth Step 4 — Engagement creation + engagement detail persistence | ✅ Complete |
+| P4.5 | Persistence/Auth Step 4.5 — Public scorecard anti-abuse + email quality | ✅ Complete |
+| P5 | Persistence/Auth Step 5 — Stakeholder intake + documents persistence | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -290,6 +293,170 @@ Public response from both `submit` and `results/[id]` confirmed to contain no `f
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 48 routes generate. `/app/leads` and `/app/leads/[id]` are now both `ƒ` (dynamic) — expected because they cookie-bind a Supabase session for RLS.
 - Secret handling: `.env.local` was not read, modified, or staged; `git status --short --ignored` shows it as `!!`-ignored. No service role key, magic-link URL, or other credential printed during this sprint.
 
+## Persistence/Auth Step 4 — what landed (2026-05-05)
+
+`/app/engagements` and `/app/engagements/[id]` now read real Supabase-backed engagement rows. Clicking `Start AI Opportunity Sprint` on a real lead creates (or reopens) a real engagement linked to that lead.
+
+**Migration `0003_engagements.sql`.**
+
+- New enums: `engagement_type`, `engagement_status`, `engagement_stage`.
+- New table `engagements` with: `workspace_id`, `account_id`, `contact_id`, `linked_lead_id`, `name`, `engagement_type`, `status`, `current_stage`, `owner_profile_id`, `target_date`, `last_activity_at`, `next_milestone`, `recommended_action jsonb`, six per-stage status `jsonb` columns (`intake_status` / `document_status` / `findings_status` / `opportunity_status` / `report_status` / `proposal_status`), `risk_notes`/`dependencies`/`notes`/`source_snapshot` jsonb, plus `created_at` / `updated_at` with the shared `set_updated_at` trigger.
+- Indexes on `(workspace_id, last_activity_at desc)`, `account_id`, `contact_id`, `linked_lead_id`, `current_stage`, `status`, plus a partial **unique** index on `linked_lead_id where linked_lead_id is not null` so re-clicking `Start AI Opportunity Sprint` from the same lead always reopens the same workspace.
+- RLS enabled with `engagements_operator_full` policy: `for all to authenticated using/with check (workspace_id = (select id from public.workspaces limit 1))`. No anon access.
+
+**Query / action layer.**
+
+- `lib/engagements/queries.ts` (server-only) — `getAllEngagements()` selects engagements joined to `accounts` (name/industry/practice_area), `contacts` (full_name/title/email), and `profiles` (display_name) ordered by `last_activity_at desc`. `getEngagementById(uuid)` reads a single row; `getEngagementIdForLead(leadUuid)` powers the lead actions panel CTA.
+- `lib/engagements/mappers.ts` — DB↔TS mapping for engagement enums (underscored ↔ hyphenated), defensive jsonb parsers for each panel-status block (with safe defaults so a missing column never crashes the UI), `formatRelative()` for `last_activity_at`, and `defaultIntakeStatus()` / etc. used both at insert time and as render fallbacks.
+- `lib/engagements/actions.ts` — single server action `createOrOpenEngagementForLead(leadId)` that auth-checks via `supabase.auth.getUser()`, looks up any existing engagement by `linked_lead_id`, otherwise loads the lead + account + contact + submission, builds a starter engagement (initial stage `setup` or `intake` depending on lead status), persists default panel status JSON, owner_profile_id = current operator, source_snapshot capturing `{ leadId, submissionId, classification, ai/friction/systems, capturedAt, scorecardSummary }`, then updates lead status to `diagnostic_requested` if it was `new` / `needs_review` / `high_fit`, then redirects to `/app/engagements/<uuid>`. Race protection on the unique linked_lead_id index (PG `23505` falls through to the existing engagement).
+- `lib/engagements/load-for-subroute.ts` — small helper used by every downstream sub-route. Tries the legacy mock fixtures first (so `atlas-aios-q2` etc. demo paths keep working), falls back to a real engagement lookup. Returns `{ kind: "mock" | "real", engagement }` so the page can render either its existing mock workspace or the persistence placeholder.
+
+**Engagement list (`/app/engagements`).**
+
+- Server component, `force-dynamic`. Reads via `getAllEngagements()`. The five existing pipeline `MetricCard`s and the `EngagementList` filter tabs all render against real rows. Eyebrow updated from `Sprint 4 · Mock data` → `Persistence Step 4 · Live`.
+- Empty state: when zero rows, renders `EmptyState` with copy *"No engagements yet — Start an AI Opportunity Sprint from a qualified lead to create the first workspace."* plus a primary `Open Leads` CTA.
+
+**Engagement detail (`/app/engagements/[id]`).**
+
+- Server component, `force-dynamic`. Reads via `getEngagementById()`. UUID-guarded; `notFound()` on missing or RLS-denied. `generateStaticParams` removed.
+- Components reused unchanged (`EngagementProfileHeader`, `EngagementStageTracker`, `StakeholderProgressPanel`, `DocumentStatusPanel`, `FindingsStatusPanel`, `OpportunityStatusPanel`, `ReportStatusPanel`, `ProposalStatusPanel`, `EngagementRisksPanel`, `EngagementContextCard`, `EngagementRecommendedActionCard`, `EngagementNotesPanel`).
+- Each status panel renders a sensible default when its underlying jsonb column is null (a freshly-created engagement shows "Ready to send" intake, "Not yet requested" docs, etc., with stage-appropriate next-action copy).
+
+**Lead → engagement flow.**
+
+- `components/leads/lead-actions-panel.tsx` now binds the `Start AI Opportunity Sprint` button to `createOrOpenEngagementForLead(leadId)` via a `<form action={…}>` (no client JS path on the action itself). When an engagement already exists, the button switches to a `Link` labeled `Open AI Opportunity Sprint` that points at the existing workspace.
+- `app/app/leads/[id]/page.tsx` looks up `getEngagementIdForLead(lead.id)` to pick the right CTA mode, removed the legacy `engagementForLead(slug)` call.
+- Re-clicking from the same lead is idempotent: the unique partial index on `engagements.linked_lead_id` plus the action's existing-row check guarantees a single engagement per lead. The race path catches `23505` and falls through to the existing record.
+
+**Downstream sub-route boundary.**
+
+- The six engagement sub-routes (`/intake`, `/findings`, `/opportunities`, `/roadmap`, `/report`, `/proposal`) now use `loadEngagementForSubroute(id)`. For legacy mock slug ids (`atlas-aios-q2`, `helio-aios-q2`, `meridian-aios-q2`, `quanta-aios-q2`, `caldera-aios-q2`) they continue to render their seeded workspaces unchanged. For UUID-keyed real engagements they render a shared `EngagementPersistencePlaceholder` (premium dark surface with eyebrow / title / description / activates-in label / Back-to-engagement CTA / engagement context card / recommended action). No fake downstream data is ever generated for a real engagement.
+- All six sub-routes are now `force-dynamic`; `generateStaticParams` removed because the route accepts both seed slugs and UUIDs.
+
+**Mock engagement boundary preserved.**
+
+- `lib/engagements/mock-engagements.ts` retained as the fixture set for legacy slug-keyed demo paths. A header comment now documents that runtime engagement list/detail use Supabase and that this file remains only for the downstream advisory workspaces until Steps 5–8.
+- All other domain mock files (`lib/intake`, `lib/findings`, `lib/opportunities`, `lib/roadmap`, `lib/reports`, `lib/proposals`) untouched.
+
+**RLS / security.**
+
+- Authenticated operators can `select` / `insert` / `update` / `delete` engagements; no `to anon` policies exist. `linked_lead_id` is nullable but indexed `unique where not null` so manual operator-created engagements (no source lead) stay supported.
+- The server action calls `supabase.auth.getUser()` before any read/write so an unauthenticated request bounces to `/login` rather than relying solely on RLS to refuse the insert.
+- No service role used in engagement code paths — internal reads/writes go through the authenticated cookie-bound server client.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 21 routes generate. `/app/engagements`, `/app/engagements/[id]`, and all six engagement sub-routes are `ƒ` dynamic.
+- Secret handling: `.env.local` was not read, modified, or staged; `git status --short --ignored` shows it as `!!`-ignored. No service role key, magic-link URL, or other credential printed during this sprint.
+
+## Persistence/Auth Step 4.5 — what landed (2026-05-05)
+
+A hardening sprint between Step 4 and Step 5. Public scorecard submissions now run through a server-side anti-abuse + email-quality pipeline before they're persisted, and the resulting leads carry a small operator-only trust chip.
+
+**Migration `0004_scorecard_abuse_hardening.sql`.**
+
+- `scorecard_submissions` gains nullable columns: `email_normalized`, `email_domain`, `email_quality text default 'unknown'`, `email_verified boolean default false`, `anti_abuse_status text default 'accepted'`, `anti_abuse_reasons text[]`, `submission_duration_ms integer`, `honeypot_value text`, `client_fingerprint_hash text`. Permitted values stay enforced in app code (text columns, not enums) so the vocabulary can evolve without another migration.
+- `leads` gains `trust_status text default 'unverified'` and `trust_reasons text[]`. Indexed on `(workspace_id, trust_status, last_activity_at desc)` for the operator-side filter that lands later.
+- New indexes on `scorecard_submissions(email_normalized, submitted_at desc)` and `(email_domain, submitted_at desc)` for the rate-limit count queries; one on `(anti_abuse_status, submitted_at desc)` for ops triage. RLS posture unchanged.
+
+**Email quality (`lib/scorecard/email-quality.ts`).**
+
+- `normalizeEmail`, `isValidEmailSyntax`, `getEmailDomain`, `isDisposableEmailDomain`, `isFreeEmailDomain`, `isFakeEmailDomain`, and `classifyEmailQuality(rawEmail)`.
+- Hand-curated disposable list (~17 domains) covers the common throwaway hosts (`mailinator`, `tempmail`, `10minutemail`, `guerrillamail`, `yopmail`, `trashmail`, `sharklasers`, `getairmail`, `fakeinbox`, `maildrop`, `dispostable`, `mintemail`, `mohmal`, etc.). Fake list adds `example.com` / `test.com` etc. Free-provider list (~22 domains) is allowed but tagged.
+- No DNS / MX checks. No third-party validation services.
+
+**Submit route hardening (`app/api/scorecard/submit/route.ts`).**
+
+- Public error vocabulary narrowed and typed: `invalid-json`, `invalid-submission`, `missing-fields`, `invalid-email`, `disposable-email`, `submission-too-fast`, `rate-limited`, `service-not-configured`. Internal abuse details never leak.
+- **Honeypot.** A hidden `website` field is read from `payload.honeypot` and from `answers.website`. Any non-empty value rejects with 400 `invalid-submission`. The honeypot value itself is never persisted (`honeypot_value` is always written `null`).
+- **Duration thresholds.** `< 15s` rejects `submission-too-fast`; `15s–45s` flags but accepts; `> 45s` accepted.
+- **Disposable / fake email blocks.** Reject before reaching the DB. Free-provider emails accept-but-flag.
+- **Rate limiting.** Two cheap counts against the new indexes — per `email_normalized` (max 3/h) and per `email_domain` (max 6/h, **skipped for free-provider domains** so a normal Gmail population doesn't fight itself). On limit, returns 429 `rate-limited`.
+- **Fingerprint hash.** `sha256(userAgent | locale | timezone | normalizedEmail)` stored as `client_fingerprint_hash`. Coarse repeat-submission bucket; not a tracking fingerprint. **Raw IP is never collected or stored.**
+- All abuse signals collapse into `anti_abuse_status` (`accepted` | `flagged`) and `anti_abuse_reasons` on submissions, plus `trust_status` (`unverified` | `flagged`) and `trust_reasons` on leads. `verified` and `rejected` are reserved for the email-click-verification sprint and a future operator action.
+- Email is normalized before contact upsert and submission insert so the same prospect using `Mike@Acme.COM` and `mike@acme.com` lands on the same contact row.
+
+**Stepper hardening (`components/scorecard/scorecard-stepper.tsx`).**
+
+- Tracks `startedAt` on first hydration, persists it into `slate.scorecard.v1` so a refresh / resume preserves the duration baseline.
+- Sends `clientMeta = { startedAtIso, completedAtIso, submissionDurationMs, locale, timezone }` and the empty `honeypot` field on POST.
+- Visually-hidden honeypot input (`-left-[9999px]`, `aria-hidden`, `tabIndex={-1}`, `autocomplete="off"`).
+- Maps the new public error codes to typed copy.
+
+**Internal lead trust chip.**
+
+- `LeadTrustStatus` union added to `Lead` type. `lib/leads/queries.ts` selects + `mappers.ts` translation surface `trust_status` + `trust_reasons` into the existing `Lead` shape.
+- New `components/leads/lead-trust-chip.tsx` — small `Badge` with status-tinted icon. Reasons render as a `title` hover tooltip.
+- Wired into `LeadListItem` (top-right cluster, next to status + fit) and `LeadProfileHeader`. **Never rendered on a public surface.**
+
+**Email delivery decision (deferred).**
+
+- SLATE will continue showing immediate scorecard results in-browser while storing email/trust metadata. Email delivery and email-click verification are deferred to a later conversion/notification sprint.
+
+**Public/internal boundary preserved.**
+
+- Public response shape unchanged: `{ submissionId, result: PublicScoreResult, displayContext }`. No `fit`, no `trust_status`, no `anti_abuse_status`, no abuse reasons.
+- Public error responses are coded with controlled strings; no internal stacktrace, DB error, or schema detail leaks.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 21 routes generate. `/scorecard/start` and `/app/leads` grew slightly to accommodate the honeypot field and the trust chip; everything else unchanged.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, or magic-link URL printed during this sprint.
+
+## Persistence/Auth Step 5 — what landed (2026-05-05)
+
+`/app/engagements/[id]/intake` now reads/writes real stakeholder intake sessions, responses, and lightweight input-asset metadata for UUID engagements. Operators mint token-gated `/intake/<token>` links manually; stakeholders submit responses on a public route without a SLATE login. Email automation, file upload, and AI synthesis remain deferred.
+
+**Migration `0005_stakeholder_intake.sql`.**
+
+- `stakeholder_intake_sessions` — workspace + engagement scoped, sha256 `token_hash` (unique), `token_expires_at`, status / response_quality as text columns so vocabulary can evolve, contact join optional, `last_activity_at` / `started_at` / `completed_at` timestamps.
+- `stakeholder_responses` — one row per (session, question), unique `(session_id, question_id)`, `answer_text` + optional `answer_json`, cascades on session delete.
+- `input_assets` — metadata only (no Supabase Storage bucket yet). Title / type / status / evidence-quality / linked-role / summary / metadata jsonb. Cascades on engagement delete; nullable session link.
+- RLS enabled with operator-only `for all to authenticated using/with check (workspace_id = (select id from public.workspaces limit 1))`. **No anon policies** — public stakeholder writes go through a server-only service-role client that scopes by token hash.
+
+**Token model.**
+
+- `lib/intake/tokens.ts` — `generateIntakeToken()` (32 random bytes, base64url), `hashIntakeToken()` (sha256 hex), `compareTokenHashes()` (constant time), `isPlausibleRawToken()` (cheap shape guard before any DB call), `buildIntakeUrl()`. The raw token is returned exactly once at creation; only the hash is persisted. Tokens default to a 21-day TTL.
+- Token never appears in logs, telemetry, server responses to other principals, or final reports.
+
+**Public stakeholder route `/intake/[token]`.**
+
+- `app/intake/[token]/page.tsx` — server-rendered, anonymous, `force-dynamic`, `robots: { index: false, follow: false }`. Hashes the URL token, looks up the session via `lib/intake/public.ts` (service role), validates `token_expires_at`, renders one of three states: invalid / expired / completable. Reuses the public `PublicAssessmentShell` for visual continuity with the scorecard.
+- `components/intake/public-intake-form.tsx` (`"use client"`) — renders the seven seed questions from `lib/intake/seed-questions.ts`, pre-fills any prior responses, submits via the page-local `submitPublicIntake` server action which delegates to `submitStakeholderResponses` in `lib/intake/public.ts`. Public surface only exposes `companyName`, `engagementName`, and the stakeholder's role / name / title — never internal fit, lead trust reasons, or scorecard summary internals.
+
+**Operator intake workspace.**
+
+- `lib/intake/queries.ts` (server-only) — `getIntakeRecordForEngagement(engagementId)` returns the existing `IntakeRecord` shape from real rows, derives role coverage from a fixed required-role set and the stakeholders' statuses, and emits a follow-up queue + intake risk notes. `getIntakeStatusSummary(engagementId)` powers the engagement detail page's Stakeholder Progress panel.
+- `lib/intake/mappers.ts` — DB↔TS shape translators. Underscored `customer_success` ↔ hyphenated `customer-success` role enum mapping, status / quality / asset-type / asset-status / evidence-quality conversions, summary-text builder that prefers the automation-wishlist or success-for-role response, completion-percent heuristic from response count, formatRelativeOrDash for the persisted timestamps.
+- `lib/intake/seed-questions.ts` — seven generic intake questions plus a per-role contextual prompt rendered at the top of the public form.
+- `lib/intake/actions.ts` (`"use server"`) — `createStakeholderSession({ engagementId, name, email, title, role, department })` validates the inputs, requires an authenticated operator session, generates a fresh token, persists the hash, and returns `{ ok: true, sessionId, intakeUrl }` exactly once. Calls `revalidatePath` for both the intake workspace and the engagement detail.
+- `components/intake/create-stakeholder-form.tsx` (`"use client"`) — minimal operator form (name / email / title / role / department) with a one-time copy block for the generated link and an explicit "Copy this intake link and send it manually. Email automation lands later." caption. Surfaces a soft warning when the source lead is `flagged` / `rejected` per Step 4.5 trust metadata: "This lead was flagged during public scorecard submission. Confirm before sending stakeholder intake." — never blocks.
+- `app/app/engagements/[id]/intake/page.tsx` — branches on the `loadEngagementForSubroute` result. For UUID engagements it loads the live intake record, exposes the create-stakeholder form, and stamps the meta strip "Persistence Step 5 · Live". For legacy slug engagements it continues to render the seeded mock workspace. Empty state: "Invite stakeholders above. Each invite generates a unique token-gated link…" with role coverage, supporting inputs, and follow-up queue still rendered.
+
+**Engagement detail status panel.**
+
+- `app/app/engagements/[id]/page.tsx` overlays a derived intake summary on top of the persisted `intake_status` jsonb when `getIntakeStatusSummary` returns rows. Roles covered / missing, `stakeholdersInvited` / `stakeholdersResponded`, status badge tone, and next-action copy all reflect the live tables. Engagements with zero sessions keep their existing default copy.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements (`atlas-aios-q2`, `helio-aios-q2`, `meridian-aios-q2`, `quanta-aios-q2`, `caldera-aios-q2`) continue to render the seeded `MOCK_INTAKE` fixtures. Real UUID engagements now render the persisted workspace.
+- `/findings`, `/opportunities`, `/roadmap`, `/report`, `/proposal` remain placeholder-rendered for UUID engagements until Steps 6–8.
+
+**RLS / security.**
+
+- Authenticated operators read/write all three new tables (workspace-scoped). No anon policies; the public stakeholder route never authenticates, so its reads/writes happen through the server-only service-role client gated by token-hash lookup.
+- Tokens are never stored in raw form, never logged, never returned to anyone other than the operator at creation time. The page exposing the token URL is operator-side only and behind `/app/*` middleware auth.
+- Public route does not expose `internal_fit_score`, lead `trust_status`, lead `trust_reasons`, scorecard summary internals, or recommended-action operator copy.
+- Service role key is read only inside `lib/supabase/service.ts` (already `import "server-only"`); no new client-bundle exposure.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean.
+- Secret handling: `.env.local` was not read, modified, or staged; no Supabase keys, service role key, magic-link URL, or raw intake tokens printed during this sprint.
+
 ## Recommended Next Step
 
-**Step 4 — Engagement creation + engagement detail persistence.** Migrate `/app/engagements*` from `MOCK_ENGAGEMENTS` to a real `engagements` table joined on the new `leads.account_id`. The lead detail "Start AI Opportunity Sprint" CTA becomes a real `createEngagementFromLead(leadId)` server action that ties `linked_lead_id` to the persisted lead, snapshots scorecard summary, and sets the lead's status to `converted`. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.
+**Step 6 — Findings persistence.** Migrate `/app/engagements/[id]/findings` from `MOCK_FINDINGS` to real `findings` and `finding_source_refs` tables. Wire the review action bar (Approve / Edit / Reject / Add note) to real server actions and reflect approved counts on the engagement detail's Findings panel. Per `docs/persistence/02_MIGRATION_SEQUENCE.md`.

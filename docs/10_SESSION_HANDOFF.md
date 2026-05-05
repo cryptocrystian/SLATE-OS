@@ -6,9 +6,9 @@ Use this doc when picking up SLATE work in a new session. It captures repo state
 
 ## Where We Are
 
-Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Steps 0, 1, and 2 are verified end-to-end against a real Supabase project; Step 3 ships the lead inbox + lead detail on real data and is build-clean.** All `/app/*` routes are auth-protected. Public scorecard submissions persist server-side with internal fit/lead derivation; the public response is type-narrowed to `PublicScoreResult` (no `fit` leak). `/app/leads*` reads real Supabase rows under operator-only RLS via the authenticated server client; `lib/leads/mock-leads.ts` is retired. All other `/app/*` surfaces still render mock domain data.
+Sprints 1–7 are complete. MVP Stabilization closed cleanly. The MVP Acceptance Audit returned 4.8/5 and approved the surface as the baseline. The Persistence/Auth architecture canon is drafted in `docs/persistence/`. **Persistence/Auth Steps 0, 1, and 2 are verified end-to-end against a real Supabase project; Steps 3 (lead inbox + detail), 4 (engagement creation + detail), 4.5 (scorecard anti-abuse + email quality), and 5 (stakeholder intake + documents) ship build-clean against the same project.** All `/app/*` routes are auth-protected. Public scorecard submissions persist server-side with internal fit/lead derivation; the public response is type-narrowed to `PublicScoreResult` (no `fit` leak). The submit endpoint runs honeypot, minimum-duration, disposable-domain, and per-email/domain rate limiting; submissions and leads carry typed quality + trust metadata that surfaces only inside `/app/*` (small `LeadTrustChip` on the inbox + lead detail). `/app/leads*` and `/app/engagements*` read real Supabase rows under operator-only RLS via the authenticated server client. `Start AI Opportunity Sprint` on a real lead now creates (or reopens) a real engagement, with the unique partial index on `engagements.linked_lead_id` providing idempotency. **Operators can now mint token-gated stakeholder intake links from the engagement intake workspace; stakeholders complete intake on a public `/intake/[token]` route without a SLATE login.** Raw tokens are never stored — only the sha256 hash. Findings, opportunities, roadmap, report, and proposal remain placeholder-rendered for UUID engagements (Steps 6–8). `lib/leads/mock-leads.ts` is retired; `lib/engagements/mock-engagements.ts` and `lib/intake/mock-intake.ts` are retained as fixtures for legacy slug-keyed demo paths only.
 
-Next planned: **Migration Sequence Step 4 — Engagement creation + engagement detail.** Migrate `/app/engagements*` to a real `engagements` table joined on the persisted `leads.account_id`. Wire the lead detail "Start AI Opportunity Sprint" CTA to a real `createEngagementFromLead(leadId)` server action that ties `linked_lead_id` to the real lead UUID, snapshots scorecard summary, and updates the lead's status to `converted`. Retires `lib/engagements/mock-engagements.ts`.
+Next planned: **Migration Sequence Step 6 — Findings persistence.** Migrate `/app/engagements/[id]/findings` from `MOCK_FINDINGS` to real `findings` and `finding_source_refs` tables. Wire the review action bar (Approve / Edit / Reject / Add note) to real server actions; reflect approved counts on the engagement detail's Findings panel. Email automation, document binary upload, and AI synthesis remain deferred per the canon.
 
 ---
 
@@ -139,7 +139,9 @@ lib/
     types.ts               # Sections, Question types, ScoreResult, etc.
     questions.ts           # 19-question bank with dimension weights
     scoring.ts             # Mock scoring + classification + opportunity match
-    storage.ts             # localStorage helpers (slate.scorecard.v1)
+    storage.ts             # localStorage helpers (slate.scorecard.v1) — now also stores startedAt
+    public-result.ts       # Step 2: PublicScoreResult Omit<…, "fit"> + allowlist
+    email-quality.ts       # Step 4.5: classifyEmailQuality + disposable/free/fake blocklists
   leads/
     types.ts               # Lead, LeadStatus, FitDimension, QualificationSignal
     helpers.ts             # fitCategoryFor, status labels/tones, filter set
@@ -149,7 +151,11 @@ lib/
   engagements/
     types.ts               # Engagement + 6 panel-status types, ScorecardSnapshot
     helpers.ts             # STAGES, STAGE_LABEL/DESCRIPTION, STATUS labels/tones, filters
-    mock-engagements.ts    # 5 seeded engagements covering Setup → Proposal
+    queries.ts             # server-only: getAllEngagements / getEngagementById / getEngagementIdForLead (Step 4)
+    mappers.ts             # DB ↔ TS shape translators + safe-default panel JSON parsers (Step 4)
+    actions.ts             # createOrOpenEngagementForLead server action (Step 4)
+    load-for-subroute.ts   # mock-fixture-first loader used by downstream sub-routes (Step 4)
+    mock-engagements.ts    # Fixtures for legacy slug-keyed demo paths only (Steps 5–8 retire piece by piece)
     recommended-action.ts  # Shared routing helper (Sprint 6)
   opportunities/           # Opportunity scoring (Sprint 6)
     types.ts               # Opportunity, priorities, quadrants, evidence strength

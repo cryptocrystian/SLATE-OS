@@ -14,23 +14,22 @@ import { ReportStatusPanel } from "@/components/engagements/report-status-panel"
 import { ProposalStatusPanel } from "@/components/engagements/proposal-status-panel";
 import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
-import {
-  MOCK_ENGAGEMENTS,
-  getEngagementById,
-} from "@/lib/engagements/mock-engagements";
+import { getEngagementById } from "@/lib/engagements/queries";
+import { getIntakeStatusSummary } from "@/lib/intake/queries";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
+import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import type { Engagement } from "@/lib/engagements/types";
+import type { StakeholderRole } from "@/lib/intake/types";
 
-export function generateStaticParams() {
-  return MOCK_ENGAGEMENTS.map((e) => ({ id: e.id }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: {
   params: { id: string };
 }): Promise<Metadata> {
-  const engagement = getEngagementById(params.id);
+  const engagement = await getEngagementById(params.id);
   if (!engagement) return { title: "Engagement not found" };
   return {
     title: `${engagement.companyName} · Engagement`,
@@ -43,14 +42,16 @@ function ratio(numerator: number, denominator: number, zeroLabel: string) {
   return `${numerator}/${denominator}`;
 }
 
-export default function EngagementDetailPage({
+export default async function EngagementDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const engagement = getEngagementById(params.id);
+  const engagement = await getEngagementById(params.id);
   if (!engagement) notFound();
 
+  const intakeSummary = await getIntakeStatusSummary(engagement.id);
+  const intake = mergeIntakeStatus(engagement, intakeSummary);
   const intakeHref = `/app/engagements/${engagement.id}/intake`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
   const opportunitiesHref = `/app/engagements/${engagement.id}/opportunities`;
@@ -67,9 +68,7 @@ export default function EngagementDetailPage({
   const isProposalStageOrLater = currentIdx >= stageOrder.indexOf("proposal");
 
   const stakeholderTotal =
-    engagement.intake.stakeholdersInvited ||
-    engagement.intake.stakeholdersResponded ||
-    0;
+    intake.stakeholdersInvited || intake.stakeholdersResponded || 0;
   const documentTotal =
     engagement.documents.requested || engagement.documents.received || 0;
 
@@ -101,15 +100,15 @@ export default function EngagementDetailPage({
         <MetricCard
           label="Stakeholders"
           value={ratio(
-            engagement.intake.stakeholdersResponded,
+            intake.stakeholdersResponded,
             stakeholderTotal,
             "Not invited",
           )}
           hint={stakeholderTotal === 0 ? "Awaiting kickoff" : "Responded"}
           tone={
-            engagement.intake.status.tone === "success"
+            intake.status.tone === "success"
               ? "success"
-              : engagement.intake.status.tone === "warning"
+              : intake.status.tone === "warning"
                 ? "warning"
                 : "info"
           }
@@ -204,7 +203,7 @@ export default function EngagementDetailPage({
         {/* Main column */}
         <div className="flex flex-col gap-6 lg:col-span-2">
           <StakeholderProgressPanel
-            intake={engagement.intake}
+            intake={intake}
             intakeHref={intakeHref}
           />
           <DocumentStatusPanel
@@ -273,4 +272,66 @@ export default function EngagementDetailPage({
       </div>
     </div>
   );
+}
+
+function mergeIntakeStatus(
+  engagement: Engagement,
+  summary: Awaited<ReturnType<typeof getIntakeStatusSummary>>,
+): Engagement["intake"] {
+  if (!summary || summary.total === 0) {
+    return engagement.intake;
+  }
+  const status = pickIntakeStatusBadge(summary);
+  const rolesCovered = summary.rolesCovered.map(roleLabel);
+  const rolesMissing = summary.rolesMissing.map(roleLabel);
+  return {
+    status,
+    stakeholdersInvited: summary.invited,
+    stakeholdersResponded: summary.completed,
+    rolesCovered: rolesCovered.length > 0 ? rolesCovered : engagement.intake.rolesCovered,
+    rolesMissing: rolesMissing.length > 0 ? rolesMissing : engagement.intake.rolesMissing,
+    lastResponseAt:
+      summary.lastResponseAt ?? engagement.intake.lastResponseAt,
+    nextAction: pickIntakeNextAction(summary, engagement.intake.nextAction),
+  };
+}
+
+function pickIntakeStatusBadge(
+  summary: NonNullable<Awaited<ReturnType<typeof getIntakeStatusSummary>>>,
+): Engagement["intake"]["status"] {
+  if (summary.total === 0) {
+    return { tone: "info", label: "Ready to send" };
+  }
+  if (summary.completed === summary.total) {
+    return { tone: "success", label: "All responses received" };
+  }
+  if (summary.needsFollowUp > 0) {
+    return { tone: "warning", label: "Follow-ups needed" };
+  }
+  if (summary.completed > 0 || summary.inProgress > 0) {
+    return { tone: "info", label: "In progress" };
+  }
+  return { tone: "info", label: "Invitations sent" };
+}
+
+function pickIntakeNextAction(
+  summary: NonNullable<Awaited<ReturnType<typeof getIntakeStatusSummary>>>,
+  fallback: string,
+): string {
+  if (summary.total === 0) return fallback;
+  if (summary.rolesMissing.length > 0) {
+    const missing = summary.rolesMissing.map(roleLabel).join(", ");
+    return `Invite a stakeholder for: ${missing}.`;
+  }
+  if (summary.needsFollowUp > 0) {
+    return `${summary.needsFollowUp} stakeholder${summary.needsFollowUp === 1 ? "" : "s"} need a personal follow-up.`;
+  }
+  if (summary.completed === summary.total) {
+    return "All responses received — open synthesis.";
+  }
+  return "Continue collecting stakeholder responses.";
+}
+
+function roleLabel(role: string): string {
+  return ROLE_LABEL[role as StakeholderRole] ?? role;
 }
