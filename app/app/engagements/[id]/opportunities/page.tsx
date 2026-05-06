@@ -10,10 +10,12 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities-workspace";
 import { CreateOpportunityForm } from "@/components/opportunities/create-opportunity-form";
+import { GenerateOpportunitiesForm } from "@/components/opportunities/generate-opportunities-form";
 import { OpportunityActionBar } from "@/components/opportunities/opportunity-action-bar";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
+import { isAiConfigured } from "@/lib/ai/provider";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import {
   getFindingCandidatesForEngagement,
@@ -48,6 +50,7 @@ export default async function EngagementOpportunitiesPage({
   if (!loaded) notFound();
   const engagement = loaded.engagement;
   const isPersisted = loaded.kind === "real";
+  const aiConfigured = isPersisted && isAiConfigured();
 
   let opportunities: Opportunity[];
   let findings: Finding[];
@@ -134,7 +137,11 @@ export default async function EngagementOpportunitiesPage({
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 7 · Live" : "Sprint 6 · Mock data"}
+              {isPersisted
+                ? aiConfigured
+                  ? "AI Synthesis Step 2 · Live"
+                  : "Persistence Step 7 · Live"
+                : "Sprint 6 · Mock data"}
             </span>
           </>
         }
@@ -185,10 +192,17 @@ export default async function EngagementOpportunitiesPage({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="flex flex-col gap-6 lg:col-span-9">
           {isPersisted ? (
-            <CreateOpportunityForm
-              engagementId={engagement.id}
-              findingCandidates={findingCandidates}
-            />
+            <>
+              <GenerateOpportunitiesForm
+                engagementId={engagement.id}
+                aiConfigured={aiConfigured}
+                hasApprovedFindings={findingCandidates.length > 0}
+              />
+              <CreateOpportunityForm
+                engagementId={engagement.id}
+                findingCandidates={findingCandidates}
+              />
+            </>
           ) : null}
 
           {total === 0 ? (

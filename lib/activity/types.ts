@@ -26,6 +26,7 @@ export type ActivityEventType =
   | "input_asset_uploaded"
   | "input_asset_downloaded"
   | "ai_findings_generated"
+  | "ai_opportunities_generated"
   | "ai_synthesis_failed";
 
 export type ActivityEntityType =

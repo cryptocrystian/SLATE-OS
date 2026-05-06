@@ -12,9 +12,10 @@ import type { AiProviderConfig } from "./types";
  * provider code (the `server-only` import enforces that at build time).
  *
  * Env vars (server-only):
- *   - SLATE_AI_PROVIDER          ("openai" — default; leave unset to disable)
- *   - OPENAI_API_KEY             OpenAI API key. Absence disables synthesis.
- *   - SLATE_AI_FINDINGS_MODEL    Override for findings synthesis model.
+ *   - SLATE_AI_PROVIDER             ("openai" — default; leave unset to disable)
+ *   - OPENAI_API_KEY                OpenAI API key. Absence disables synthesis.
+ *   - SLATE_AI_FINDINGS_MODEL       Override for findings synthesis model.
+ *   - SLATE_AI_OPPORTUNITIES_MODEL  Override for opportunity synthesis model.
  *
  * If the key is absent, `getAiProviderConfig()` returns null and callers
  * must short-circuit to a controlled `ai-not-configured` UI state.
@@ -32,6 +33,22 @@ export function getAiProviderConfig(): AiProviderConfig | null {
   const model =
     process.env.SLATE_AI_FINDINGS_MODEL?.trim() || DEFAULT_FINDINGS_MODEL;
   return { provider: "openai", model };
+}
+
+/**
+ * Provider config tailored to opportunity drafting. Falls back to
+ * `SLATE_AI_FINDINGS_MODEL` and finally the default model when the
+ * opportunity-specific env var is unset, matching the documented
+ * configuration policy in `.env.example`.
+ */
+export function getAiOpportunityProviderConfig(): AiProviderConfig | null {
+  const base = getAiProviderConfig();
+  if (!base) return null;
+  const override = process.env.SLATE_AI_OPPORTUNITIES_MODEL?.trim();
+  if (override && override.length > 0) {
+    return { provider: base.provider, model: override };
+  }
+  return base;
 }
 
 export function isAiConfigured(): boolean {

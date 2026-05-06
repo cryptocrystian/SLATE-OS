@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — AI Synthesis Step 1.1 (findings discoverability + guidance fix) implemented; subtle Sparkles affordance on the engagement stage tracker + Findings status panel when AI is configured on a real engagement, improved "Limited evidence" warning copy with a `Manage intake first` link, intake-first remains the recommended action when stakeholder evidence is thin_
+_Last updated: 2026-05-06 — AI Synthesis Step 2 (operator-triggered draft opportunity generation) implemented; `Generate draft opportunities` CTA on `/app/engagements/[id]/opportunities` produces 2–6 draft opportunities from approved/report-ready findings, server-derives quadrant + priority from clamped scores (high-risk override preserved), persists `opportunity_finding_links` for traceability, drafts enter `status = draft` and require operator selection/defer/reject before they enter the roadmap_
 
 ## Sprint State
 
@@ -30,6 +30,7 @@ _Last updated: 2026-05-05 — AI Synthesis Step 1.1 (findings discoverability + 
 | P10 | Persistence/Auth Step 10 — File / document binary storage | ✅ Complete |
 | AI1 | AI Synthesis Step 1 — Findings draft generation | ✅ Complete |
 | AI1.1 | AI Synthesis Step 1.1 — Findings discoverability + guidance | ✅ Complete |
+| AI2 | AI Synthesis Step 2 — Opportunity drafting from approved findings | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -899,11 +900,84 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 25 routes. `/app/engagements/[id]` First Load unchanged at 107 kB; `/app/engagements/[id]/findings` grew from 10.6 kB to 10.8 kB (the new `Manage intake first` link).
 - Manual browser run via Playwright: signed in via service-role-minted magic link, navigated to `/app/engagements/76097653-fedb-42e5-9ef6-e89a0e97f802`, confirmed Sparkles next to "Synthesis" in stage tracker, `AI draft available` badge + "AI draft available, but intake evidence is thin. Capture stakeholder input first." footnote on the Findings panel, recommended action remains "Manage Intake". Navigated to `/findings`, confirmed updated copy + `Manage intake first` link inside the warning. Navigated to `quanta-aios-q1/findings` (mock slug), confirmed no AI affordance (page meta correctly shows "Sprint 5 · Mock data").
 
+## AI Synthesis Step 2 — what landed
+
+**Goal.** Operator-triggered AI draft opportunity generation from consultant-approved findings. AI output is stored as `status = draft` opportunities tied to the source findings via `opportunity_finding_links`. The operator must select, defer, or reject each draft using the existing review action bar — drafts do not auto-promote into the roadmap.
+
+**No migration.** The Step 1 `ai_synthesis_runs` table accepts arbitrary `run_type` text; Step 2 reuses it with `run_type = 'opportunity_draft'`. The Step 7 `opportunities` and `opportunity_finding_links` tables already carry the score columns, status vocabulary, and join shape needed. Zero schema changes ship with this step.
+
+**AI provider layer additions — `lib/ai/{types,provider,opportunities-context,opportunities-synthesis}.ts`.**
+
+- `lib/ai/types.ts` — adds `DraftOpportunityCandidate`, `DraftOpportunityEvidenceStrength`, `OpportunityProviderInvocationOk`, and `OpportunityProviderInvocationResult` (a discriminated union mirroring the findings shape).
+- `lib/ai/provider.ts` — adds `getAiOpportunityProviderConfig()`. Reads `SLATE_AI_OPPORTUNITIES_MODEL` first, falls back to `SLATE_AI_FINDINGS_MODEL`, then to the default model. Returns `null` when the provider key is absent. `isAiConfigured()` continues to gate the UI.
+- `lib/ai/opportunities-context.ts` — `buildOpportunitySynthesisContext(engagementId)`. Server-only, `auth.getUser()`-gated. Loads engagement + linked account + scorecard summary (when present) + approved/report-ready findings (with up to 5 source refs each, label + role only — no excerpt) + input asset metadata + existing opportunities (with linked finding IDs). Caps: ≤ 20 findings, ≤ 5 source refs per finding, ≤ 20 existing opportunities, ≤ 20 scorecard answers, ≤ 20 input assets. Per-string clip 240–360 chars depending on field. Returns `error: 'no-approved-findings'` if zero eligible findings exist — short-circuiting before any provider call.
+- `lib/ai/opportunities-synthesis.ts` — `synthesizeDraftOpportunities(context)` shapes the system + schema-instruction + user prompt and calls the provider with `temperature = 0.2`, `maxTokens = 2200`. Strict validator drops candidates without a title, candidates whose `linkedFindingIds` do not match the eligible set, candidates with unknown categories, and duplicate titles within the batch. Scores clamped to 0–100 integers. Arrays clamped to ≤ 6 items × ≤ 200 chars each. Generated count clamped to 6 maximum.
+
+**Server action — `lib/opportunities/synthesis-actions.ts`.**
+
+- `generateDraftOpportunitiesForEngagement(engagementId)` — operator-only. Auth-gates first, returns `ai-not-configured` immediately when the key is absent. Returns `no-approved-findings` immediately when the context builder returns no eligible findings — no `ai_synthesis_runs` row is opened in this case (the table records actual provider invocations, not pre-checks).
+- Opens an `ai_synthesis_runs` row in `started` state with `input_summary` containing only safe counts (`findings`, `inputAssets`, `scorecardAnswers`, `existingOpportunities`, `min/maxOpportunities`). No prompt body, no excerpt, no model response is ever written to this row.
+- Calls `synthesizeDraftOpportunities` and inspects the result. On provider error: marks the run `failed`, emits `ai_synthesis_failed`, revalidates routes, returns the typed error.
+- On success: deduplicates against existing opportunity titles (case-insensitive, whitespace-collapsed) and within the batch. For each surviving candidate: derives quadrant via `pickQuadrant(impact, complexity, risk)` (preserves the high-risk `risk >= 85 → defer-avoid` override from `createOpportunity`), derives priority from quadrant via `priorityFromQuadrant`, inserts the opportunity row with `status = draft`. Then inserts `opportunity_finding_links` rows for every linked finding ID with `strength` mirroring the validated `evidenceStrength`.
+- Updates the run row to `completed` (or `failed` if zero opportunities persisted) with `output_summary` containing only counts + provider/model labels + `linkErrorCount`.
+- Emits exactly one activity event per call (`ai_opportunities_generated` or `ai_synthesis_failed`). Metadata is restricted to `{ runType, generatedCount, skippedDuplicateCount, provider, model }` (no titles, descriptions, or finding statements).
+- Revalidates `/app/engagements/<id>/opportunities`, `/app/engagements/<id>/roadmap`, and `/app/engagements/<id>`. Returns `{ ok, generatedCount, skippedDuplicateCount, provider, model }` to the caller — never a raw model response.
+- Partial-failure behavior: if an opportunity inserts but its links fail, the opportunity row is left in `draft` and the operator can attach evidence manually. The link error count is recorded on `output_summary.linkErrorCount`.
+
+**UI integration.**
+
+- `components/opportunities/generate-opportunities-form.tsx` (`"use client"`) — shows `Generate draft opportunities` CTA with a subdued "Draft only · operator review required" badge. Three states:
+  - `aiConfigured = true` and `hasApprovedFindings = true` → enabled CTA, copy explains approved/report-ready findings are used as evidence and that drafts must still be selected/deferred/rejected.
+  - `aiConfigured = true` and `hasApprovedFindings = false` → CTA disabled, controlled warning: *"Approve or mark findings report-ready before drafting opportunities."* with a deep link to `/app/engagements/<id>/findings`.
+  - `aiConfigured = false` → CTA disabled, controlled message: *"AI opportunity drafting is not configured for this environment. Add the provider key server-side (`OPENAI_API_KEY` in `.env.local`) to enable draft generation."*
+- Component uses `useTransition`. On success it shows generated count + skipped duplicates. On failure it shows a translated error code (e.g., `ai-rate-limited` → "AI provider rate-limit reached. Wait a minute and try again.").
+- `app/app/engagements/[id]/opportunities/page.tsx` — calls `isAiConfigured()` server-side and threads `aiConfigured = isPersisted && isAiConfigured()` plus `hasApprovedFindings = findingCandidates.length > 0` (the existing Step 7 candidate query already filters `review_status in ('approved', 'report_ready')`) into `<GenerateOpportunitiesForm>`. The form renders only inside the `isPersisted` branch — mock slug engagements never see the AI drafting CTA. Page meta line now reads "AI Synthesis Step 2 · Live" when AI is configured on a real engagement.
+- Existing manual `<CreateOpportunityForm>` continues to render below the AI form. `OpportunityActionBar` (selected / deferred / rejected / reopen) drives the lifecycle on AI-drafted opportunities exactly as it does on manually-scored ones.
+
+**Activity events.**
+
+- `lib/activity/types.ts` — added `ai_opportunities_generated` to `ActivityEventType` (no new entity type — `ai_synthesis_run` from Step 1 covers it).
+- `components/activity/activity-timeline.tsx` — added tone + label entries: `ai_opportunities_generated → ai / "AI opportunities generated"`. `ai_synthesis_failed` continues to handle failures.
+- Activity metadata restricted to `{ runType, generatedCount, skippedDuplicateCount, provider, model }`. The Step 9 `sanitizeMetadata` continues to drop forbidden keys defensively.
+
+**Public/internal boundary.**
+
+- Only authenticated operators can trigger opportunity synthesis. `generateDraftOpportunitiesForEngagement` short-circuits on `auth.getUser()` before any context is built or any provider call is made.
+- Synthesis output is stored as operator-only `opportunities` rows under existing `opportunities_operator_full` RLS plus `opportunity_finding_links` rows under `opportunity_finding_links_operator_full`. Public scorecard / public intake routes never read opportunities, links, synthesis runs, or activity events.
+- The OpenAI key is read only in `lib/ai/provider.ts` (server-only) and never leaves the server. The browser bundle never receives any synthesis code (the `server-only` import enforces this at build time).
+- The page server component reads `isAiConfigured()` once and passes only the boolean down — the key is never serialized into the rendered HTML.
+
+**Mock boundary preserved.**
+
+- Legacy mock slug engagements continue rendering the seeded mock opportunities from `lib/opportunities/mock-opportunities.ts` — no AI synthesis surface, no `GenerateOpportunitiesForm`, no `CreateOpportunityForm` regression.
+- The CTA appears only when `loaded.kind === "real"` AND `aiConfigured === true`.
+
+**Validation guardrails.**
+
+- Categories: 9-value allowlist matching the existing `OpportunityCategory` vocabulary. Unknown → reject candidate.
+- Evidence strength: 3-value allowlist (`strong`, `adequate`, `thin`). Unknown → default to `adequate`.
+- `linkedFindingIds`: must be valid UUIDs AND must be in the eligible set returned by the context builder (approved/report-ready findings only). Otherwise dropped.
+- Title required and non-empty; clipped to 160 chars.
+- Description / source summary / recommended action / implementation shape clipped to 800 / 600 / 400 / 500 chars.
+- Arrays (`dependencies`, `risks`, `successSignals`): max 6 items × max 200 chars per item.
+- All scores clamped to 0–100 integers (default 50 if missing or NaN).
+- Generated count clamped to 6 max even if the model returns more.
+- Title-based dedup is case-insensitive and whitespace-collapsed; runs against existing engagement opportunities AND within the same batch.
+- Server-derives priority + quadrant from impact + complexity + risk via the existing `computeQuadrant` helper, then applies the high-risk override (`risk >= 85 → defer-avoid`). Model-provided priority/quadrant is ignored.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. Route count unchanged at 25; `/app/engagements/[id]/opportunities` First Load grew slightly to accommodate the new client component.
+- Build also succeeds with `OPENAI_API_KEY` unset — `getAiProviderConfig()` returns `null`, the page renders the controlled "AI opportunity drafting is not configured" state, no provider calls are issued.
+- Secret handling: `.env.local` was not read, modified, or staged; no provider keys, no prompt bodies, no raw model responses, no stakeholder content, no opportunity descriptions, no finding excerpts, no Supabase keys printed during this sprint. `.env.example` updated with names only (`SLATE_AI_OPPORTUNITIES_MODEL`).
+
 ## Recommended Next Step
 
-**AI Synthesis Step 2 — opportunity drafting from approved findings, OR document parsing pipeline.** Step 1 deliberately stops at findings drafts to keep the human-in-the-loop boundary intact. Two natural follow-ons:
+**AI Synthesis Step 3 — document parsing pipeline OR roadmap drafting from selected opportunities.** Steps 1, 1.1, and 2 cover the operator-reviewed findings → operator-reviewed opportunities arc. Three natural follow-ons:
 
-1. **Opportunity drafting.** Once a body of approved findings exists for an engagement, opportunities can be drafted by the same provider abstraction. Inputs would be approved + report-ready findings + the existing evidence surface; the validator + activity logger pattern from Step 1 transfers directly. Operator approval still required.
-2. **Document parsing.** Step 1 explicitly treats uploaded files as metadata-only. Adding a server-only PDF/DOCX/CSV text-extraction pipeline (with size + page caps, no OCR for scanned content) would let synthesis cite document excerpts as well as stakeholder responses. Storage hardening (per-asset RLS, virus scanning, content sniffing) should land alongside parsing rather than as a separate workstream.
+1. **Document parsing.** Steps 1 and 2 explicitly treat uploaded files as metadata-only. Adding a server-only PDF/DOCX/CSV text-extraction pipeline (with size + page caps, no OCR for scanned content) would let synthesis cite document excerpts as well as stakeholder responses. Storage hardening (per-asset RLS, virus scanning, content sniffing) should land alongside parsing rather than as a separate workstream.
+2. **Roadmap drafting.** Once a body of selected opportunities exists for an engagement, roadmap items can be drafted by the same provider abstraction. Inputs would be selected opportunities + the existing evidence surface; the validator + activity logger pattern from Steps 1 + 2 transfers directly. Operator approval still required.
+3. **Production export hardening.** Replace `LockedActionButton` for `Export Report` and `Send to Client` / `Prepare SOW Draft` with real PDF generation. Storage hardening overlaps with (1).
 
-(3) production export and (4) BuildOps remain out of scope.
+(4) BuildOps remains out of scope.

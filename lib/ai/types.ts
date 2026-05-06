@@ -62,6 +62,48 @@ export interface AiProviderConfig {
   model: string;
 }
 
+// ---------------------------------------------------------------------------
+// Opportunity drafting (AI Synthesis Step 2)
+// ---------------------------------------------------------------------------
+
+export type DraftOpportunityEvidenceStrength =
+  | "strong"
+  | "adequate"
+  | "thin";
+
+export interface DraftOpportunityCandidate {
+  title: string;
+  category: string;
+  description: string;
+  linkedFindingIds: string[];
+  businessImpactScore: number;
+  complexityScore: number;
+  riskScore: number;
+  timeToValueScore: number;
+  adoptionLikelihoodScore: number;
+  strategicValueScore: number;
+  evidenceStrength: DraftOpportunityEvidenceStrength;
+  sourceSummary: string;
+  recommendedAction: string;
+  implementationShape: string;
+  dependencies: string[];
+  risks: string[];
+  successSignals: string[];
+}
+
+export interface OpportunityProviderInvocationOk {
+  ok: true;
+  candidates: DraftOpportunityCandidate[];
+  providerMeta: {
+    provider: AiProviderConfig["provider"];
+    model: string;
+  };
+}
+
+export type OpportunityProviderInvocationResult =
+  | OpportunityProviderInvocationOk
+  | ProviderInvocationFailure;
+
 /**
  * Shape returned by every provider call. The raw payload is intentionally
  * not exposed to higher layers — only the structured candidates and
