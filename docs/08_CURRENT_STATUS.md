@@ -1,6 +1,6 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-05 — AI Synthesis Step 1 (operator-triggered draft findings generation) implemented; OpenAI-backed server-only adapter, structured synthesis context (scorecard + intake + asset metadata + existing findings), strict JSON validator, drafts persist as `ai_drafted = true` / `needs_review`, every finding still requires operator approval before report-ready_
+_Last updated: 2026-05-05 — AI Synthesis Step 1.1 (findings discoverability + guidance fix) implemented; subtle Sparkles affordance on the engagement stage tracker + Findings status panel when AI is configured on a real engagement, improved "Limited evidence" warning copy with a `Manage intake first` link, intake-first remains the recommended action when stakeholder evidence is thin_
 
 ## Sprint State
 
@@ -29,6 +29,7 @@ _Last updated: 2026-05-05 — AI Synthesis Step 1 (operator-triggered draft find
 | P9 | Persistence/Auth Step 9 — Activity events + notes persistence | ✅ Complete |
 | P10 | Persistence/Auth Step 10 — File / document binary storage | ✅ Complete |
 | AI1 | AI Synthesis Step 1 — Findings draft generation | ✅ Complete |
+| AI1.1 | AI Synthesis Step 1.1 — Findings discoverability + guidance | ✅ Complete |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -855,6 +856,48 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 25 routes. `/app/engagements/[id]/findings` First Load grew from 113 kB to 114 kB (one new client component bundled).
 - Build also succeeds with `OPENAI_API_KEY` unset — `getAiProviderConfig()` returns `null`, the page renders the controlled "AI synthesis is not configured" state, no provider calls are issued.
 - Secret handling: `.env.local` was not read, modified, or staged; no provider keys, no prompt bodies, no raw model responses, no stakeholder content, no Supabase keys printed during this sprint. `.env.example` updated with names only (`SLATE_AI_PROVIDER`, `OPENAI_API_KEY`, `SLATE_AI_FINDINGS_MODEL`).
+
+## AI Synthesis Step 1.1 — what landed
+
+**Goal.** Make AI findings synthesis discoverable from the engagement workflow without encouraging premature low-evidence generation. No persistence changes, no provider behavior changes, no migrations.
+
+**Engagement detail discoverability.**
+
+- `app/app/engagements/[id]/page.tsx` reads `isAiConfigured()` server-side and computes `aiAvailable = isPersistedEngagement && isAiConfigured()` plus `hasIntakeEvidence` (true when ≥ 1 stakeholder is in-progress or completed). Both are passed down to the panel + tracker.
+- `components/engagements/findings-status-panel.tsx` accepts new optional `aiAvailable` and `hasIntakeEvidence` props. When `aiAvailable === true`, the header renders a subtle `Sparkles · AI draft available` outline badge next to the existing status badge, plus a one-line readiness footnote between the description and progress bar:
+  - With intake evidence: *"AI draft findings is ready to run."*
+  - Without intake evidence: *"AI draft available, but intake evidence is thin. Capture stakeholder input first."*
+- The Findings panel CTA (`Review Findings`) is now linked whenever `aiAvailable === true`, so operators can reach the synthesis CTA on a brand-new engagement without first having to advance the stage or accumulate findings.
+- `components/engagements/engagement-status-panel.tsx` gained two new optional slots (`headerAccessory` and `footnote`). All existing call sites continue to render unchanged because the slots are undefined by default.
+
+**Stage tracker indicator.**
+
+- `components/engagements/engagement-stage-tracker.tsx` accepts an optional `aiAvailableStages?: EngagementStage[]` prop. When the synthesis stage is included, both layouts (desktop horizontal + mobile vertical) render a small `Sparkles` icon next to the stage label. Hover/title text and aria-label both read "AI draft findings available."
+- Empty/undefined `aiAvailableStages` means no indicator renders — the prior visual is preserved exactly for legacy mock slug engagements and for environments without an AI provider key.
+- The engagement detail page passes `aiAvailableStages={aiAvailable ? ["synthesis"] : undefined}`. No mock slug engagement renders the indicator because mock-engagement detail pages 404 (the engagement detail route only resolves UUIDs).
+
+**Findings page guidance — `components/findings/generate-findings-form.tsx`.**
+
+- Description copy gained one trailing sentence: *"Best results come after at least one stakeholder completes intake."*
+- The "Limited evidence" warning text was rewritten:
+  - Before: *"No stakeholder intake responses are attached yet. Synthesis will run on scorecard context only — most candidates will be flagged as assumptions until intake responses land."*
+  - After: *"No stakeholder intake responses are attached yet. You can generate scorecard-only draft findings, but they will be assumption-heavy. For a stronger AI pass, capture stakeholder input first."*
+- A new secondary `Manage intake first ↗` link sits inside the warning, deep-linking to `/app/engagements/<engagementId>/intake`. The primary `Generate draft findings` CTA remains enabled — the choice stays with the operator.
+
+**Recommended action behavior.**
+
+- Unchanged. `lib/engagements/recommended-action.ts` still routes by stage (`setup | intake → /intake`, `synthesis → /findings`, etc). When stakeholder evidence is missing the engagement is in `setup` or `intake`, so the recommended action stays `Manage Intake`. The new AI affordances are subordinate ambient signals, not primary CTAs.
+
+**Mock + public boundary.**
+
+- AI affordances render only when the engagement is a real persisted UUID AND `OPENAI_API_KEY` is configured. Mock slug engagements (`atlas-aios-q2`, `helio-aios-q2`, `meridian-aios-q2`, `quanta-aios-q1`, `caldera-aios-q1`) do not show the affordances.
+- The public `/scorecard*` and `/intake/[token]` routes are unaffected — none of them import `isAiConfigured()` or render the engagement workflow surfaces.
+
+**Verification.**
+
+- `npm run lint` — clean.
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` — clean. 25 routes. `/app/engagements/[id]` First Load unchanged at 107 kB; `/app/engagements/[id]/findings` grew from 10.6 kB to 10.8 kB (the new `Manage intake first` link).
+- Manual browser run via Playwright: signed in via service-role-minted magic link, navigated to `/app/engagements/76097653-fedb-42e5-9ef6-e89a0e97f802`, confirmed Sparkles next to "Synthesis" in stage tracker, `AI draft available` badge + "AI draft available, but intake evidence is thin. Capture stakeholder input first." footnote on the Findings panel, recommended action remains "Manage Intake". Navigated to `/findings`, confirmed updated copy + `Manage intake first` link inside the warning. Navigated to `quanta-aios-q1/findings` (mock slug), confirmed no AI affordance (page meta correctly shows "Sprint 5 · Mock data").
 
 ## Recommended Next Step
 

@@ -52,3 +52,10 @@ logs/
 # Misc
 .cache/
 .turbo/
+
+# Local debugging artifacts (Playwright MCP traces, supabase CLI temp,
+# ad-hoc screenshots written to repo root). These can contain seeded
+# stakeholder PII or auth fragments — never ship them.
+.playwright-mcp/
+supabase/.temp/
+/*.png

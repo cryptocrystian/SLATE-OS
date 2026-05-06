@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   STAGES,
@@ -12,13 +12,21 @@ import type { EngagementStage } from "@/lib/engagements/types";
 export interface EngagementStageTrackerProps {
   currentStage: EngagementStage;
   className?: string;
+  /** Stages that should render a subtle AI affordance next to their label.
+   *  Server-resolved on the engagement detail page from `isAiConfigured()`
+   *  + the engagement being a real persisted UUID. Empty/undefined for
+   *  legacy mock slug engagements and for environments without an AI
+   *  provider key configured. */
+  aiAvailableStages?: EngagementStage[];
 }
 
 export function EngagementStageTracker({
   currentStage,
   className,
+  aiAvailableStages,
 }: EngagementStageTrackerProps) {
   const currentIdx = stageIndex(currentStage);
+  const aiStages = new Set(aiAvailableStages ?? []);
 
   return (
     <div
@@ -84,6 +92,15 @@ export function EngagementStageTracker({
                   >
                     {STAGE_LABEL[stage]}
                   </span>
+                  {aiStages.has(stage) ? (
+                    <span
+                      title="AI draft findings available"
+                      aria-label="AI draft findings available"
+                      className="inline-flex shrink-0 text-practice-ai"
+                    >
+                      <Sparkles aria-hidden className="h-3 w-3" />
+                    </span>
+                  ) : null}
                 </div>
                 <p className="text-[11px] leading-relaxed text-text-muted">
                   {STAGE_DESCRIPTION[stage]}
@@ -128,11 +145,20 @@ export function EngagementStageTracker({
                 <div className="flex flex-col gap-0.5">
                   <span
                     className={cn(
-                      "text-sm font-medium tracking-tight",
+                      "inline-flex items-center gap-1.5 text-sm font-medium tracking-tight",
                       isCurrent ? "text-text-primary" : "text-text-secondary",
                     )}
                   >
                     {STAGE_LABEL[stage]}
+                    {aiStages.has(stage) ? (
+                      <span
+                        title="AI draft findings available"
+                        aria-label="AI draft findings available"
+                        className="inline-flex shrink-0 text-practice-ai"
+                      >
+                        <Sparkles aria-hidden className="h-3 w-3" />
+                      </span>
+                    ) : null}
                   </span>
                   <p className="text-[11px] leading-relaxed text-text-muted">
                     {STAGE_DESCRIPTION[stage]}

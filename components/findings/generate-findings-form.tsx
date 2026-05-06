@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { AlertTriangle, Lock, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, ArrowUpRight, Lock, Sparkles } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,7 +75,8 @@ export function GenerateFindingsForm({
                 Needs Review
               </span>{" "}
               and require operator approval before they can become
-              report-ready.
+              report-ready. Best results come after at least one stakeholder
+              completes intake.
             </p>
           </div>
           <Badge tone="ai" variant="outline">
@@ -108,15 +110,23 @@ export function GenerateFindingsForm({
               aria-hidden
               className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
             />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <span className="text-xs font-medium text-status-warning">
                 Limited evidence
               </span>
               <p className="text-[11px] leading-relaxed text-text-secondary">
-                No stakeholder intake responses are attached yet. Synthesis
-                will run on scorecard context only — most candidates will be
-                flagged as assumptions until intake responses land.
+                No stakeholder intake responses are attached yet. You can
+                generate scorecard-only draft findings, but they will be
+                assumption-heavy. For a stronger AI pass, capture stakeholder
+                input first.
               </p>
+              <Link
+                href={`/app/engagements/${engagementId}/intake`}
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-border-strong bg-bg-elevated px-2.5 py-1 text-[11px] font-medium text-text-primary transition-colors hover:border-brand-primary/60 hover:bg-bg-elevated/80"
+              >
+                Manage intake first
+                <ArrowUpRight aria-hidden className="h-3 w-3 text-text-secondary" />
+              </Link>
             </div>
           </div>
         ) : null}

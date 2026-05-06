@@ -29,6 +29,7 @@ import { isUuid as isEngagementUuid } from "@/lib/engagements/mappers";
 import { STAGE_DESCRIPTION, STAGE_LABEL } from "@/lib/engagements/helpers";
 import { ROLE_LABEL } from "@/lib/intake/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { isAiConfigured } from "@/lib/ai/provider";
 import type { Engagement } from "@/lib/engagements/types";
 import type { StakeholderRole } from "@/lib/intake/types";
 
@@ -103,6 +104,10 @@ export default async function EngagementDetailPage({
     `/app/engagements/${engagement.id}`,
   );
 
+  const aiAvailable = isPersistedEngagement && isAiConfigured();
+  const hasIntakeEvidence = (intakeSummary?.completed ?? 0) > 0 ||
+    (intakeSummary?.inProgress ?? 0) > 0;
+
   const stageOrder = ["setup", "intake", "synthesis", "scoring", "report", "proposal"];
   const currentIdx = stageOrder.indexOf(engagement.currentStage);
   const isReportStageOrLater = currentIdx >= stageOrder.indexOf("report");
@@ -117,7 +122,10 @@ export default async function EngagementDetailPage({
     <div className="flex flex-col gap-8 lg:gap-10">
       <EngagementProfileHeader engagement={engagement} />
 
-      <EngagementStageTracker currentStage={engagement.currentStage} />
+      <EngagementStageTracker
+        currentStage={engagement.currentStage}
+        aiAvailableStages={aiAvailable ? ["synthesis"] : undefined}
+      />
 
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
@@ -266,10 +274,13 @@ export default async function EngagementDetailPage({
               engagement.currentStage === "synthesis" ||
               engagement.currentStage === "scoring" ||
               engagement.currentStage === "report" ||
-              engagement.currentStage === "proposal"
+              engagement.currentStage === "proposal" ||
+              aiAvailable
                 ? findingsHref
                 : undefined
             }
+            aiAvailable={aiAvailable}
+            hasIntakeEvidence={hasIntakeEvidence}
           />
           <OpportunityStatusPanel
             opportunities={opportunitiesPanel}

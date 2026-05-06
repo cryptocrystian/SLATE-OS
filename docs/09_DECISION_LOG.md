@@ -4,6 +4,44 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-05-05 — AI Synthesis Step 1.1: AI affordances are ambient signals, not primary CTAs; intake-first recommended action is preserved when evidence is thin
+
+**Decision.** Add subtle Sparkles affordances to the engagement stage tracker (next to the synthesis stage) and to the Findings status panel (header badge + readiness footnote) on real persisted engagements when `OPENAI_API_KEY` is configured server-side. Improve the "Limited evidence" warning on the findings page with rewritten copy and a `Manage intake first ↗` deep link. Do *not* promote AI synthesis to the primary recommended action when intake evidence is thin.
+
+**Context.** AI Synthesis Step 1 (commit `f631dd7`) shipped operator-triggered draft findings, but the only way to discover the CTA was to drill into the engagement detail page → click into Findings → scroll past the metric strip. The operator workflow was correct (the recommended action card on a freshly-created engagement points at intake, which is what should happen) but operators had no ambient signal that AI synthesis would become available later. Two operators in the same session were observed trying to find the CTA on the engagement *list* and on the lead detail page before reaching the right route.
+
+**Three places, three intensities.** The fix surfaces AI in three places, deliberately ordered from most ambient to most actionable:
+
+1. **Engagement stage tracker.** A 12px Sparkles icon next to the "Synthesis" stage label. No copy, just a hover tooltip ("AI draft findings available"). Implementation: a new optional `aiAvailableStages?: EngagementStage[]` prop on the existing tracker component. Empty/undefined preserves the legacy visual exactly.
+
+2. **Findings status panel.** A subtle `Sparkles · AI draft available` outline badge next to the status badge in the panel header, plus a one-line readiness footnote between the description and the progress bar. Footnote copy adapts to evidence state: with intake evidence it reads "AI draft findings is ready to run"; without evidence it reads "AI draft available, but intake evidence is thin. Capture stakeholder input first." The primary CTA is unchanged.
+
+3. **Findings page warning.** When the operator has actually reached the findings page, the existing "Limited evidence" warning is rewritten and gains a `Manage intake first` secondary link. The primary `Generate draft findings` button stays enabled — the choice remains with the operator.
+
+The split is intentional: operators discovering the surface should see ambient signals first, with explicit guidance only when they're already on the page where action is required.
+
+**Why the recommended action stays `Manage Intake`.** `lib/engagements/recommended-action.ts` is stage-driven. A freshly-created engagement is in `setup`, which routes the recommended action to `/intake`. Synthesis takes over as the recommended action only when `current_stage = "synthesis"`, which today requires the operator to advance the stage manually after intake responses land. We considered overriding the recommended action to `Findings · Generate AI draft` when AI is configured + intake has evidence, but this would have two failure modes:
+
+1. It would mute the human authoring affordance (the manual `Add manual finding` form) by re-pointing operators to AI synthesis as the primary path.
+2. It would let an operator skip stakeholder discovery entirely and run synthesis on weak scorecard context, producing assumption-heavy findings the consultant has to rewrite anyway.
+
+The user instruction was explicit: *"Do not make AI synthesis the recommended next action when there is no intake evidence."* The chosen design honors that exactly while still surfacing the affordance.
+
+**Why `EngagementStatusPanel` gained two slots, not three.** The existing primitive served six panel-status types (intake, documents, findings, opportunities, report, proposal). Adding `headerAccessory` (right of the status badge) and `footnote` (between description and progress bar) preserved every existing call site (all six pass nothing) while giving the Findings panel two ambient surfaces without creating a Findings-only fork. We resisted adding a `secondaryCta` slot because the panel already has a primary CTA — the AI signal should be ambient, not a competing action.
+
+**Why no migration.** Step 1.1 introduces zero schema changes. `aiAvailable` is computed at request time from `isAiConfigured()` (env var presence) plus `isUuid(engagement.id)` (mock vs real). `hasIntakeEvidence` reads from the existing `getIntakeStatusSummary` result. No new tables, no new columns, no new RLS policies.
+
+**Tradeoffs accepted.**
+
+- **The Sparkles indicator is tiny.** Some operators will miss it on the stage tracker. The badge on the Findings panel is more discoverable, and the page-level warning is the safety net. We chose subtle on purpose because a louder treatment would compete with the recommended-action card and risk the muting failure-mode described above.
+- **No "Open AI findings draft" deep link.** The spec offered this as an option; we declined because the primary "Review Findings" CTA already routes to the same `/findings` page where the synthesis form lives. Adding a second link with the same destination would be redundant.
+- **`hasIntakeEvidence` uses a coarse signal.** Currently true when ≥ 1 stakeholder session is in-progress or completed. We do not check whether responses are *substantive* (≥ N words, ≥ M questions answered, etc.). This is a follow-up concern; the AI synthesis context loader already clips per-response excerpts and the model treats thin responses as thin evidence.
+- **Mock slug engagements still 404 on the detail route.** This was true before Step 1.1 and remains true. Mock subroutes (findings, intake, etc.) keep working via `loadEngagementForSubroute`, but the detail page enforces UUIDs. A separate "let mocks render via load-for-subroute on the detail page" change is out of scope here.
+
+**Validation against canon.** Step 1.1 introduces no new persistence, no new provider behavior, no new RLS surface. It is purely a presentation-layer change that respects the existing recommended-action helper and the Step 1 boundary (operator approval mandatory before report-ready).
+
+---
+
 ## 2026-05-05 — AI Synthesis Step 1: operator-triggered draft findings; OpenAI via server-only adapter; metadata-only context; human approval mandatory before report-ready
 
 **Decision.** Operators can now click `Generate draft findings` on `/app/engagements/[id]/findings` to invoke a server-only AI synthesis pipeline that drafts 3–7 candidate findings from the persisted scorecard, stakeholder intake responses, and input asset metadata. Draft findings persist as `ai_drafted = true` with `review_status = needs_review` and travel through the existing `FindingReviewActionBar` (approve / reject / mark report-ready / reopen / reviewer note). No finding can become report-ready without an explicit operator action. Synthesis runs are recorded in a new `ai_synthesis_runs` table with safe summary metadata only — no prompt bodies, no raw model responses, no stakeholder content.

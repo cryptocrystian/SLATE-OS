@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { ArrowUpRight, Lock } from "lucide-react";
+import { ArrowUpRight, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -20,6 +20,15 @@ export interface EngagementStatusPanelProps {
   title: string;
   status: PanelStatusBadge;
   description: string;
+  /** Optional small element rendered to the right of the status badge. Used
+   *  for subtle affordances like an "AI draft available" chip — not for
+   *  primary CTAs. */
+  headerAccessory?: React.ReactNode;
+  /** Optional one-line note rendered between the description and the
+   *  progress bar. Used for ambient guidance (e.g. AI readiness copy)
+   *  that should sit below the primary description without competing
+   *  with it. */
+  footnote?: string | null;
   metrics?: Array<{ label: string; value: string }>;
   progress?: { value: number; total: number; label: string };
   nextAction: string;
@@ -37,6 +46,8 @@ export function EngagementStatusPanel({
   title,
   status,
   description,
+  headerAccessory,
+  footnote,
   metrics,
   progress,
   nextAction,
@@ -59,12 +70,24 @@ export function EngagementStatusPanel({
               {title}
             </h3>
           </div>
-          <Badge tone={TONE_MAP[status.tone] ?? "neutral"} dot>
-            {status.label}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            {headerAccessory}
+            <Badge tone={TONE_MAP[status.tone] ?? "neutral"} dot>
+              {status.label}
+            </Badge>
+          </div>
         </div>
 
         <p className="text-xs leading-relaxed text-text-muted">{description}</p>
+        {footnote ? (
+          <p className="text-[11px] leading-relaxed text-text-secondary">
+            <Sparkles
+              aria-hidden
+              className="mr-1 inline h-3 w-3 align-text-bottom text-practice-ai"
+            />
+            {footnote}
+          </p>
+        ) : null}
 
         {progress ? (
           <div className="flex flex-col gap-2">
