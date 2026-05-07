@@ -984,6 +984,10 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - **Two minor fixes applied during the audit:** stale `Mock — not wired` badges were removed from `components/proposals/proposal-workspace.tsx` (`ProposalOptionDetail`) and `components/intake/follow-up-queue.tsx` (`FollowUpQueue`). Both badges had been bleeding the `mock` label onto persisted Step 5 / Step 8 engagements where they were incorrect; the page meta line ("Persistence Step N · Live" vs "Sprint N · Mock data") already differentiates persisted vs mock.
 - **Phase 1B (Consulting-Grade Deliverable Engine) is required and not yet scoped.** The current report and proposal builders are operationally complete but are **not** McKinsey/BCG/Bain-caliber output. There is no charting layer, no consulting exhibit library (waterfall, bridge, bubble, heatmap, swimlane), no rich-text section bodies, no PDF / DOCX export, no AI section drafting for reports, no AI option drafting for proposals, no AI roadmap drafting, no document parsing, no industry benchmark dataset.
 
+## Phase 1B Chart & Exhibit Canon (2026-05-07)
+
+`docs/13_PHASE_1B_CHART_EXHIBIT_CANON.md` is the next governance artifact in the Phase 1B sequence and has now landed. It approves Visx as the underlying charting layer, formalizes the SLATE chart-vocabulary architecture (only chart primitives may import `@visx/*`; exhibits compose primitives; app pages consume exhibits only), defines the eight required exhibits with purpose / inputs / structure / source-note / dependencies / data-readiness honesty, and sets the recommended implementation order. **The canon does not authorize building the remaining seven exhibits — that requires a separate sprint approval.**
+
 ## Recommended Next Step
 
 **Scope Phase 1B — Consulting-Grade Deliverable Engine.** Suggested order:
