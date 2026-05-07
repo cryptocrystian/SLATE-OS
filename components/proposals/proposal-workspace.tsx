@@ -194,9 +194,6 @@ function ProposalOptionDetail({
               Recommended
             </Badge>
           ) : null}
-          <Badge tone="warning" variant="outline">
-            Mock — not wired
-          </Badge>
         </div>
 
         <h2 className="text-xl font-semibold tracking-tight text-text-primary">

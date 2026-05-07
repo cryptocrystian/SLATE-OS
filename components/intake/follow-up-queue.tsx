@@ -34,9 +34,6 @@ export function FollowUpQueue({ followUps }: FollowUpQueueProps) {
               Follow-up queue
             </h2>
           </div>
-          <Badge tone="warning" variant="outline">
-            Mock — not wired
-          </Badge>
         </div>
         {followUps.length === 0 ? (
           <EmptyState

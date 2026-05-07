@@ -1,6 +1,8 @@
 # SLATE Current Status
 
-_Last updated: 2026-05-06 — AI Synthesis Step 2 (operator-triggered draft opportunity generation) implemented; `Generate draft opportunities` CTA on `/app/engagements/[id]/opportunities` produces 2–6 draft opportunities from approved/report-ready findings, server-derives quadrant + priority from clamped scores (high-risk override preserved), persists `opportunity_finding_links` for traceability, drafts enter `status = draft` and require operator selection/defer/reject before they enter the roadmap_
+_Last updated: 2026-05-07 — Phase 1A Acceptance Audit complete and accepted with two minor fixes applied during the audit (stale `Mock — not wired` badges removed from `ProposalOptionDetail` and `FollowUpQueue`). Full audit report at `docs/12_PHASE_1A_ACCEPTANCE_AUDIT.md`._
+
+> **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
 ## Sprint State
 
@@ -31,6 +33,8 @@ _Last updated: 2026-05-06 — AI Synthesis Step 2 (operator-triggered draft oppo
 | AI1 | AI Synthesis Step 1 — Findings draft generation | ✅ Complete |
 | AI1.1 | AI Synthesis Step 1.1 — Findings discoverability + guidance | ✅ Complete |
 | AI2 | AI Synthesis Step 2 — Opportunity drafting from approved findings | ✅ Complete |
+| 1A | **Phase 1A Acceptance Audit — AdvisoryOps OS Foundation** | ✅ **Accepted** (with two minor fixes applied during audit) |
+| 1B | Phase 1B — Consulting-Grade Deliverable Engine | ⛔ Required, not yet scoped |
 
 The GrowthOps + AdvisoryOps MVP arc is feature-complete and stabilized. The persistence/auth architecture canon is drafted in `docs/persistence/`. Persistence Step 0 (Supabase scaffolding) and Step 1 (operator auth shell) are now implemented. Domain persistence (scorecard submission, leads, engagement, intake, findings, opportunities, roadmap, reports, proposals, activity events) starts in Step 2+ and is **not** in this sprint — `/app/*` still renders mock domain data behind the new auth guard.
 
@@ -972,12 +976,27 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 - Build also succeeds with `OPENAI_API_KEY` unset — `getAiProviderConfig()` returns `null`, the page renders the controlled "AI opportunity drafting is not configured" state, no provider calls are issued.
 - Secret handling: `.env.local` was not read, modified, or staged; no provider keys, no prompt bodies, no raw model responses, no stakeholder content, no opportunity descriptions, no finding excerpts, no Supabase keys printed during this sprint. `.env.example` updated with names only (`SLATE_AI_OPPORTUNITIES_MODEL`).
 
+## Phase 1A Acceptance Audit (2026-05-07)
+
+`docs/12_PHASE_1A_ACCEPTANCE_AUDIT.md` is the canonical audit. Headline:
+
+- **Accept Phase 1A with Minor Fixes.** AdvisoryOps OS foundation is functionally complete, persisted, secured, and build-clean.
+- **Two minor fixes applied during the audit:** stale `Mock — not wired` badges were removed from `components/proposals/proposal-workspace.tsx` (`ProposalOptionDetail`) and `components/intake/follow-up-queue.tsx` (`FollowUpQueue`). Both badges had been bleeding the `mock` label onto persisted Step 5 / Step 8 engagements where they were incorrect; the page meta line ("Persistence Step N · Live" vs "Sprint N · Mock data") already differentiates persisted vs mock.
+- **Phase 1B (Consulting-Grade Deliverable Engine) is required and not yet scoped.** The current report and proposal builders are operationally complete but are **not** McKinsey/BCG/Bain-caliber output. There is no charting layer, no consulting exhibit library (waterfall, bridge, bubble, heatmap, swimlane), no rich-text section bodies, no PDF / DOCX export, no AI section drafting for reports, no AI option drafting for proposals, no AI roadmap drafting, no document parsing, no industry benchmark dataset.
+
 ## Recommended Next Step
 
-**AI Synthesis Step 3 — document parsing pipeline OR roadmap drafting from selected opportunities.** Steps 1, 1.1, and 2 cover the operator-reviewed findings → operator-reviewed opportunities arc. Three natural follow-ons:
+**Scope Phase 1B — Consulting-Grade Deliverable Engine.** Suggested order:
 
-1. **Document parsing.** Steps 1 and 2 explicitly treat uploaded files as metadata-only. Adding a server-only PDF/DOCX/CSV text-extraction pipeline (with size + page caps, no OCR for scanned content) would let synthesis cite document excerpts as well as stakeholder responses. Storage hardening (per-asset RLS, virus scanning, content sniffing) should land alongside parsing rather than as a separate workstream.
-2. **Roadmap drafting.** Once a body of selected opportunities exists for an engagement, roadmap items can be drafted by the same provider abstraction. Inputs would be selected opportunities + the existing evidence surface; the validator + activity logger pattern from Steps 1 + 2 transfers directly. Operator approval still required.
-3. **Production export hardening.** Replace `LockedActionButton` for `Export Report` and `Send to Client` / `Prepare SOW Draft` with real PDF generation. Storage hardening overlaps with (1).
+1. Pick + commit to a single charting layer (Recharts is a reasonable default for SSR-friendly React; Visx / Tremor are alternatives). Build a SLATE chart-component vocabulary so every report exhibit reads as part of one design system.
+2. Ship the consulting exhibit library: Executive Summary 2×2, Capability Maturity Heatmap, AI-Savings Waterfall, ROI Bridge, Roadmap Gantt with Dependencies, Risk-Adjusted Priority Quadrant, Stakeholder Coverage Matrix, Benchmark Comparison Bars.
+3. Add rich-text or constrained-block document model on `report_sections.body` and render it in `ReportWorkspace`; allow sections to embed exhibits by reference.
+4. AI Synthesis Step 3 — report section drafting from approved findings + selected opportunities + roadmap.
+5. AI Synthesis Step 4 — proposal option drafting from approved opportunities + roadmap.
+6. AI Synthesis Step 5 — roadmap drafting from selected opportunities.
+7. Server-only document parsing (PDF/DOCX/CSV → text) so synthesis can cite document excerpts. Storage hardening (per-asset RLS, virus scanning, content sniffing) ships alongside.
+8. Replace `LockedActionButton` for `Export Report` with real PDF generation including embedded exhibits.
+9. Replace `LockedActionButton` for `Prepare SOW Draft` / `Send to Client` with real SOW PDF generation.
+10. Public scorecard PDF download + emailable executive summary; industry benchmark dataset for the three scorecard dimensions and the most common opportunity categories.
 
-(4) BuildOps remains out of scope.
+E-signature, CRM integration, and BuildOps remain explicit non-goals at the boundary.
