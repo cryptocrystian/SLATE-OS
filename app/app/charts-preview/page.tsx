@@ -11,6 +11,10 @@ import {
   CapabilityMaturityHeatmap,
   type CapabilityMaturityCell,
 } from "@/components/charts/exhibits/capability-maturity-heatmap";
+import {
+  StakeholderCoverageMatrix,
+  type StakeholderCoverageCell,
+} from "@/components/charts/exhibits/stakeholder-coverage-matrix";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -21,10 +25,11 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders three exhibits in sequence:
+ * Phase 1B preview. Renders four exhibits in sequence:
  *   - proof-of-fit Executive Summary 2×2
  *   - Sprint 1 Risk-Adjusted Priority Quadrant
  *   - Sprint 2 Capability Maturity Heatmap
+ *   - Sprint 3 Stakeholder Coverage Matrix
  *
  * All use static sample data declared inside this file; no persisted reads.
  *
@@ -149,6 +154,62 @@ const HEATMAP_PREVIEW_CELLS: CapabilityMaturityCell[] = [
 
 const HEATMAP_PREVIEW_SESSION_COUNT = 8;
 
+// Stakeholder Coverage Matrix preview data — 5 roles × 5 topics. Designed
+// to span all four evidence-strength tones (missing / thin / adequate /
+// strong) so reviewers see the full vocabulary, including how "missing"
+// renders as a recessive cell (low fill opacity, em-dash glyph) distinct
+// from a low-strength cell.
+const COVERAGE_PREVIEW_ROLES = [
+  "CEO / Owner",
+  "Operations Lead",
+  "Sales Lead",
+  "Engineering Lead",
+  "Customer Success",
+];
+
+const COVERAGE_PREVIEW_TOPICS = [
+  "Workflows",
+  "Systems",
+  "Data",
+  "Adoption",
+  "Risk",
+];
+
+const COVERAGE_PREVIEW_CELLS: StakeholderCoverageCell[] = [
+  // CEO / Owner
+  { role: "CEO / Owner", topic: "Workflows", strength: "adequate", responseCount: 1 },
+  { role: "CEO / Owner", topic: "Systems", strength: "thin", responseCount: 1 },
+  { role: "CEO / Owner", topic: "Data", strength: "missing", responseCount: 0 },
+  { role: "CEO / Owner", topic: "Adoption", strength: "adequate", responseCount: 1 },
+  { role: "CEO / Owner", topic: "Risk", strength: "strong", responseCount: 2 },
+  // Operations Lead
+  { role: "Operations Lead", topic: "Workflows", strength: "strong", responseCount: 3 },
+  { role: "Operations Lead", topic: "Systems", strength: "strong", responseCount: 3 },
+  { role: "Operations Lead", topic: "Data", strength: "adequate", responseCount: 2 },
+  { role: "Operations Lead", topic: "Adoption", strength: "thin", responseCount: 1 },
+  { role: "Operations Lead", topic: "Risk", strength: "thin", responseCount: 1 },
+  // Sales Lead
+  { role: "Sales Lead", topic: "Workflows", strength: "adequate", responseCount: 2 },
+  { role: "Sales Lead", topic: "Systems", strength: "thin", responseCount: 1 },
+  { role: "Sales Lead", topic: "Data", strength: "missing", responseCount: 0 },
+  { role: "Sales Lead", topic: "Adoption", strength: "strong", responseCount: 2 },
+  { role: "Sales Lead", topic: "Risk", strength: "missing", responseCount: 0 },
+  // Engineering Lead
+  { role: "Engineering Lead", topic: "Workflows", strength: "thin", responseCount: 1 },
+  { role: "Engineering Lead", topic: "Systems", strength: "strong", responseCount: 3 },
+  { role: "Engineering Lead", topic: "Data", strength: "strong", responseCount: 3 },
+  { role: "Engineering Lead", topic: "Adoption", strength: "thin", responseCount: 1 },
+  { role: "Engineering Lead", topic: "Risk", strength: "adequate", responseCount: 2 },
+  // Customer Success
+  { role: "Customer Success", topic: "Workflows", strength: "adequate", responseCount: 2 },
+  { role: "Customer Success", topic: "Systems", strength: "adequate", responseCount: 2 },
+  { role: "Customer Success", topic: "Data", strength: "thin", responseCount: 1 },
+  { role: "Customer Success", topic: "Adoption", strength: "strong", responseCount: 2 },
+  { role: "Customer Success", topic: "Risk", strength: "missing", responseCount: 0 },
+];
+
+const COVERAGE_PREVIEW_SESSION_COUNT = 5;
+
 export default function ChartsPreviewPage() {
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -162,7 +223,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Three exhibits. Visual direction review only.
+              Four exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -192,6 +253,16 @@ export default function ChartsPreviewPage() {
         }}
       />
 
+      <StakeholderCoverageMatrix
+        cells={COVERAGE_PREVIEW_CELLS}
+        roles={COVERAGE_PREVIEW_ROLES}
+        topics={COVERAGE_PREVIEW_TOPICS}
+        sourceNote={{
+          text: "Static sample preview data · Phase 1B Sprint 3",
+          n: COVERAGE_PREVIEW_SESSION_COUNT,
+        }}
+      />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -200,7 +271,7 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining five Phase 1B
+            data declared inside the page file. The remaining four Phase 1B
             exhibits ship in subsequent commits after each visual direction
             is reviewed.
           </p>

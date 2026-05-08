@@ -4,13 +4,14 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Three exhibits ship today:
+Four exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
 - `exhibits/capability-maturity-heatmap.tsx` — **Phase 1B Sprint 2.** Capability × dimension grid. Cell color encodes a 4-band maturity scale derived deterministically from `maturityScore`. Cell label is the score itself in tabular mono. Row + column labels in `JetBrains Mono` uppercase tracking-1.4. No `@visx/heatmap` dependency — the cell primitive is plain SVG `rect` + `text`.
+- `exhibits/stakeholder-coverage-matrix.tsx` — **Phase 1B Sprint 3.** Role × topic intake-coverage grid. Cell color encodes a 4-tone evidence-strength scale (`missing → neutral`, `thin → warning`, `adequate → info`, `strong → success`). Cell label shows the supporting `responseCount` for present cells and an em-dash for missing cells. **Reuses the Sprint 2 `ChartHeatmapCell` primitive without modification** — the canon's promise that one primitive backs both heatmap exhibits is now realized.
 
-All three are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining five Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
+All four are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining four Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
 
 ## Layout
 
@@ -26,6 +27,7 @@ components/charts/
     executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
     risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
     capability-maturity-heatmap.tsx      Phase 1B Sprint 2 — diagnostic heatmap
+    stakeholder-coverage-matrix.tsx      Phase 1B Sprint 3 — coverage heatmap
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -106,6 +108,50 @@ Each cell renders the maturity score in tabular mono numerals (semibold, 13px, `
 The `ChartHeatmapCell` primitive is intentionally generic so the same primitive can back the **Stakeholder Coverage Matrix** in a later sprint without code changes. The primitive accepts `fill` (typically `CHART_TONE_VAR[tone]`), `label`, `title`, and standard rect attributes — nothing maturity-specific lives in the primitive itself.
 
 The exhibit uses `ChartFrame`'s render-prop `(innerWidth, innerHeight)` to size cells dynamically against any number of rows × columns. Row and column labels render outside the inner group at small negative coordinates so the cells fill the inner area exactly.
+
+## Stakeholder Coverage Matrix — input shape and band rule
+
+Component: `StakeholderCoverageMatrix`. Located at [`exhibits/stakeholder-coverage-matrix.tsx`](./exhibits/stakeholder-coverage-matrix.tsx). **Reuses the Sprint 2 [`ChartHeatmapCell`](./primitives/chart-heatmap-cell.tsx) primitive without modification.** The cell-primitive contract was designed for this; Sprint 3 is the proof.
+
+Inputs:
+
+```ts
+type StakeholderEvidenceStrength = "missing" | "thin" | "adequate" | "strong";
+
+interface StakeholderCoverageCell {
+  role: string;
+  topic: string;
+  strength: StakeholderEvidenceStrength;
+  responseCount: number;     // shown in the cell for present strengths;
+                             // expected to be 0 for "missing" cells
+}
+
+interface StakeholderCoverageMatrixProps {
+  cells: StakeholderCoverageCell[];
+  roles: string[];           // row order, top to bottom
+  topics: string[];          // column order, left to right
+  sourceNote: SourceNote;
+  takeaway?: string;
+}
+```
+
+Evidence-strength color rule (no new chart-tone added — uses the existing four-tone vocabulary):
+
+| `strength` | Visual treatment | `ChartTone` | CSS variable |
+| --- | --- | --- | --- |
+| `missing` | Recessive: `fillOpacity 0.05` + `--color-border-strong` stroke + em-dash glyph + `--color-text-muted` label color | `neutral` | `--color-status-neutral` |
+| `thin` | Standard: `fillOpacity 0.18` + same-tone stroke + `responseCount` label in `--color-text-primary` | `warning` | `--color-status-warning` |
+| `adequate` | Standard | `info` | `--color-status-info` |
+| `strong` | Standard | `success` | `--color-status-success` |
+
+The "missing" treatment is deliberately recessive: a coverage gap should not look like a low-strength response. The em-dash glyph (`—`) plus the very low fill opacity plus the dimmer stroke color combine to read as "this intersection exists in the schema but has no data" — visually distinct from a populated thin/warning cell.
+
+Cell label policy:
+- Present cells (`thin` / `adequate` / `strong`) render `responseCount` as a tabular-mono integer (1, 2, 3, …).
+- `missing` cells render an em-dash (`—`).
+- Every cell carries an `<svg><title>` reading `"<role> · <topic>: <Strength>. <n> response(s)."` for screen-reader / hover discoverability — never required for visual comprehension.
+
+The exhibit follows the same `ChartFrame` render-prop pattern as Capability Maturity: rows / columns are driven by the `roles` and `topics` arrays, the `cells` array is treated as a sparse map keyed on `${role}|${topic}`, and missing intersections in the cells array (vs. `strength: "missing"` cells) render as gaps.
 
 ## Design-token contract
 
