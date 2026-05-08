@@ -4,15 +4,16 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Five exhibits ship today:
+Six exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
 - `exhibits/capability-maturity-heatmap.tsx` — **Phase 1B Sprint 2.** Capability × dimension grid. Cell color encodes a 4-band maturity scale derived deterministically from `maturityScore`. Cell label is the score itself in tabular mono. Row + column labels in `JetBrains Mono` uppercase tracking-1.4. No `@visx/heatmap` dependency — the cell primitive is plain SVG `rect` + `text`.
 - `exhibits/stakeholder-coverage-matrix.tsx` — **Phase 1B Sprint 3.** Role × topic intake-coverage grid. Cell color encodes a 4-tone evidence-strength scale (`missing → neutral`, `thin → warning`, `adequate → info`, `strong → success`). Cell label shows the supporting `responseCount` for present cells and an em-dash for missing cells. **Reuses the Sprint 2 `ChartHeatmapCell` primitive without modification** — the canon's promise that one primitive backs both heatmap exhibits is now realized.
 - `exhibits/roadmap-gantt-with-dependencies.tsx` — **Phase 1B Sprint 4.** 30/60/90-day Gantt timeline with right-angle dependency arrows. Bar color = `RoadmapStatus` tone (planned/in-progress/blocked/complete). Vertical "Today" marker in `--color-brand-primary`. Phase headers + dashed phase boundaries at days 30 / 60 / 90. Item titles render in the left margin; bars are clean colored blocks. Adds two new generic primitives: `ChartGanttBar` and `ChartDependencyArrow` (plus `ChartDependencyArrowheadMarker`).
+- `exhibits/benchmark-comparison-bars.tsx` — **Phase 1B Sprint 5 · Gate 0 illustrative only.** Per-dimension client score plotted against an illustrative p25 / p50 / p75 percentile band. Adds the `ChartPercentileBand` primitive. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Benchmark Data Canon (`docs/14_*`) reaches Gate 1 or Gate 2 with a real dataset. Default takeaway, default source note, and legend status pill all carry the "illustrative" label deliberately to prevent fake-benchmark optics.
 
-All five are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining three Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
+All six are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining two Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
 
 ## Layout
 
@@ -26,12 +27,14 @@ components/charts/
     chart-heatmap-cell.tsx     SLATE-styled SVG heatmap cell (rect + centered label)
     chart-gantt-bar.tsx        SLATE-styled SVG Gantt bar (rect + auto inside/outside label)
     chart-dependency-arrow.tsx SLATE-styled right-angle dependency arrow + arrowhead marker
+    chart-percentile-band.tsx  SLATE-styled rail + IQR box + median line + diamond marker
   exhibits/
     executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
     risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
     capability-maturity-heatmap.tsx      Phase 1B Sprint 2 — diagnostic heatmap
     stakeholder-coverage-matrix.tsx      Phase 1B Sprint 3 — coverage heatmap
     roadmap-gantt-with-dependencies.tsx  Phase 1B Sprint 4 — 30/60/90 Gantt
+    benchmark-comparison-bars.tsx        Phase 1B Sprint 5 — illustrative comparison
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -216,6 +219,85 @@ Dependency arrows:
 The two new primitives are deliberately generic:
 - **`ChartGanttBar`** — `x`, `y`, `width`, `height`, `fill`, `fillOpacity`, `stroke`, `strokeWidth`, `rx`, optional `label` (auto inside/outside placement), `muted` flag, `title`. Zero roadmap-specific logic; reusable by any future horizontal-bar exhibit.
 - **`ChartDependencyArrow`** — `startX/Y`, `endX/Y`, `markerId`, `stroke`, `strokeWidth`, `strokeDasharray`, `strokeOpacity`, `stub`, `title`. Plus a sibling helper `ChartDependencyArrowheadMarker` that the exhibit drops once into `<defs>`. Zero domain-specific logic; reusable by any future "A → B" connector.
+
+## Benchmark Comparison Bars — Gate 0 illustrative only
+
+Component: `BenchmarkComparisonBars`. Located at [`exhibits/benchmark-comparison-bars.tsx`](./exhibits/benchmark-comparison-bars.tsx). Composes [`primitives/chart-percentile-band.tsx`](./primitives/chart-percentile-band.tsx).
+
+> ⚠ **Read [`docs/14_PHASE_1B_BENCHMARK_DATA_CANON.md`](../../docs/14_PHASE_1B_BENCHMARK_DATA_CANON.md) before touching this exhibit.** Gate 0 means the exhibit may render **only** with `dataset.status === "illustrative"` and **only** on the operator-only `/app/charts-preview` route. Wiring this exhibit into reports, proposals, public-scorecard surfaces, or PDF exports requires a documented Gate 1 / Gate 2 dataset and a separate sprint approval.
+
+Inputs (match docs/14 exactly):
+
+```ts
+type BenchmarkDatasetStatus =
+  | "illustrative"
+  | "internal_directional"
+  | "validated";
+
+interface BenchmarkComparisonPoint {
+  dimension: string;
+  clientScore: number;       // 0–100, clamped at validation
+  p25: number;               // 0–100; must satisfy p25 ≤ p50 ≤ p75
+  p50: number;
+  p75: number;
+  sampleSize: number;
+  vintage: string;           // ISO date or YYYY-Q#
+  benchmarkLabel: string;
+}
+
+interface BenchmarkComparisonDataset {
+  label: string;
+  methodology: string;       // required when status === "validated"
+  vintage: string;
+  sampleSize: number;
+  points: BenchmarkComparisonPoint[];
+  status: BenchmarkDatasetStatus;
+}
+
+interface BenchmarkComparisonBarsProps {
+  dataset: BenchmarkComparisonDataset;
+  sourceNote?: SourceNote;   // defaults from dataset.status per docs/14
+  takeaway?: string;         // default is conservative; see below
+}
+```
+
+Validation (exported as `validateAndClampPoint`):
+
+- Clamps `clientScore`, `p25`, `p50`, `p75` to `[0, 100]`.
+- **Rejects** rows where `p25 > p50` or `p50 > p75` — the canon explicitly forbids silently sorting bad percentiles.
+- Returns `null` for invalid rows; the exhibit drops them.
+- If every row is invalid, the exhibit renders an inline empty-state inside the chart area instead of pretending the chart succeeded.
+- The x-axis is fixed at `[0, 100]`. There is no `nice: true` and no axis stretching — the canon explicitly forbids it.
+
+Source-note derivation (exported as `defaultBenchmarkSourceNote`):
+
+| `dataset.status` | Default rendered string |
+| --- | --- |
+| `illustrative` | `Illustrative sample data · not a benchmark` |
+| `internal_directional` | `Internal SLATE assessments · directional benchmark · n=<sampleSize> · vintage <vintage>` |
+| `validated` | `Saipien Labs benchmark dataset · n=<sampleSize> · vintage <vintage>` |
+
+The illustrative source note **does not** include `n`, `vintage`, or `methodology`. The non-illustrative tiers compose the full string into `text` (the `n` field is intentionally unused) so the rendered output matches docs/14's exact `n=` placement.
+
+Default takeaway:
+
+```
+Illustrative comparison structure only; validated benchmark data is required before client-facing use.
+```
+
+This sentence is deliberately conservative. Override it only when the dataset has reached Gate 1 or Gate 2 AND the override does not introduce prohibited claim language. The canon prohibits "industry benchmark," "peer benchmark" without population definition, "above average," "in the top quartile," and similar phrasing. The exhibit's per-row `<svg><title>` text is also written neutrally (`"<dimension>: client score X. Illustrative percentile band p25=Y, p50=Z, p75=W."`).
+
+Visual rules:
+
+- One row per dimension. Dimension labels in the left margin, mono uppercase tracking-1.2.
+- Each row composes one `ChartPercentileBand`: a faint full-width rail, the IQR box (p25 → p75) in info-tone at 0.18 fill, the median line at p50, and a brand-primary diamond marker at the client score. The diamond carries a `--color-bg-surface` halo so it visually lifts off the IQR box.
+- The diamond marker is the visual primary; bands are scaffolding.
+- Bottom axis renders ticks only at `0, 25, 50, 75, 100` with a neutral `SCORE · 0–100` caption — the canon prohibits "better" / "stronger" axis framing because `Workflow friction` is inverted (high friction = leverage, not "good"). The dimension list is interpretive context, not a normative scale.
+- The legend includes a status pill (`Illustrative · Gate 0` / `Internal directional · Gate 1` / `Validated · Gate 2`) so the credibility tier is visible chrome, not just a footer footnote.
+
+The `ChartPercentileBand` primitive is value-agnostic: it accepts pre-computed SVG x-positions (`p25X`, `p50X`, `p75X`, `clientX`), never raw domain values. The exhibit handles all value→pixel math. The primitive contains zero benchmark-specific language, so it is reusable by any future "client value within a contextual range" visualization (e.g., a per-stakeholder satisfaction comparison) without modification.
+
+> ⚠ **All sample values shown in this README, in `docs/14`, and in the live `/app/charts-preview` route are illustrative only. They do not represent any real population or benchmark and must not be reused in client-facing artifacts.**
 
 ## Design-token contract
 

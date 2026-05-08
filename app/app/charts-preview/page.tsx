@@ -19,6 +19,10 @@ import {
   RoadmapGanttWithDependencies,
   type RoadmapGanttItem,
 } from "@/components/charts/exhibits/roadmap-gantt-with-dependencies";
+import {
+  BenchmarkComparisonBars,
+  type BenchmarkComparisonDataset,
+} from "@/components/charts/exhibits/benchmark-comparison-bars";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -29,14 +33,18 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders five exhibits in sequence:
+ * Phase 1B preview. Renders six exhibits in sequence:
  *   - proof-of-fit Executive Summary 2×2
  *   - Sprint 1 Risk-Adjusted Priority Quadrant
  *   - Sprint 2 Capability Maturity Heatmap
  *   - Sprint 3 Stakeholder Coverage Matrix
  *   - Sprint 4 Roadmap Gantt with Dependencies
+ *   - Sprint 5 Benchmark Comparison Bars (Gate 0 — illustrative only)
  *
  * All use static sample data declared inside this file; no persisted reads.
+ * Sprint 5's data is `status: "illustrative"` per the Benchmark Data Canon
+ * (`docs/14_*`); it MUST NOT be wired into reports, proposals, or the
+ * public scorecard until a validated dataset exists.
  *
  * Not added to nav. Reachable only by direct URL.
  */
@@ -289,6 +297,90 @@ const ROADMAP_PREVIEW_ITEMS: RoadmapGanttItem[] = [
 
 const ROADMAP_PREVIEW_TODAY_OFFSET = 30;
 
+// Benchmark Comparison Bars preview dataset — ILLUSTRATIVE ONLY.
+//
+// Per `docs/14_PHASE_1B_BENCHMARK_DATA_CANON.md` Gate 0:
+//   - status MUST be "illustrative"
+//   - the rendered source note MUST read exactly
+//     "Illustrative sample data · not a benchmark"
+//   - n / vintage / methodology MUST NOT appear in the rendered chrome
+//   - this dataset MUST NOT be wired into reports, proposals, or the
+//     public scorecard
+//
+// The values below are crafted to span the full 0–100 range so the
+// percentile band layout can be reviewed visually. They do NOT
+// represent any real population or benchmark, and any reuse of these
+// numbers outside the preview route is forbidden by the canon.
+const BENCHMARK_PREVIEW_DATASET: BenchmarkComparisonDataset = {
+  label: "Illustrative preview dataset",
+  methodology: "",
+  vintage: "",
+  sampleSize: 0,
+  status: "illustrative",
+  points: [
+    {
+      dimension: "AI readiness",
+      clientScore: 64,
+      p25: 32,
+      p50: 48,
+      p75: 65,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+    {
+      dimension: "Workflow friction",
+      clientScore: 72,
+      p25: 35,
+      p50: 52,
+      p75: 70,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+    {
+      dimension: "Systems readiness",
+      clientScore: 58,
+      p25: 40,
+      p50: 55,
+      p75: 70,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+    {
+      dimension: "Data readiness",
+      clientScore: 51,
+      p25: 35,
+      p50: 50,
+      p75: 65,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+    {
+      dimension: "Governance maturity",
+      clientScore: 47,
+      p25: 38,
+      p50: 52,
+      p75: 68,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+    {
+      dimension: "Adoption capacity",
+      clientScore: 62,
+      p25: 42,
+      p50: 56,
+      p75: 72,
+      sampleSize: 0,
+      vintage: "",
+      benchmarkLabel: "Illustrative sample · not a benchmark",
+    },
+  ],
+};
+
 export default function ChartsPreviewPage() {
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -302,7 +394,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Five exhibits. Visual direction review only.
+              Six exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -351,6 +443,11 @@ export default function ChartsPreviewPage() {
         }}
       />
 
+      {/* Sprint 5 — illustrative only. The exhibit's defaultBenchmarkSourceNote
+          derives the canonical "Illustrative sample data · not a benchmark"
+          string from dataset.status, so we do not pass `sourceNote` here. */}
+      <BenchmarkComparisonBars dataset={BENCHMARK_PREVIEW_DATASET} />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -359,7 +456,7 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining three Phase 1B
+            data declared inside the page file. The remaining two Phase 1B
             exhibits ship in subsequent commits after each visual direction
             is reviewed.
           </p>
