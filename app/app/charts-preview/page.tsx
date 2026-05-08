@@ -23,6 +23,11 @@ import {
   BenchmarkComparisonBars,
   type BenchmarkComparisonDataset,
 } from "@/components/charts/exhibits/benchmark-comparison-bars";
+import {
+  AISavingsWaterfall,
+  type FinancialAssumptionSet,
+  type SavingsWaterfallContribution,
+} from "@/components/charts/exhibits/ai-savings-waterfall";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -33,18 +38,21 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders six exhibits in sequence:
+ * Phase 1B preview. Renders seven exhibits in sequence:
  *   - proof-of-fit Executive Summary 2×2
  *   - Sprint 1 Risk-Adjusted Priority Quadrant
  *   - Sprint 2 Capability Maturity Heatmap
  *   - Sprint 3 Stakeholder Coverage Matrix
  *   - Sprint 4 Roadmap Gantt with Dependencies
  *   - Sprint 5 Benchmark Comparison Bars (Gate 0 — illustrative only)
+ *   - Sprint 6 AI-Savings Waterfall (Gate 0 — illustrative only)
  *
  * All use static sample data declared inside this file; no persisted reads.
  * Sprint 5's data is `status: "illustrative"` per the Benchmark Data Canon
- * (`docs/14_*`); it MUST NOT be wired into reports, proposals, or the
- * public scorecard until a validated dataset exists.
+ * (`docs/14_*`). Sprint 6's data is `status: "illustrative"` per the
+ * Financial Assumptions Canon (`docs/15_*`). Neither may be wired into
+ * reports, proposals, or the public scorecard until the corresponding
+ * data tier exists.
  *
  * Not added to nav. Reachable only by direct URL.
  */
@@ -381,6 +389,80 @@ const BENCHMARK_PREVIEW_DATASET: BenchmarkComparisonDataset = {
   ],
 };
 
+// AI-Savings Waterfall preview dataset — ILLUSTRATIVE ONLY.
+//
+// Per `docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md` Gate 0:
+//   - assumptionSet.status MUST be "illustrative"
+//   - the rendered source note MUST read exactly
+//     "Source: Illustrative sample data · not a financial model"
+//   - confidence / owner / lastReviewedAt MUST NOT appear in the
+//     rendered chrome
+//   - this dataset MUST NOT be wired into reports, proposals, or the
+//     public scorecard
+//   - the takeaway MUST NOT use "guaranteed savings" / "ROI" /
+//     "payback" / "annual savings" framing
+//
+// The values below are crafted to make the visual structure
+// inspectable. They do NOT represent any real client baseline,
+// real savings, or any approved financial model. Reuse outside the
+// preview route is forbidden by the canon.
+const ILLUSTRATIVE_FINANCIAL_ASSUMPTIONS: FinancialAssumptionSet = {
+  id: "illustrative-preview",
+  label: "Illustrative preview assumption set",
+  status: "illustrative",
+  confidence: "low",
+  currency: "USD",
+  currentBaselineCost: 1_200_000,
+  currentBaselineHours: 0,
+  hourlyCostAssumption: 0,
+  implementationCost: 90_000,
+  recurringCostMonthly: 5_000,
+  expectedAutomationRate: 0,
+  expectedAdoptionRate: 0,
+  riskAdjustmentFactor: 0,
+  timeToValueDays: 0,
+  assumptionOwner: "",
+  lastReviewedAt: "",
+};
+
+const ILLUSTRATIVE_FINANCIAL_CONTRIBUTIONS: SavingsWaterfallContribution[] = [
+  {
+    label: "Gross efficiency",
+    deltaValue: 560_000,
+    sign: "savings",
+    confidence: "low",
+    sourceAssumption: "illustrative-preview",
+  },
+  {
+    label: "Adoption haircut",
+    deltaValue: 90_000,
+    sign: "cost",
+    confidence: "low",
+    sourceAssumption: "illustrative-preview",
+  },
+  {
+    label: "Risk adjustment",
+    deltaValue: 60_000,
+    sign: "cost",
+    confidence: "low",
+    sourceAssumption: "illustrative-preview",
+  },
+  {
+    label: "Implementation",
+    deltaValue: 90_000,
+    sign: "cost",
+    confidence: "low",
+    sourceAssumption: "illustrative-preview",
+  },
+  {
+    label: "Recurring (annualized)",
+    deltaValue: 60_000,
+    sign: "cost",
+    confidence: "low",
+    sourceAssumption: "illustrative-preview",
+  },
+];
+
 export default function ChartsPreviewPage() {
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -394,7 +476,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Six exhibits. Visual direction review only.
+              Seven exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -448,6 +530,15 @@ export default function ChartsPreviewPage() {
           string from dataset.status, so we do not pass `sourceNote` here. */}
       <BenchmarkComparisonBars dataset={BENCHMARK_PREVIEW_DATASET} />
 
+      {/* Sprint 6 — illustrative only. The exhibit's defaultFinancialSourceNote
+          derives the canonical "Source: Illustrative sample data · not a
+          financial model" string from assumptionSet.status, so we do not
+          pass `sourceNote` here. */}
+      <AISavingsWaterfall
+        assumptionSet={ILLUSTRATIVE_FINANCIAL_ASSUMPTIONS}
+        contributions={ILLUSTRATIVE_FINANCIAL_CONTRIBUTIONS}
+      />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -456,9 +547,9 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining two Phase 1B
-            exhibits ship in subsequent commits after each visual direction
-            is reviewed.
+            data declared inside the page file. The remaining one Phase 1B
+            exhibit (ROI Bridge) ships in a subsequent commit after the
+            visual direction is reviewed.
           </p>
         </CardBody>
       </Card>

@@ -4,7 +4,7 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Six exhibits ship today:
+Seven exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
@@ -12,8 +12,9 @@ Six exhibits ship today:
 - `exhibits/stakeholder-coverage-matrix.tsx` — **Phase 1B Sprint 3.** Role × topic intake-coverage grid. Cell color encodes a 4-tone evidence-strength scale (`missing → neutral`, `thin → warning`, `adequate → info`, `strong → success`). Cell label shows the supporting `responseCount` for present cells and an em-dash for missing cells. **Reuses the Sprint 2 `ChartHeatmapCell` primitive without modification** — the canon's promise that one primitive backs both heatmap exhibits is now realized.
 - `exhibits/roadmap-gantt-with-dependencies.tsx` — **Phase 1B Sprint 4.** 30/60/90-day Gantt timeline with right-angle dependency arrows. Bar color = `RoadmapStatus` tone (planned/in-progress/blocked/complete). Vertical "Today" marker in `--color-brand-primary`. Phase headers + dashed phase boundaries at days 30 / 60 / 90. Item titles render in the left margin; bars are clean colored blocks. Adds two new generic primitives: `ChartGanttBar` and `ChartDependencyArrow` (plus `ChartDependencyArrowheadMarker`).
 - `exhibits/benchmark-comparison-bars.tsx` — **Phase 1B Sprint 5 · Gate 0 illustrative only.** Per-dimension client score plotted against an illustrative p25 / p50 / p75 percentile band. Adds the `ChartPercentileBand` primitive. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Benchmark Data Canon (`docs/14_*`) reaches Gate 1 or Gate 2 with a real dataset. Default takeaway, default source note, and legend status pill all carry the "illustrative" label deliberately to prevent fake-benchmark optics.
+- `exhibits/ai-savings-waterfall.tsx` — **Phase 1B Sprint 6 · Gate 0 illustrative only.** Cost-baseline → modeled-state waterfall with per-bar savings / cost contributions, dashed connectors at the running cost stack, and a dashed-outline "modeled" treatment on the final-state bar. Adds the `ChartWaterfallBar` primitive. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Financial Assumptions Canon (`docs/15_*`) reaches Gate 1 / Gate 2 / Gate 3. Default takeaway, default source note, and legend status pill all carry the "Illustrative · Gate 0" label deliberately to prevent fake-savings / fake-ROI optics.
 
-All six are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining two Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
+All seven are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining one Phase 1B exhibit (ROI Bridge) ships in a subsequent sprint after the visual direction is reviewed.
 
 ## Layout
 
@@ -28,6 +29,7 @@ components/charts/
     chart-gantt-bar.tsx        SLATE-styled SVG Gantt bar (rect + auto inside/outside label)
     chart-dependency-arrow.tsx SLATE-styled right-angle dependency arrow + arrowhead marker
     chart-percentile-band.tsx  SLATE-styled rail + IQR box + median line + diamond marker
+    chart-waterfall-bar.tsx    SLATE-styled stepped bar with optional modeled / muted treatment
   exhibits/
     executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
     risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
@@ -35,6 +37,7 @@ components/charts/
     stakeholder-coverage-matrix.tsx      Phase 1B Sprint 3 — coverage heatmap
     roadmap-gantt-with-dependencies.tsx  Phase 1B Sprint 4 — 30/60/90 Gantt
     benchmark-comparison-bars.tsx        Phase 1B Sprint 5 — illustrative comparison
+    ai-savings-waterfall.tsx             Phase 1B Sprint 6 — illustrative waterfall
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -298,6 +301,118 @@ Visual rules:
 The `ChartPercentileBand` primitive is value-agnostic: it accepts pre-computed SVG x-positions (`p25X`, `p50X`, `p75X`, `clientX`), never raw domain values. The exhibit handles all value→pixel math. The primitive contains zero benchmark-specific language, so it is reusable by any future "client value within a contextual range" visualization (e.g., a per-stakeholder satisfaction comparison) without modification.
 
 > ⚠ **All sample values shown in this README, in `docs/14`, and in the live `/app/charts-preview` route are illustrative only. They do not represent any real population or benchmark and must not be reused in client-facing artifacts.**
+
+## AI-Savings Waterfall — Gate 0 illustrative only
+
+Component: `AISavingsWaterfall`. Located at [`exhibits/ai-savings-waterfall.tsx`](./exhibits/ai-savings-waterfall.tsx). Composes [`primitives/chart-waterfall-bar.tsx`](./primitives/chart-waterfall-bar.tsx).
+
+> ⚠ **Read [`docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md`](../../docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md) before touching this exhibit.** Gate 0 means the exhibit may render **only** with `assumptionSet.status === "illustrative"` and **only** on the operator-only `/app/charts-preview` route. Wiring this exhibit into reports, proposals, public-scorecard surfaces, or PDF exports requires a Gate 1 / Gate 2 / Gate 3 assumption set and a separate sprint approval.
+
+Inputs (match docs/15 exactly):
+
+```ts
+type FinancialAssumptionStatus =
+  | "illustrative"
+  | "operator_estimated"
+  | "client_validated"
+  | "finance_approved";
+
+type FinancialConfidence = "low" | "medium" | "high";
+
+interface FinancialAssumptionSet {
+  id: string;
+  label: string;
+  status: FinancialAssumptionStatus;
+  confidence: FinancialConfidence;
+  currency: "USD";
+  currentBaselineCost: number;       // USD/year
+  currentBaselineHours: number;      // hours/year
+  hourlyCostAssumption: number;      // USD/hour, fully-loaded
+  implementationCost: number;        // USD, one-time
+  recurringCostMonthly: number;      // USD/month
+  expectedAutomationRate: number;    // 0–1
+  expectedAdoptionRate: number;      // 0–1
+  riskAdjustmentFactor: number;      // 0–1
+  timeToValueDays: number;
+  assumptionOwner: string;           // required when status === "finance_approved"
+  lastReviewedAt: string;            // required when status === "finance_approved"
+  notes?: string;
+}
+
+interface SavingsWaterfallContribution {
+  label: string;
+  deltaValue: number;                // signed — see validation rules
+  sign: "savings" | "cost" | "residual";
+  confidence: FinancialConfidence;
+  sourceAssumption: string;
+}
+
+interface AISavingsWaterfallProps {
+  assumptionSet: FinancialAssumptionSet;
+  contributions: SavingsWaterfallContribution[];
+  sourceNote?: SourceNote;           // defaults from assumptionSet.status per docs/15
+  takeaway?: string;                 // default is conservative; see below
+}
+```
+
+### Value-direction convention
+
+**The y-axis is COST, not savings.** Bars represent the cost stack:
+
+- **Baseline bar** — full bar from `$0` up to the current cost baseline.
+- **`sign: "savings"`** — the bar **descends** from the running cost; visually represents cost reduction.
+- **`sign: "cost"`** — the bar **ascends** from the running cost; visually represents cost addition.
+- **`sign: "residual"`** — the bar ascends; visually represents a residual cost line item that remains after the modeled changes.
+- **Modeled-state bar** — full bar from `$0` up to the running cost AFTER all contributions, rendered with a dashed-outline "modeled" treatment per the `ChartWaterfallBar` primitive's `modeled` flag.
+
+This frames the y-axis as "cost remaining" rather than "savings accumulated." The exhibit therefore never labels a single figure as "net savings" — savings appear as individual cost-reduction bars; the modeled state appears as a separate cost level. **The visual is honest about cost stacking; the canon prohibits any single "guaranteed savings" / "annual savings" / "ROI" / "payback" label.**
+
+### Validation (exported as `validateAssumptionSet` and `validateContribution`)
+
+The exhibit enforces the canon's invariants before any bar renders:
+
+- `status` and `confidence` are required and must be in their allowed-value sets.
+- `currency === "USD"` (multi-currency is a later canon).
+- All money fields finite and non-negative.
+- `expectedAutomationRate`, `expectedAdoptionRate`, `riskAdjustmentFactor` clamped `[0, 1]`. Out-of-range is **rejected**, not silently clamped.
+- Baseline requirement: `currentBaselineCost > 0` OR (`currentBaselineHours > 0` AND `hourlyCostAssumption > 0`).
+- `finance_approved` status requires non-empty `assumptionOwner` and `lastReviewedAt`.
+- Contribution `deltaValue < 0` is allowed **only** when `sign === "cost"` (defensive support per docs/15).
+- If the assumption set fails validation OR every contribution is rejected, the exhibit renders an inline empty-state inside the chart area instead of pretending the chart succeeded.
+
+### Source-note derivation (exported as `defaultFinancialSourceNote`)
+
+| `assumptionSet.status` | Default rendered string |
+| --- | --- |
+| `illustrative` | `Source: Illustrative sample data · not a financial model` |
+| `operator_estimated` | `Source: Operator-estimated assumptions · internal draft · confidence <confidence>` |
+| `client_validated` | `Source: Client-validated assumptions · confidence <confidence> · reviewed <lastReviewedAt>` |
+| `finance_approved` | `Source: Finance-approved model · confidence <confidence> · reviewed <lastReviewedAt>` |
+
+The illustrative source note **does not** include `confidence`, `assumptionOwner`, or `lastReviewedAt`. The non-illustrative tiers compose the full string into `text` and skip the structured `n` field, matching the canon's exact placement.
+
+### Default takeaway
+
+```
+Illustrative savings structure only; validated financial assumptions are required before client-facing use.
+```
+
+This sentence is deliberately conservative. Override it only when the assumption set has reached Gate 1+, AND the override does not introduce prohibited claim language. Per `docs/15`, prohibited phrases include "guaranteed savings," "guaranteed ROI," "payback in X months," "will save $X," "will reduce cost by X%," "profit increase," "cash-flow positive by," and "board-ready ROI." Per-bar `<svg><title>` text is also written neutrally (`"<label>: $Xk (savings reduction)."`).
+
+### Visual rules
+
+- **Y-axis**: vertical, USD, with three ticks at `$0`, half-baseline, and baseline. The `$0` line is the chart floor.
+- **Connectors**: dashed `--color-border-strong` segments at the running-total y-position between adjacent bars. Render BEFORE bars so bars sit on top.
+- **Baseline + modeled-state bars**: full bars from `$0` to their value, rendered in `info` tone. The modeled-state bar carries the `modeled` flag (dashed outline + reduced fill) so viewers read it as a forecast.
+- **Contribution bars**: floating bars between adjacent running-total points. Tone follows the sign — `savings → success` (green), `cost → warning` (orange), `residual → neutral` (gray).
+- **Value labels**: rendered above each bar's top edge in tabular-mono semibold. Baseline + modeled-state labels are unsigned (`$1.2M`, `$940k`); contribution labels are signed (`−$560k`, `+$90k`).
+- **Category labels**: rendered below the chart, rotated −35° to fit. Mono uppercase tracking-1.2.
+- **Legend**: status pill (`Illustrative · Gate 0` for Gate 0), three tone swatches (baseline/modeled · savings · cost), plus a dashed-outline swatch labeled "Modeled forecast" so the modeled treatment is explained.
+- **Axis framing**: the y-axis carries USD tick labels only; never "Better" / "Stronger" / "Savings" / "ROI" axis copy.
+
+The `ChartWaterfallBar` primitive is value-agnostic: it accepts pre-computed SVG geometry (x, y, width, height) plus an optional value label, plus boolean `modeled` and `muted` flags that the consuming exhibit interprets. The primitive contains zero financial-specific language, so it is reusable by any future stepped-bar visualization (e.g., a non-financial bridge chart) without modification.
+
+> ⚠ **All sample financial values shown in this README and in the live `/app/charts-preview` route are illustrative only. They do not represent any real client baseline, real savings, or any approved financial model. Reuse outside the preview route is forbidden by `docs/15`.**
 
 ## Design-token contract
 
