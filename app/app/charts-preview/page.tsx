@@ -7,6 +7,10 @@ import {
   RiskAdjustedPriorityQuadrant,
   type RiskAdjustedQuadrantPoint,
 } from "@/components/charts/exhibits/risk-adjusted-priority-quadrant";
+import {
+  CapabilityMaturityHeatmap,
+  type CapabilityMaturityCell,
+} from "@/components/charts/exhibits/capability-maturity-heatmap";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -17,9 +21,12 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders the proof-of-fit Executive Summary 2×2 plus
- * Sprint 1's Risk-Adjusted Priority Quadrant. Both use static sample data
- * declared inside this file; no persisted reads.
+ * Phase 1B preview. Renders three exhibits in sequence:
+ *   - proof-of-fit Executive Summary 2×2
+ *   - Sprint 1 Risk-Adjusted Priority Quadrant
+ *   - Sprint 2 Capability Maturity Heatmap
+ *
+ * All use static sample data declared inside this file; no persisted reads.
  *
  * Not added to nav. Reachable only by direct URL.
  */
@@ -87,6 +94,61 @@ const RISK_QUADRANT_PREVIEW_DATA: RiskAdjustedQuadrantPoint[] = [
   },
 ];
 
+// Capability Maturity Heatmap preview data — 5 capabilities × 5 dimensions.
+// Designed to span all four maturity bands so reviewers see the full color
+// vocabulary at once. Capability names are kept short to fit the row label
+// column.
+const HEATMAP_PREVIEW_CAPABILITIES = [
+  "Client Intake",
+  "Proposal Gen",
+  "Reporting",
+  "Customer Support",
+  "Internal KB",
+];
+
+const HEATMAP_PREVIEW_DIMENSIONS = [
+  "AI Readiness",
+  "Workflow",
+  "Systems",
+  "Data",
+  "Governance",
+];
+
+const HEATMAP_PREVIEW_CELLS: CapabilityMaturityCell[] = [
+  // Client Intake
+  { capability: "Client Intake", dimension: "AI Readiness", maturityScore: 72, supportingFindingCount: 3 },
+  { capability: "Client Intake", dimension: "Workflow", maturityScore: 58, supportingFindingCount: 2 },
+  { capability: "Client Intake", dimension: "Systems", maturityScore: 64, supportingFindingCount: 4 },
+  { capability: "Client Intake", dimension: "Data", maturityScore: 48, supportingFindingCount: 2 },
+  { capability: "Client Intake", dimension: "Governance", maturityScore: 38, supportingFindingCount: 1 },
+  // Proposal Gen
+  { capability: "Proposal Gen", dimension: "AI Readiness", maturityScore: 65, supportingFindingCount: 2 },
+  { capability: "Proposal Gen", dimension: "Workflow", maturityScore: 70, supportingFindingCount: 3 },
+  { capability: "Proposal Gen", dimension: "Systems", maturityScore: 62, supportingFindingCount: 2 },
+  { capability: "Proposal Gen", dimension: "Data", maturityScore: 55, supportingFindingCount: 2 },
+  { capability: "Proposal Gen", dimension: "Governance", maturityScore: 42, supportingFindingCount: 1 },
+  // Reporting
+  { capability: "Reporting", dimension: "AI Readiness", maturityScore: 82, supportingFindingCount: 5 },
+  { capability: "Reporting", dimension: "Workflow", maturityScore: 75, supportingFindingCount: 4 },
+  { capability: "Reporting", dimension: "Systems", maturityScore: 78, supportingFindingCount: 3 },
+  { capability: "Reporting", dimension: "Data", maturityScore: 80, supportingFindingCount: 4 },
+  { capability: "Reporting", dimension: "Governance", maturityScore: 60, supportingFindingCount: 2 },
+  // Customer Support
+  { capability: "Customer Support", dimension: "AI Readiness", maturityScore: 45, supportingFindingCount: 2 },
+  { capability: "Customer Support", dimension: "Workflow", maturityScore: 38, supportingFindingCount: 1 },
+  { capability: "Customer Support", dimension: "Systems", maturityScore: 50, supportingFindingCount: 2 },
+  { capability: "Customer Support", dimension: "Data", maturityScore: 35, supportingFindingCount: 1 },
+  { capability: "Customer Support", dimension: "Governance", maturityScore: 28, supportingFindingCount: 1 },
+  // Internal KB
+  { capability: "Internal KB", dimension: "AI Readiness", maturityScore: 55, supportingFindingCount: 2 },
+  { capability: "Internal KB", dimension: "Workflow", maturityScore: 48, supportingFindingCount: 1 },
+  { capability: "Internal KB", dimension: "Systems", maturityScore: 60, supportingFindingCount: 3 },
+  { capability: "Internal KB", dimension: "Data", maturityScore: 52, supportingFindingCount: 2 },
+  { capability: "Internal KB", dimension: "Governance", maturityScore: 40, supportingFindingCount: 1 },
+];
+
+const HEATMAP_PREVIEW_SESSION_COUNT = 8;
+
 export default function ChartsPreviewPage() {
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -100,7 +162,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Two exhibits. Visual direction review only.
+              Three exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -120,6 +182,16 @@ export default function ChartsPreviewPage() {
         }}
       />
 
+      <CapabilityMaturityHeatmap
+        cells={HEATMAP_PREVIEW_CELLS}
+        capabilities={HEATMAP_PREVIEW_CAPABILITIES}
+        dimensions={HEATMAP_PREVIEW_DIMENSIONS}
+        sourceNote={{
+          text: "Static sample preview data · Phase 1B Sprint 2",
+          n: HEATMAP_PREVIEW_SESSION_COUNT,
+        }}
+      />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -128,7 +200,7 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining six Phase 1B
+            data declared inside the page file. The remaining five Phase 1B
             exhibits ship in subsequent commits after each visual direction
             is reviewed.
           </p>

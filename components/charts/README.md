@@ -4,12 +4,13 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Two exhibits ship today:
+Three exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
+- `exhibits/capability-maturity-heatmap.tsx` — **Phase 1B Sprint 2.** Capability × dimension grid. Cell color encodes a 4-band maturity scale derived deterministically from `maturityScore`. Cell label is the score itself in tabular mono. Row + column labels in `JetBrains Mono` uppercase tracking-1.4. No `@visx/heatmap` dependency — the cell primitive is plain SVG `rect` + `text`.
 
-Both are **server components** rendering **static SVG**. Both use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. Neither is wired into the report or proposal builders. The remaining six Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
+All three are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining five Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
 
 ## Layout
 
@@ -20,9 +21,11 @@ components/charts/
     chart-axis.tsx         SLATE-styled AxisBottom / AxisLeft
     chart-grid.tsx         SLATE-styled GridRows / GridColumns
     chart-source-note.tsx  uppercase mono caption beneath every exhibit
+    chart-heatmap-cell.tsx SLATE-styled SVG heatmap cell (rect + centered label)
   exhibits/
-    executive-summary-2x2.tsx           Phase 1B proof-of-fit exhibit
-    risk-adjusted-priority-quadrant.tsx Phase 1B Sprint 1 — analytical 2×2
+    executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
+    risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
+    capability-maturity-heatmap.tsx      Phase 1B Sprint 2 — diagnostic heatmap
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -63,6 +66,46 @@ Risk-band color rule (no `critical` chart-tone added; the existing four-tone voc
 Bubble size encodes `impact` on a fixed 0–100 domain (so a 50-impact bubble looks the same on every engagement). Quadrant midlines are at **50/50** — this is the analytical-view convention and is deliberately different from the 70/60 thresholds in [`lib/opportunities/helpers.ts`](../../lib/opportunities/helpers.ts) used by the operator's editing matrix. The two views are not in conflict — they answer different questions.
 
 Labels: only the highest-`impact` point in each quadrant is labeled (max 4 labels, deterministic). Every bubble carries an `<svg><title>` for screen-reader and hover-tooltip discoverability without depending on hover for comprehension.
+
+## Capability Maturity Heatmap — input shape and band rule
+
+Component: `CapabilityMaturityHeatmap`. Located at [`exhibits/capability-maturity-heatmap.tsx`](./exhibits/capability-maturity-heatmap.tsx). Composes [`primitives/chart-heatmap-cell.tsx`](./primitives/chart-heatmap-cell.tsx).
+
+Inputs:
+
+```ts
+interface CapabilityMaturityCell {
+  capability: string;
+  dimension: string;
+  maturityScore: number;          // 0–100
+  supportingFindingCount: number; // shown via the cell's <title>, not visually
+}
+
+interface CapabilityMaturityHeatmapProps {
+  cells: CapabilityMaturityCell[];
+  capabilities: string[];   // row order, top to bottom
+  dimensions: string[];     // column order, left to right
+  sourceNote: SourceNote;   // required by canon
+  takeaway?: string;        // defaults to a derived one-line summary
+}
+```
+
+The grid is driven by the `capabilities` and `dimensions` arrays — the cells array is treated as a sparse map keyed on `${capability}|${dimension}`. Cells outside the row/column set are silently ignored, and missing intersections render as gaps.
+
+Maturity-band color rule (no new chart-tone added — uses the existing four-tone vocabulary):
+
+| `maturityScore` | Band | `ChartTone` | CSS variable |
+| --- | --- | --- | --- |
+| 0–39 | Needs foundation | `risk` | `--color-status-risk` |
+| 40–59 | Developing | `warning` | `--color-status-warning` |
+| 60–79 | Functional | `info` | `--color-status-info` |
+| 80–100 | Mature | `success` | `--color-status-success` |
+
+Each cell renders the maturity score in tabular mono numerals (semibold, 13px, `--color-text-primary`). The `supportingFindingCount` is rendered into the cell's `<svg><title>` for screen-reader and hover-tooltip discoverability — never relied on for visual comprehension. Per-cell `<title>` text reads `"<capability> · <dimension>: <score> (<band>). <n> supporting findings."`.
+
+The `ChartHeatmapCell` primitive is intentionally generic so the same primitive can back the **Stakeholder Coverage Matrix** in a later sprint without code changes. The primitive accepts `fill` (typically `CHART_TONE_VAR[tone]`), `label`, `title`, and standard rect attributes — nothing maturity-specific lives in the primitive itself.
+
+The exhibit uses `ChartFrame`'s render-prop `(innerWidth, innerHeight)` to size cells dynamically against any number of rows × columns. Row and column labels render outside the inner group at small negative coordinates so the cells fill the inner area exactly.
 
 ## Design-token contract
 
