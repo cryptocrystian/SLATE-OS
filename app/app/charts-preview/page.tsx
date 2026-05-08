@@ -15,6 +15,10 @@ import {
   StakeholderCoverageMatrix,
   type StakeholderCoverageCell,
 } from "@/components/charts/exhibits/stakeholder-coverage-matrix";
+import {
+  RoadmapGanttWithDependencies,
+  type RoadmapGanttItem,
+} from "@/components/charts/exhibits/roadmap-gantt-with-dependencies";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -25,11 +29,12 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders four exhibits in sequence:
+ * Phase 1B preview. Renders five exhibits in sequence:
  *   - proof-of-fit Executive Summary 2×2
  *   - Sprint 1 Risk-Adjusted Priority Quadrant
  *   - Sprint 2 Capability Maturity Heatmap
  *   - Sprint 3 Stakeholder Coverage Matrix
+ *   - Sprint 4 Roadmap Gantt with Dependencies
  *
  * All use static sample data declared inside this file; no persisted reads.
  *
@@ -210,6 +215,80 @@ const COVERAGE_PREVIEW_CELLS: StakeholderCoverageCell[] = [
 
 const COVERAGE_PREVIEW_SESSION_COUNT = 5;
 
+// Roadmap Gantt with Dependencies preview data — 7 initiatives spanning the
+// 90-day window with a mix of statuses (planned / in_progress / blocked /
+// complete) and 6 forward-in-time dependency edges so reviewers see the
+// arrowhead routing in action. Today is set to day 30, placing items
+// 1–3 in the realised half and 4–7 in the upcoming half.
+const ROADMAP_PREVIEW_ITEMS: RoadmapGanttItem[] = [
+  {
+    id: "intake",
+    title: "Stakeholder intake completion",
+    phase: "days_0_30",
+    startOffset: 0,
+    durationDays: 15,
+    dependencyIds: [],
+    status: "complete",
+  },
+  {
+    id: "ai-recon",
+    title: "AI assistant pilot · reconciliation",
+    phase: "days_0_30",
+    startOffset: 15,
+    durationDays: 30,
+    dependencyIds: ["intake"],
+    status: "in_progress",
+    ownerPlaceholder: "Saipien Labs strategist",
+  },
+  {
+    id: "kb-ingest",
+    title: "Knowledge base ingestion",
+    phase: "days_31_60",
+    startOffset: 20,
+    durationDays: 30,
+    dependencyIds: ["intake"],
+    status: "planned",
+  },
+  {
+    id: "proposal-tpl",
+    title: "Proposal draft template",
+    phase: "days_31_60",
+    startOffset: 45,
+    durationDays: 20,
+    dependencyIds: ["ai-recon"],
+    status: "planned",
+  },
+  {
+    id: "support-pilot",
+    title: "Customer support assistant pilot",
+    phase: "days_61_90",
+    startOffset: 55,
+    durationDays: 30,
+    dependencyIds: ["kb-ingest"],
+    status: "blocked",
+  },
+  {
+    id: "reporting",
+    title: "Reporting integration",
+    phase: "days_61_90",
+    startOffset: 60,
+    durationDays: 30,
+    dependencyIds: ["kb-ingest"],
+    status: "planned",
+  },
+  {
+    id: "governance",
+    title: "Governance + change-mgmt rollout",
+    phase: "days_61_90",
+    startOffset: 75,
+    durationDays: 15,
+    dependencyIds: ["proposal-tpl"],
+    status: "planned",
+  },
+];
+
+const ROADMAP_PREVIEW_TODAY_OFFSET = 30;
+
 export default function ChartsPreviewPage() {
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
@@ -223,7 +302,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Four exhibits. Visual direction review only.
+              Five exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -263,6 +342,15 @@ export default function ChartsPreviewPage() {
         }}
       />
 
+      <RoadmapGanttWithDependencies
+        items={ROADMAP_PREVIEW_ITEMS}
+        todayOffset={ROADMAP_PREVIEW_TODAY_OFFSET}
+        sourceNote={{
+          text: "Static sample preview data · Phase 1B Sprint 4",
+          n: ROADMAP_PREVIEW_ITEMS.length,
+        }}
+      />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -271,7 +359,7 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining four Phase 1B
+            data declared inside the page file. The remaining three Phase 1B
             exhibits ship in subsequent commits after each visual direction
             is reviewed.
           </p>

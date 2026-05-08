@@ -4,14 +4,15 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Four exhibits ship today:
+Five exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
 - `exhibits/capability-maturity-heatmap.tsx` — **Phase 1B Sprint 2.** Capability × dimension grid. Cell color encodes a 4-band maturity scale derived deterministically from `maturityScore`. Cell label is the score itself in tabular mono. Row + column labels in `JetBrains Mono` uppercase tracking-1.4. No `@visx/heatmap` dependency — the cell primitive is plain SVG `rect` + `text`.
 - `exhibits/stakeholder-coverage-matrix.tsx` — **Phase 1B Sprint 3.** Role × topic intake-coverage grid. Cell color encodes a 4-tone evidence-strength scale (`missing → neutral`, `thin → warning`, `adequate → info`, `strong → success`). Cell label shows the supporting `responseCount` for present cells and an em-dash for missing cells. **Reuses the Sprint 2 `ChartHeatmapCell` primitive without modification** — the canon's promise that one primitive backs both heatmap exhibits is now realized.
+- `exhibits/roadmap-gantt-with-dependencies.tsx` — **Phase 1B Sprint 4.** 30/60/90-day Gantt timeline with right-angle dependency arrows. Bar color = `RoadmapStatus` tone (planned/in-progress/blocked/complete). Vertical "Today" marker in `--color-brand-primary`. Phase headers + dashed phase boundaries at days 30 / 60 / 90. Item titles render in the left margin; bars are clean colored blocks. Adds two new generic primitives: `ChartGanttBar` and `ChartDependencyArrow` (plus `ChartDependencyArrowheadMarker`).
 
-All four are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining four Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
+All five are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining three Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
 
 ## Layout
 
@@ -22,12 +23,15 @@ components/charts/
     chart-axis.tsx         SLATE-styled AxisBottom / AxisLeft
     chart-grid.tsx         SLATE-styled GridRows / GridColumns
     chart-source-note.tsx  uppercase mono caption beneath every exhibit
-    chart-heatmap-cell.tsx SLATE-styled SVG heatmap cell (rect + centered label)
+    chart-heatmap-cell.tsx     SLATE-styled SVG heatmap cell (rect + centered label)
+    chart-gantt-bar.tsx        SLATE-styled SVG Gantt bar (rect + auto inside/outside label)
+    chart-dependency-arrow.tsx SLATE-styled right-angle dependency arrow + arrowhead marker
   exhibits/
     executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
     risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
     capability-maturity-heatmap.tsx      Phase 1B Sprint 2 — diagnostic heatmap
     stakeholder-coverage-matrix.tsx      Phase 1B Sprint 3 — coverage heatmap
+    roadmap-gantt-with-dependencies.tsx  Phase 1B Sprint 4 — 30/60/90 Gantt
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -152,6 +156,66 @@ Cell label policy:
 - Every cell carries an `<svg><title>` reading `"<role> · <topic>: <Strength>. <n> response(s)."` for screen-reader / hover discoverability — never required for visual comprehension.
 
 The exhibit follows the same `ChartFrame` render-prop pattern as Capability Maturity: rows / columns are driven by the `roles` and `topics` arrays, the `cells` array is treated as a sparse map keyed on `${role}|${topic}`, and missing intersections in the cells array (vs. `strength: "missing"` cells) render as gaps.
+
+## Roadmap Gantt with Dependencies — input shape and rules
+
+Component: `RoadmapGanttWithDependencies`. Located at [`exhibits/roadmap-gantt-with-dependencies.tsx`](./exhibits/roadmap-gantt-with-dependencies.tsx). Composes [`primitives/chart-gantt-bar.tsx`](./primitives/chart-gantt-bar.tsx) and [`primitives/chart-dependency-arrow.tsx`](./primitives/chart-dependency-arrow.tsx).
+
+Inputs:
+
+```ts
+type RoadmapPhase = "days_0_30" | "days_31_60" | "days_61_90";
+type RoadmapStatus = "planned" | "in_progress" | "blocked" | "complete";
+
+interface RoadmapGanttItem {
+  id: string;
+  title: string;
+  phase: RoadmapPhase;
+  startOffset: number;     // 0–90; clamped to range
+  durationDays: number;    // clamped to a minimum visible width; bars
+                           // that overflow day 90 are clipped to day 90
+  dependencyIds: string[]; // forward-in-time only; unknown ids are dropped
+  status: RoadmapStatus;
+  ownerPlaceholder?: string;
+}
+
+interface RoadmapGanttWithDependenciesProps {
+  items: RoadmapGanttItem[];
+  sourceNote: SourceNote;
+  todayOffset?: number;    // default 0; clamped to 0–90
+  takeaway?: string;       // defaults to a derived one-line summary
+}
+```
+
+Status-tone color rule (no new chart-tone added — uses the existing vocabulary):
+
+| `status` | Visual | `ChartTone` | CSS variable |
+| --- | --- | --- | --- |
+| `planned` | Standard bar | `info` | `--color-status-info` |
+| `in_progress` | Standard bar | `brand` | `--color-brand-primary` |
+| `blocked` | Standard bar | `risk` | `--color-status-risk` |
+| `complete` | Muted: reduced fill / stroke / label opacity (~45%) | `neutral` | `--color-status-neutral` |
+
+The "complete" treatment leans on `ChartGanttBar`'s `muted` flag — same primitive, different opacity. A completed item still appears on the timeline so the narrative reads end-to-end, but it visually recedes so eyes go to the active work.
+
+Layout:
+- **X-axis fixed at 0–90 days.** Items with `startOffset` outside that window are clamped to the range; items whose end exceeds day 90 are visually clipped to day 90 (the underlying data is unchanged — only the rendered bar is clipped). Negative or zero `durationDays` is normalized to a minimum visible width.
+- **Phase headers** ("Days 0–30" / "Days 31–60" / "Days 61–90") render at the top, mono uppercase tracking-1.6, centered above each phase region.
+- **Phase boundaries** (days 30 and 60) render as subtle dashed verticals using `--color-border-strong` at 0.4 opacity.
+- **Today marker** is a vertical `--color-brand-primary` line (1.5px, opacity 0.8) plus a small `TODAY · D<n>` label above the chart in mono uppercase brand-primary.
+- **Day axis** at the bottom shows ticks only at 0, 30, 60, 90 with `D<n>` labels — intermediate ticks the linear scale would emit are deliberately suppressed so the axis reads as a phase scale rather than a continuous time scale.
+- **Item titles** sit in the left margin (mono uppercase tracking-1.4, `--color-text-muted`). The bars themselves carry no internal label; status is conveyed by color, schedule by position. Each bar carries an `<svg><title>` reading `"<title> · <status>. Days <start>–<end>. Owner: <owner>"` for screen-reader / hover discoverability.
+
+Dependency arrows:
+- Right-angle 3-segment path: source bar's right edge → small horizontal stub (8 SVG units) → vertical drop → target bar's left edge. Drawn BEFORE bars so bars sit on top.
+- Arrowhead is shared via a single `<marker>` defined once per exhibit (`id="slate-roadmap-dep-arrow"`) so `<defs>` stays clean even with many edges.
+- Stroke uses `--color-border-strong` at 0.7 opacity by default — visible but recessive.
+- Forward-in-time only: a dependency whose source is later than its target is still drawn but the last segment runs leftward; the routing is intentionally simple rather than re-routing around the chart.
+- An edge whose source `id` is not in `items` is silently dropped (defensive against stale ids).
+
+The two new primitives are deliberately generic:
+- **`ChartGanttBar`** — `x`, `y`, `width`, `height`, `fill`, `fillOpacity`, `stroke`, `strokeWidth`, `rx`, optional `label` (auto inside/outside placement), `muted` flag, `title`. Zero roadmap-specific logic; reusable by any future horizontal-bar exhibit.
+- **`ChartDependencyArrow`** — `startX/Y`, `endX/Y`, `markerId`, `stroke`, `strokeWidth`, `strokeDasharray`, `strokeOpacity`, `stub`, `title`. Plus a sibling helper `ChartDependencyArrowheadMarker` that the exhibit drops once into `<defs>`. Zero domain-specific logic; reusable by any future "A → B" connector.
 
 ## Design-token contract
 
