@@ -988,6 +988,10 @@ A hardening sprint between Step 4 and Step 5. Public scorecard submissions now r
 
 `docs/13_PHASE_1B_CHART_EXHIBIT_CANON.md` is the next governance artifact in the Phase 1B sequence and has now landed. It approves Visx as the underlying charting layer, formalizes the SLATE chart-vocabulary architecture (only chart primitives may import `@visx/*`; exhibits compose primitives; app pages consume exhibits only), defines the eight required exhibits with purpose / inputs / structure / source-note / dependencies / data-readiness honesty, and sets the recommended implementation order. **The canon does not authorize building the remaining seven exhibits — that requires a separate sprint approval.**
 
+## Phase 1B Exhibit Sprint 1 — Risk-Adjusted Priority Quadrant
+
+The first real Phase 1B exhibit ships at `components/charts/exhibits/risk-adjusted-priority-quadrant.tsx`. It is an analytical 2×2 (impact × complexity) with bubble size = business impact and color = risk band (4 deterministic thresholds mapped to the existing `success / info / warning / risk` chart-tone vocabulary — no new tone added). Quadrant midlines are at 50/50 (analytical-view convention; the operator editing matrix continues to use the 70/60 thresholds in `lib/opportunities/helpers.ts`). The exhibit is a pure server component, accepts a narrow `RiskAdjustedQuadrantPoint[]` shape, and ships with an exported `opportunityToRiskQuadrantPoint` adapter that the future report-wiring sprint will consume. The unlinked `/app/charts-preview` route now renders both the proof-of-fit Executive Summary 2×2 and the Sprint 1 Risk-Adjusted Priority Quadrant. **The exhibit is not yet wired into the report or proposal builders — Sprint 1 proves the exhibit component and preview rendering only.** No package dependencies were added; no new Visx packages were introduced.
+
 ## Recommended Next Step
 
 **Scope Phase 1B — Consulting-Grade Deliverable Engine.** Suggested order:

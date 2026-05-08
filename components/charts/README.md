@@ -4,11 +4,12 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-This is the **proof-of-fit** commit. Exactly one exhibit ships:
+Two exhibits ship today:
 
-- `exhibits/executive-summary-2x2.tsx` — Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
+- `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
+- `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
 
-All data is **static sample data** declared inline in the exhibit file. No persisted reads. The exhibit is rendered only on the unlinked operator-only `/app/charts-preview` route. It is not wired into the report or proposal builders. The remaining seven Phase 1B exhibits (Capability Maturity Heatmap, AI-Savings Waterfall, ROI Bridge, Roadmap Gantt with Dependencies, Risk-Adjusted Priority Quadrant, Stakeholder Coverage Matrix, Benchmark Comparison Bars) ship in subsequent commits after the visual direction here is reviewed.
+Both are **server components** rendering **static SVG**. Both use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. Neither is wired into the report or proposal builders. The remaining six Phase 1B exhibits ship in subsequent sprints after each visual direction is reviewed.
 
 ## Layout
 
@@ -20,10 +21,48 @@ components/charts/
     chart-grid.tsx         SLATE-styled GridRows / GridColumns
     chart-source-note.tsx  uppercase mono caption beneath every exhibit
   exhibits/
-    executive-summary-2x2.tsx   Phase 1B proof-of-fit exhibit
+    executive-summary-2x2.tsx           Phase 1B proof-of-fit exhibit
+    risk-adjusted-priority-quadrant.tsx Phase 1B Sprint 1 — analytical 2×2
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
+
+## Risk-Adjusted Priority Quadrant — input shape and color rule
+
+Component: `RiskAdjustedPriorityQuadrant`. Located at [`exhibits/risk-adjusted-priority-quadrant.tsx`](./exhibits/risk-adjusted-priority-quadrant.tsx).
+
+Inputs (the exhibit deliberately knows nothing about `Opportunity`):
+
+```ts
+interface RiskAdjustedQuadrantPoint {
+  id: string;
+  title: string;
+  impact: number;     // 0–100, businessImpactScore
+  complexity: number; // 0–100, complexityScore
+  risk: number;       // 0–100, riskScore
+}
+
+interface RiskAdjustedPriorityQuadrantProps {
+  points: RiskAdjustedQuadrantPoint[];
+  sourceNote: SourceNote;   // required by canon
+  takeaway?: string;        // defaults to a derived one-line summary
+}
+```
+
+The future report-wiring sprint imports the pure adapter `opportunityToRiskQuadrantPoint` from the same file — that is the only seam between persisted `Opportunity` rows and the chart. App pages never import `@visx/*` to consume this exhibit.
+
+Risk-band color rule (no `critical` chart-tone added; the existing four-tone vocabulary is sufficient):
+
+| `risk` score | Band | `ChartTone` | CSS variable |
+| --- | --- | --- | --- |
+| 0–24 | Low | `success` | `--color-status-success` |
+| 25–49 | Medium | `info` | `--color-status-info` |
+| 50–74 | Elevated | `warning` | `--color-status-warning` |
+| 75–100 | High | `risk` | `--color-status-risk` |
+
+Bubble size encodes `impact` on a fixed 0–100 domain (so a 50-impact bubble looks the same on every engagement). Quadrant midlines are at **50/50** — this is the analytical-view convention and is deliberately different from the 70/60 thresholds in [`lib/opportunities/helpers.ts`](../../lib/opportunities/helpers.ts) used by the operator's editing matrix. The two views are not in conflict — they answer different questions.
+
+Labels: only the highest-`impact` point in each quadrant is labeled (max 4 labels, deterministic). Every bubble carries an `<svg><title>` for screen-reader and hover-tooltip discoverability without depending on hover for comprehension.
 
 ## Design-token contract
 
