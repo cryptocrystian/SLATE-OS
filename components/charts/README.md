@@ -4,7 +4,7 @@ This directory holds SLATE's chart-component vocabulary for Phase 1B (the Consul
 
 ## Status
 
-Seven exhibits ship today:
+**Phase 1B preview library is complete.** Eight exhibits ship today:
 
 - `exhibits/executive-summary-2x2.tsx` — **Phase 1B proof-of-fit.** Opportunity portfolio · impact × complexity. Bubble size = ROI. Color = evidence strength. Dashed brand-tinted ring on the recommended item.
 - `exhibits/risk-adjusted-priority-quadrant.tsx` — **Phase 1B Sprint 1.** Analytical 2×2 scatter. Bubble size = business impact (safe proxy for value until a financial model lands). **Color = risk band**, derived deterministically from `riskScore`. 50/50 dashed midlines (analytical convention; intentionally distinct from `lib/opportunities/helpers.ts`'s 70/60 thresholds used by the operator's editing matrix). Highest-impact item per quadrant gets a label; everything else renders unlabeled to avoid clutter.
@@ -13,8 +13,9 @@ Seven exhibits ship today:
 - `exhibits/roadmap-gantt-with-dependencies.tsx` — **Phase 1B Sprint 4.** 30/60/90-day Gantt timeline with right-angle dependency arrows. Bar color = `RoadmapStatus` tone (planned/in-progress/blocked/complete). Vertical "Today" marker in `--color-brand-primary`. Phase headers + dashed phase boundaries at days 30 / 60 / 90. Item titles render in the left margin; bars are clean colored blocks. Adds two new generic primitives: `ChartGanttBar` and `ChartDependencyArrow` (plus `ChartDependencyArrowheadMarker`).
 - `exhibits/benchmark-comparison-bars.tsx` — **Phase 1B Sprint 5 · Gate 0 illustrative only.** Per-dimension client score plotted against an illustrative p25 / p50 / p75 percentile band. Adds the `ChartPercentileBand` primitive. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Benchmark Data Canon (`docs/14_*`) reaches Gate 1 or Gate 2 with a real dataset. Default takeaway, default source note, and legend status pill all carry the "illustrative" label deliberately to prevent fake-benchmark optics.
 - `exhibits/ai-savings-waterfall.tsx` — **Phase 1B Sprint 6 · Gate 0 illustrative only.** Cost-baseline → modeled-state waterfall with per-bar savings / cost contributions, dashed connectors at the running cost stack, and a dashed-outline "modeled" treatment on the final-state bar. Adds the `ChartWaterfallBar` primitive. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Financial Assumptions Canon (`docs/15_*`) reaches Gate 1 / Gate 2 / Gate 3. Default takeaway, default source note, and legend status pill all carry the "Illustrative · Gate 0" label deliberately to prevent fake-savings / fake-ROI optics.
+- `exhibits/roi-bridge.tsx` — **Phase 1B Sprint 7 · Gate 0 illustrative only.** Multi-period (Y1 / Y2 / Y3) modeled-return range. Visualizes a SENSITIVITY BAND (low → expected → high) rather than a single deterministic line, so the cone-of-uncertainty stays visible at every period. Adds two new generic primitives: `ChartProjectionLine` and `ChartBandArea`. **MUST NOT** be wired into reports, proposals, public-scorecard surfaces, or PDF exports until the Phase 1B Financial Assumptions Canon (`docs/15_*`) reaches Gate 1 / Gate 2 / Gate 3. The exhibit deliberately rejects "guaranteed ROI" / "payback in X months" / "break-even" / "cash-flow positive by" / "will return X%" / "board-ready ROI" framing — and rejects collapsed bands (low === expected === high) at the validation layer to keep the cone visible.
 
-All seven are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The remaining one Phase 1B exhibit (ROI Bridge) ships in a subsequent sprint after the visual direction is reviewed.
+All eight are **server components** rendering **static SVG**. All use sample data declared at the call site of the preview page (no persisted reads). They are rendered only on the unlinked operator-only `/app/charts-preview` route. None is wired into the report or proposal builders. The next workstream lifts these exhibits out of preview-only territory by wiring them into real persisted reports — that work is gated on the canons reaching their next data tier.
 
 ## Layout
 
@@ -30,6 +31,8 @@ components/charts/
     chart-dependency-arrow.tsx SLATE-styled right-angle dependency arrow + arrowhead marker
     chart-percentile-band.tsx  SLATE-styled rail + IQR box + median line + diamond marker
     chart-waterfall-bar.tsx    SLATE-styled stepped bar with optional modeled / muted treatment
+    chart-projection-line.tsx  Generic SVG polyline-with-markers (line + optional dots)
+    chart-band-area.tsx        Generic SVG closed-area band between an upper and lower polyline
   exhibits/
     executive-summary-2x2.tsx            Phase 1B proof-of-fit exhibit
     risk-adjusted-priority-quadrant.tsx  Phase 1B Sprint 1 — analytical 2×2
@@ -38,6 +41,7 @@ components/charts/
     roadmap-gantt-with-dependencies.tsx  Phase 1B Sprint 4 — 30/60/90 Gantt
     benchmark-comparison-bars.tsx        Phase 1B Sprint 5 — illustrative comparison
     ai-savings-waterfall.tsx             Phase 1B Sprint 6 — illustrative waterfall
+    roi-bridge.tsx                       Phase 1B Sprint 7 — illustrative ROI band
 ```
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
@@ -414,6 +418,114 @@ The `ChartWaterfallBar` primitive is value-agnostic: it accepts pre-computed SVG
 
 > ⚠ **All sample financial values shown in this README and in the live `/app/charts-preview` route are illustrative only. They do not represent any real client baseline, real savings, or any approved financial model. Reuse outside the preview route is forbidden by `docs/15`.**
 
+## ROI Bridge — Gate 0 illustrative only
+
+Component: `RoiBridge`. Located at [`exhibits/roi-bridge.tsx`](./exhibits/roi-bridge.tsx). Composes [`primitives/chart-projection-line.tsx`](./primitives/chart-projection-line.tsx) and [`primitives/chart-band-area.tsx`](./primitives/chart-band-area.tsx).
+
+> ⚠ **Read [`docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md`](../../docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md) before touching this exhibit.** Gate 0 means the exhibit may render **only** with `assumptionSet.status === "illustrative"` and **only** on the operator-only `/app/charts-preview` route. Wiring this exhibit into reports, proposals, public-scorecard surfaces, or PDF exports requires a Gate 1 / Gate 2 / Gate 3 assumption set and a separate sprint approval.
+
+Inputs (the financial-assumption types match `docs/15` exactly and are intentionally duplicated from `ai-savings-waterfall.tsx` so the exhibit stays data-shape-pure and free of cross-exhibit imports — a future shared-types extraction sprint will lift them into `lib/charts/financial-types.ts`):
+
+```ts
+type FinancialAssumptionStatus =
+  | "illustrative"
+  | "operator_estimated"
+  | "client_validated"
+  | "finance_approved";
+
+type FinancialConfidence = "low" | "medium" | "high";
+
+interface FinancialAssumptionSet { /* same shape as ai-savings-waterfall.tsx */ }
+
+type RoiBridgePeriod = "Y1" | "Y2" | "Y3";
+
+interface RoiBridgePoint {
+  period: RoiBridgePeriod;
+  expectedValue: number;     // percent, e.g. 60 = 60%
+  lowEstimate: number;       // percent
+  highEstimate: number;      // percent
+  confidence: FinancialConfidence;
+}
+
+interface RoiBridgeProps {
+  assumptionSet: FinancialAssumptionSet;
+  points: RoiBridgePoint[];          // need at least 2 valid points to render
+  sourceNote?: SourceNote;           // defaults from assumptionSet.status per docs/15
+  takeaway?: string;                 // default is conservative; see below
+}
+```
+
+### Sensitivity-band requirement (no collapsed bands)
+
+The exhibit visualizes a **range**, not a single line. At every period the renderer draws:
+
+- A closed `low → high` envelope via `ChartBandArea` (the cone of uncertainty).
+- An expected-case polyline via `ChartProjectionLine` with a marker at every period.
+- A numeric `<expectedValue>%` label above each marker.
+
+This visual contract is enforced at the validation layer: `validateRoiBridgePoint` rejects any point whose `lowEstimate === expectedValue === highEstimate`. Collapsing the band would imply certainty that no Gate 0 illustrative dataset can support; the canon explicitly forbids "single guaranteed ROI" framing, so the validator forbids the visual that would make it look that way.
+
+### Validation (exported as `validateAssumptionSet` and `validateRoiBridgePoint`)
+
+The exhibit enforces the canon's invariants before any band renders:
+
+- `validateAssumptionSet` is the same vocabulary as the waterfall exhibit's: status / confidence / currency / money-fields / rate-fields / baseline / `finance_approved` requirements.
+- `validateRoiBridgePoint` rejects:
+  - non-finite `expectedValue` / `lowEstimate` / `highEstimate`,
+  - missing or unknown `period` / `confidence`,
+  - `lowEstimate > expectedValue`,
+  - `expectedValue > highEstimate`,
+  - collapsed bands (`low === expected === high`).
+- If the assumption set fails validation OR fewer than 2 points are valid, the exhibit renders an inline empty-state inside the chart area instead of pretending the chart succeeded.
+
+### Source-note derivation (exported as `defaultRoiBridgeSourceNote`)
+
+| `assumptionSet.status` | Default rendered string |
+| --- | --- |
+| `illustrative` | `Source: Illustrative sample data · not a financial model` |
+| `operator_estimated` | `Source: Operator-estimated assumptions · internal draft · confidence <confidence>` |
+| `client_validated` | `Source: Client-validated assumptions · confidence <confidence> · reviewed <lastReviewedAt>` |
+| `finance_approved` | `Source: Finance-approved model · confidence <confidence> · reviewed <lastReviewedAt>` |
+
+The illustrative source note **does not** include `confidence`, `assumptionOwner`, or `lastReviewedAt`. The non-illustrative tiers compose the full string into `text` and skip the structured `n` field, matching the canon's exact placement. The strings match the waterfall exhibit's `defaultFinancialSourceNote` byte-for-byte by intent — both exhibits share the canon's source-note vocabulary.
+
+### Default takeaway
+
+```
+Illustrative ROI structure only; finance-approved assumptions are required before client-facing return claims.
+```
+
+This sentence is deliberately conservative. Override it only when the assumption set has reached Gate 1+, AND the override does not introduce prohibited claim language. Per `docs/15`, prohibited phrases for this exhibit include "guaranteed ROI," "payback in X months," "break-even," "cash-flow positive by," "will return X%," and "board-ready ROI." Per-element `<svg><title>` text is also written neutrally (`"Modeled return range · low to high · illustrative"` and `"Modeled expected-case return · illustrative"`).
+
+### Visual rules
+
+- **X-axis fixed at three periods.** `Y1`, `Y2`, `Y3` anchor at 20% / 50% / 80% of the inner width. Period labels render below the chart in mono uppercase tracking-1.6.
+- **Y-axis** is the modeled return range as a percent. Domain ceiling is `ceil(max(highEstimate) * 1.1 / 50) * 50` so the highest band is at least 10% below the top of the frame and tick numbers fall on tidy 50% boundaries. Three ticks render at `0%`, `domainMax/2`, `domainMax`. Y-axis caption reads `MODELED RANGE · %` — never "ROI," never "return," never "annualized."
+- **Sensitivity band** uses `ChartBandArea` with `info`-tone fill at 0.18 opacity and same-tone stroke at 0.4 opacity. The band reads as scaffolding behind the expected-case line.
+- **Expected-case line** uses `ChartProjectionLine` with a 2px stroke, 0.95 opacity, and 5-radius markers at each period. Markers carry a `--color-bg-surface` halo so they visually lift off the band.
+- **Numeric labels** (`60%`, `140%`, `220%`) render 14px above each marker in mono 11px / `--color-text-secondary`. Labels are plain percentages — never "ROI," "return," "payback," or "break-even."
+- **Legend**: status pill (`Illustrative · Gate 0` for Gate 0) + sensitivity-band swatch + expected-case dot-line swatch + a small mono caption reading `Modeled range — not a commitment`.
+- **No "Today" markers, no payback annotations, no break-even line.** The exhibit shows a range and stops.
+
+### Primitives — generic on purpose
+
+Both new primitives are deliberately free of financial wording so they remain reusable by any future trend / projection / sensitivity exhibit:
+
+- **`ChartProjectionLine`** — `points`, `stroke`, `strokeWidth`, `strokeOpacity`, `strokeDasharray`, `muted`, `markers`, `markerFill`, `markerStroke`, `markerRadius`, `title`. Renders a polyline plus optional marker dots at each point. Zero ROI / financial vocabulary — the consumer brings the meaning.
+- **`ChartBandArea`** — `upperPoints`, `lowerPoints`, `fill`, `fillOpacity`, optional `stroke` / `strokeWidth` / `strokeOpacity`, `title`. Traces the upper points L→R then the lower points R→L and closes with `Z`. Zero domain-specific vocabulary — the consumer brings the meaning. Reusable by any future "two-line envelope" visualization.
+
+> ⚠ **All sample ROI values shown in this README and in the live `/app/charts-preview` route are illustrative only. They do not represent any real client return, real payback, or any approved financial model. Reuse outside the preview route is forbidden by `docs/15`.**
+
+## Phase 1B preview library — complete
+
+With Sprint 7 the eight Phase 1B exhibits are all in place on the operator-only `/app/charts-preview` route. The next workstream — wiring exhibits into real persisted reports, proposals, the public scorecard, or PDF exports — is **gated** on each exhibit's underlying canon reaching its required data tier:
+
+- The five non-financial exhibits (proof-of-fit, Sprints 1–4) are ready to wire into reports as soon as a report-wiring sprint is approved; their data shapes are persisted-record-friendly.
+- Sprint 5 (Benchmark Comparison Bars) is gated on `docs/14` reaching Gate 1 / Gate 2 with a real dataset.
+- Sprint 6 (AI-Savings Waterfall) and Sprint 7 (ROI Bridge) are gated on `docs/15` reaching Gate 1 / Gate 2 / Gate 3 with operator-estimated, client-validated, or finance-approved assumption sets.
+
+Until those gates land, the exhibits remain preview-only.
+
 ## Design-token contract
 
 Charts read SLATE design tokens via CSS custom properties so theming changes propagate without chart-code changes. SVG `fill` and `stroke` accept `var(...)` directly.
@@ -450,11 +562,11 @@ Future exhibits that need viewport-relative measurement can wrap themselves in a
 
 ## Out of scope today
 
-- The remaining seven Phase 1B exhibits.
 - A light-theme palette (PDF export will need this; the contract above accommodates it because every color reads through a CSS variable).
 - Tooltip / hover interactions (`@visx/tooltip` is intentionally not installed).
-- Persisted-data wiring (the matrix in `components/opportunities/opportunity-matrix.tsx` stays the operator's editing surface; this exhibit is a separate consulting-output surface that will read persisted data only after the Phase 1B sprint that wires it).
+- Persisted-data wiring (the matrix in `components/opportunities/opportunity-matrix.tsx` stays the operator's editing surface; the exhibits above are a separate consulting-output surface that will read persisted data only after the Phase 1B sprint that wires them).
 - PDF export of any exhibit.
+- Shared extraction of `FinancialAssumptionSet` / `FinancialConfidence` / `FinancialAssumptionStatus` into `lib/charts/financial-types.ts`. The Sprint 6 and Sprint 7 exhibits both declare these types locally on purpose so each exhibit stays data-shape-pure; the extraction sprint waits until a third financial exhibit needs them.
 
 ## Why Visx, and not Recharts / Tremor / Nivo / ECharts
 

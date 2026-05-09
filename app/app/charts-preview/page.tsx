@@ -28,6 +28,11 @@ import {
   type FinancialAssumptionSet,
   type SavingsWaterfallContribution,
 } from "@/components/charts/exhibits/ai-savings-waterfall";
+import {
+  RoiBridge,
+  type FinancialAssumptionSet as RoiAssumptionSet,
+  type RoiBridgePoint,
+} from "@/components/charts/exhibits/roi-bridge";
 
 export const metadata: Metadata = {
   title: "SLATE · Charts preview",
@@ -38,7 +43,7 @@ export const dynamic = "force-dynamic";
 /**
  * Operator-only, unlinked preview surface for the SLATE chart vocabulary.
  *
- * Phase 1B preview. Renders seven exhibits in sequence:
+ * Phase 1B preview. Renders eight exhibits in sequence:
  *   - proof-of-fit Executive Summary 2×2
  *   - Sprint 1 Risk-Adjusted Priority Quadrant
  *   - Sprint 2 Capability Maturity Heatmap
@@ -46,12 +51,13 @@ export const dynamic = "force-dynamic";
  *   - Sprint 4 Roadmap Gantt with Dependencies
  *   - Sprint 5 Benchmark Comparison Bars (Gate 0 — illustrative only)
  *   - Sprint 6 AI-Savings Waterfall (Gate 0 — illustrative only)
+ *   - Sprint 7 ROI Bridge (Gate 0 — illustrative only)
  *
  * All use static sample data declared inside this file; no persisted reads.
  * Sprint 5's data is `status: "illustrative"` per the Benchmark Data Canon
- * (`docs/14_*`). Sprint 6's data is `status: "illustrative"` per the
- * Financial Assumptions Canon (`docs/15_*`). Neither may be wired into
- * reports, proposals, or the public scorecard until the corresponding
+ * (`docs/14_*`). Sprints 6 and 7 are `status: "illustrative"` per the
+ * Financial Assumptions Canon (`docs/15_*`). None of these may be wired
+ * into reports, proposals, or the public scorecard until the corresponding
  * data tier exists.
  *
  * Not added to nav. Reachable only by direct URL.
@@ -425,6 +431,69 @@ const ILLUSTRATIVE_FINANCIAL_ASSUMPTIONS: FinancialAssumptionSet = {
   lastReviewedAt: "",
 };
 
+// ROI Bridge preview dataset — ILLUSTRATIVE ONLY.
+//
+// Per `docs/15_PHASE_1B_FINANCIAL_ASSUMPTIONS_CANON.md` Gate 0:
+//   - assumptionSet.status MUST be "illustrative"
+//   - the rendered source note MUST read exactly
+//     "Source: Illustrative sample data · not a financial model"
+//   - confidence / owner / lastReviewedAt MUST NOT appear in the
+//     rendered chrome
+//   - this dataset MUST NOT be wired into reports, proposals, or the
+//     public scorecard
+//   - the takeaway MUST NOT use "guaranteed ROI" / "payback in X
+//     months" / "break-even" / "cash-flow positive by" / "will
+//     return X%" / "board-ready ROI" framing
+//
+// Sensitivity bands (low / expected / high) are explicitly different
+// for every period — no collapsed band — so the cone-of-uncertainty
+// stays visible and the canon's invariant holds. The values below are
+// crafted for visual review only and do NOT represent any real client
+// return, real payback, or any approved financial model. Reuse outside
+// the preview route is forbidden by the canon.
+const ILLUSTRATIVE_ROI_ASSUMPTIONS: RoiAssumptionSet = {
+  id: "illustrative-roi-preview",
+  label: "Illustrative ROI preview assumption set",
+  status: "illustrative",
+  confidence: "low",
+  currency: "USD",
+  currentBaselineCost: 1_200_000,
+  currentBaselineHours: 0,
+  hourlyCostAssumption: 0,
+  implementationCost: 90_000,
+  recurringCostMonthly: 5_000,
+  expectedAutomationRate: 0,
+  expectedAdoptionRate: 0,
+  riskAdjustmentFactor: 0,
+  timeToValueDays: 0,
+  assumptionOwner: "",
+  lastReviewedAt: "",
+};
+
+const ILLUSTRATIVE_ROI_POINTS: RoiBridgePoint[] = [
+  {
+    period: "Y1",
+    expectedValue: 60,
+    lowEstimate: 30,
+    highEstimate: 90,
+    confidence: "low",
+  },
+  {
+    period: "Y2",
+    expectedValue: 140,
+    lowEstimate: 80,
+    highEstimate: 220,
+    confidence: "low",
+  },
+  {
+    period: "Y3",
+    expectedValue: 220,
+    lowEstimate: 140,
+    highEstimate: 320,
+    confidence: "low",
+  },
+];
+
 const ILLUSTRATIVE_FINANCIAL_CONTRIBUTIONS: SavingsWaterfallContribution[] = [
   {
     label: "Gross efficiency",
@@ -476,7 +545,7 @@ export default function ChartsPreviewPage() {
               Visx · Phase 1B preview
             </Badge>
             <span className="text-text-muted">
-              Seven exhibits. Visual direction review only.
+              Eight exhibits. Visual direction review only.
             </span>
             <span className="text-text-disabled">·</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
@@ -539,6 +608,17 @@ export default function ChartsPreviewPage() {
         contributions={ILLUSTRATIVE_FINANCIAL_CONTRIBUTIONS}
       />
 
+      {/* Sprint 7 — illustrative only. The exhibit's defaultRoiBridgeSourceNote
+          derives the canonical "Source: Illustrative sample data · not a
+          financial model" string from assumptionSet.status, so we do not
+          pass `sourceNote` here. The dataset's low/expected/high values
+          differ at every period to keep the cone-of-uncertainty visible
+          and to satisfy the canon's no-collapsed-band invariant. */}
+      <RoiBridge
+        assumptionSet={ILLUSTRATIVE_ROI_ASSUMPTIONS}
+        points={ILLUSTRATIVE_ROI_POINTS}
+      />
+
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
@@ -547,9 +627,10 @@ export default function ChartsPreviewPage() {
           <p className="text-xs leading-relaxed text-text-muted">
             This route is the Phase 1B preview surface and is intentionally
             unlinked from the operator nav. Data shown above is static sample
-            data declared inside the page file. The remaining one Phase 1B
-            exhibit (ROI Bridge) ships in a subsequent commit after the
-            visual direction is reviewed.
+            data declared inside the page file. The Phase 1B preview library
+            is now complete (eight of eight exhibits). The next sprint moves
+            the library out of preview-only territory by wiring exhibits into
+            real persisted reports.
           </p>
         </CardBody>
       </Card>
