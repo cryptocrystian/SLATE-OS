@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
-import { ExecutiveSummaryTwoByTwo } from "@/components/charts/exhibits/executive-summary-2x2";
+import {
+  ExecutiveSummaryTwoByTwo,
+  type ExecutiveSummaryPortfolioPoint,
+} from "@/components/charts/exhibits/executive-summary-2x2";
 import {
   RiskAdjustedPriorityQuadrant,
   type RiskAdjustedQuadrantPoint,
@@ -62,6 +65,75 @@ export const dynamic = "force-dynamic";
  *
  * Not added to nav. Reachable only by direct URL.
  */
+
+// Proof-of-fit Executive Summary 2×2 — illustrative sample only.
+//
+// Lifted out of the exhibit in Sprint 1 (the exhibit is now prop-driven
+// so adapter output flows in cleanly). The numeric values match the
+// proof-of-fit's original sample byte-for-byte; the field name moved
+// from `roi` → `impactSignal` to match the canon-safe non-financial
+// vocabulary (see docs/15). The preview overrides the bubble-size
+// legend label below to keep the proof-of-fit's original "annual ROI"
+// wording inside this clearly-illustrative context only.
+const EXECUTIVE_SUMMARY_PREVIEW_POINTS: ExecutiveSummaryPortfolioPoint[] = [
+  {
+    id: "ai-recon",
+    title: "AI-assisted reconciliation",
+    impact: 82,
+    complexity: 38,
+    impactSignal: 240_000,
+    evidence: "success",
+    recommended: true,
+  },
+  {
+    id: "intake-auto",
+    title: "Stakeholder intake automation",
+    impact: 71,
+    complexity: 28,
+    impactSignal: 110_000,
+    evidence: "info",
+  },
+  {
+    id: "proposal-draft",
+    title: "Proposal draft acceleration",
+    impact: 78,
+    complexity: 65,
+    impactSignal: 320_000,
+    evidence: "info",
+  },
+  {
+    id: "kb-retrieval",
+    title: "Internal knowledge retrieval",
+    impact: 64,
+    complexity: 72,
+    impactSignal: 180_000,
+    evidence: "warning",
+  },
+  {
+    id: "renewal-triage",
+    title: "Renewal triage assistant",
+    impact: 56,
+    complexity: 42,
+    impactSignal: 90_000,
+    evidence: "info",
+  },
+  {
+    id: "contract-redline",
+    title: "Contract redline screening",
+    impact: 47,
+    complexity: 81,
+    impactSignal: 70_000,
+    evidence: "warning",
+  },
+  {
+    id: "qbr-summary",
+    title: "QBR summary drafting",
+    impact: 38,
+    complexity: 22,
+    impactSignal: 30_000,
+    evidence: "warning",
+  },
+];
 
 const RISK_QUADRANT_PREVIEW_DATA: RiskAdjustedQuadrantPoint[] = [
   // Quick wins — low complexity, high impact, low / medium risk
@@ -555,7 +627,14 @@ export default function ChartsPreviewPage() {
         }
       />
 
-      <ExecutiveSummaryTwoByTwo />
+      <ExecutiveSummaryTwoByTwo
+        points={EXECUTIVE_SUMMARY_PREVIEW_POINTS}
+        sourceNote={{
+          text: "Static sample data · Phase 1B proof-of-fit",
+          n: EXECUTIVE_SUMMARY_PREVIEW_POINTS.length,
+        }}
+        bubbleSizeLabel="annual ROI"
+      />
 
       <RiskAdjustedPriorityQuadrant
         points={RISK_QUADRANT_PREVIEW_DATA}

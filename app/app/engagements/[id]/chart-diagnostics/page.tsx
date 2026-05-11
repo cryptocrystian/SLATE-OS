@@ -266,8 +266,11 @@ export default async function ChartDiagnosticsPage({
         slot="executive_summary_portfolio"
         title="Executive Summary 2×2"
         result={executiveResult}
-        adapterOnlyNote="Adapter produces points + recommendedId. The proof-of-fit Executive Summary 2×2 exhibit is not yet parameterized — Sprint 1 will lift these props in. The preview below shows the current proof-of-fit exhibit unchanged."
-        exhibit={isAdapterReady(executiveResult) ? <ExecutiveSummaryTwoByTwo /> : null}
+        exhibit={
+          isAdapterReady(executiveResult) ? (
+            <ExecutiveSummaryTwoByTwo {...executiveResult.props} />
+          ) : null
+        }
       />
 
       <DiagnosticPanel

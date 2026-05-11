@@ -7,17 +7,18 @@
  * explicitly forbids re-labeling this dimension as ROI / savings /
  * dollars until a financial-assumption gate advances (docs/15).
  *
- *   ⚠ Exhibit-parameterization note.
- *   `ExecutiveSummaryTwoByTwo` (proof-of-fit) currently renders an
- *   internal `SAMPLE_DATA` array and accepts no props. Sprint 1
- *   internal report-slot rendering will parameterize the exhibit and
- *   consume this adapter's `props` directly. Until then the adapter
- *   establishes the contract: shapes, validation, source note, issues.
+ *   Exhibit parameterization landed in Sprint 1. The adapter imports
+ *   the canonical prop / point types from the exhibit module so the
+ *   contract has a single source of truth.
  *
  * Pure function. No React, no DB client, no app-route imports, no I/O.
  * Never throws on ordinary bad data.
  */
 
+import {
+  type ExecutiveSummaryPortfolioPoint,
+  type ExecutiveSummaryPortfolioProps,
+} from "@/components/charts/exhibits/executive-summary-2x2";
 import {
   adapterInsufficientData,
   adapterInvalidData,
@@ -28,44 +29,16 @@ import {
   type ChartAdapterIssue,
   type ChartAdapterResult,
 } from "@/lib/charts/adapters/types";
-import type { ChartTone, SourceNote } from "@/lib/charts/types";
+import type { ChartTone } from "@/lib/charts/types";
 import type {
   EvidenceStrength,
   Opportunity,
 } from "@/lib/opportunities/types";
 
-// ---------------------------------------------------------------------------
-// Adapter output shape — the prop contract Sprint 1 will pass into the
-// (future-parameterized) Executive Summary 2×2 exhibit. Kept local to
-// the adapter so we do not change the proof-of-fit exhibit's source.
-// ---------------------------------------------------------------------------
-
-export interface ExecutiveSummaryPortfolioPoint {
-  id: string;
-  title: string;
-  /** 0–100. Y-axis position. */
-  impact: number;
-  /** 0–100. X-axis position. */
-  complexity: number;
-  /**
-   * Bubble-size signal. Carries business impact as a safe
-   * non-financial proxy. The canon prohibits naming this dimension
-   * "ROI" / "savings" / "$" until docs/15 advances.
-   */
-  impactSignal: number;
-  /** Categorical evidence-strength color tone. */
-  evidence: ChartTone;
-  /** Optional dashed brand ring marker for the recommended item. */
-  recommended?: boolean;
-}
-
-export interface ExecutiveSummaryPortfolioProps {
-  points: ExecutiveSummaryPortfolioPoint[];
-  /** Optional explicit recommended-item id. Caller may pass through from persisted "selected" flag. */
-  recommendedId?: string;
-  sourceNote: SourceNote;
-  takeaway?: string;
-}
+// Re-export so existing consumers (diagnostic page, future report-slot
+// renderer) can import these types from either the exhibit or the
+// adapter without churn.
+export type { ExecutiveSummaryPortfolioPoint, ExecutiveSummaryPortfolioProps };
 
 export interface ExecutiveSummary2x2AdapterArgs {
   opportunities: Opportunity[];

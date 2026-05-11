@@ -12,6 +12,7 @@ import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ReportWorkspace } from "@/components/reports/report-workspace";
 import { ReportSectionActionBar } from "@/components/reports/report-section-action-bar";
 import { InitializeReportForm } from "@/components/reports/initialize-report-form";
+import { ReportExhibitSlots } from "@/components/reports/report-exhibit-slots";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -23,6 +24,12 @@ import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportun
 import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
 import { getRoadmapForEngagement } from "@/lib/roadmap/mock-roadmap";
 import { getRoadmapForEngagementPersisted } from "@/lib/roadmap/queries";
+import { getIntakeRecordForEngagement } from "@/lib/intake/queries";
+import { executiveSummaryPortfolioFromOpportunities } from "@/lib/charts/adapters/executive-summary-2x2-adapter";
+import { risksFromOpportunities } from "@/lib/charts/adapters/risk-adjusted-priority-quadrant-adapter";
+import { capabilityMaturityFromFindings } from "@/lib/charts/adapters/capability-maturity-heatmap-adapter";
+import { stakeholderCoverageFromIntake } from "@/lib/charts/adapters/stakeholder-coverage-matrix-adapter";
+import { roadmapGanttFromRoadmapItems } from "@/lib/charts/adapters/roadmap-gantt-adapter";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
@@ -61,12 +68,18 @@ export default async function EngagementReportPage({
   let opportunities: Opportunity[];
   let roadmap: RoadmapItem[];
 
+  // Intake responses feed the Sprint 1 Stakeholder Coverage adapter.
+  // Fetched only for persisted engagements; mock paths skip the
+  // exhibit-slot section entirely.
+  let intakeRecord: Awaited<ReturnType<typeof getIntakeRecordForEngagement>> = null;
+
   if (isPersisted) {
-    [report, findings, opportunities, roadmap] = await Promise.all([
+    [report, findings, opportunities, roadmap, intakeRecord] = await Promise.all([
       getReportForEngagementPersisted(engagement.id),
       getFindingsForEngagementPersisted(engagement.id),
       getOpportunitiesForEngagementPersisted(engagement.id),
       getRoadmapForEngagementPersisted(engagement.id),
+      getIntakeRecordForEngagement(engagement.id),
     ]);
   } else {
     report = getReportForEngagement(engagement.id);
@@ -74,6 +87,61 @@ export default async function EngagementReportPage({
     opportunities = getOpportunitiesForEngagement(engagement.id);
     roadmap = getRoadmapForEngagement(engagement.id);
   }
+
+  // ---------------------------------------------------------------------------
+  // Sprint 1 internal report-slot exhibits.
+  //
+  // Group-A adapters run only against persisted engagement rows. Mock
+  // (legacy slug) engagements skip the exhibit-slot section entirely so
+  // the Sprint 1 wiring stays narrowly scoped to real persisted data.
+  // Every adapter is a pure function; a single shared `generatedAt`
+  // clock token keeps the source-summary timestamps consistent across
+  // slots without any adapter calling Date.now() internally.
+  //
+  // Group B exhibits (Benchmark Comparison Bars, AI-Savings Waterfall,
+  // ROI Bridge) are NOT imported and NOT run — they remain preview-only
+  // until docs/14 / docs/15 advance their data gates.
+  // ---------------------------------------------------------------------------
+  const exhibitSlotsGeneratedAt = new Date().toISOString();
+  const exhibitSlotResults = isPersisted
+    ? {
+        executiveSummary: executiveSummaryPortfolioFromOpportunities({
+          opportunities,
+          generatedAt: exhibitSlotsGeneratedAt,
+          lastTouchedAt: null,
+        }),
+        riskPriority: risksFromOpportunities({
+          opportunities,
+          generatedAt: exhibitSlotsGeneratedAt,
+          lastTouchedAt: null,
+        }),
+        capabilityMaturity: capabilityMaturityFromFindings({
+          findings,
+          capabilities: [],
+          dimensions: [],
+          generatedAt: exhibitSlotsGeneratedAt,
+          lastTouchedAt: null,
+        }),
+        stakeholderCoverage: stakeholderCoverageFromIntake({
+          stakeholders: intakeRecord?.stakeholders ?? [],
+          roles: Array.from(
+            new Set(
+              (intakeRecord?.stakeholders ?? []).map(
+                (s) => s.role as unknown as string,
+              ),
+            ),
+          ),
+          topics: [],
+          generatedAt: exhibitSlotsGeneratedAt,
+          lastTouchedAt: null,
+        }),
+        roadmap: roadmapGanttFromRoadmapItems({
+          items: roadmap,
+          generatedAt: exhibitSlotsGeneratedAt,
+          lastTouchedAt: null,
+        }),
+      }
+    : null;
 
   const proposalHref = `/app/engagements/${engagement.id}/proposal`;
   const findingsHref = `/app/engagements/${engagement.id}/findings`;
@@ -268,6 +336,18 @@ export default async function EngagementReportPage({
               }
             />
           )}
+
+          {exhibitSlotResults ? (
+            <ReportExhibitSlots
+              engagementId={engagement.id}
+              generatedAt={exhibitSlotsGeneratedAt}
+              executiveSummary={exhibitSlotResults.executiveSummary}
+              riskPriority={exhibitSlotResults.riskPriority}
+              capabilityMaturity={exhibitSlotResults.capabilityMaturity}
+              stakeholderCoverage={exhibitSlotResults.stakeholderCoverage}
+              roadmap={exhibitSlotResults.roadmap}
+            />
+          ) : null}
 
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">

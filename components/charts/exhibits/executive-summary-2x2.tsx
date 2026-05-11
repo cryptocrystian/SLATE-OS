@@ -16,96 +16,71 @@ import {
   CHART_QUADRANT_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
+  type SourceNote,
 } from "@/lib/charts/types";
 
 /**
- * Executive Summary · 2×2 — Phase 1B proof-of-fit exhibit.
+ * Executive Summary · 2×2 — Phase 1B Sprint 1 (prop-driven).
  *
- * Static sample data only. Renders a McKinsey-style impact × complexity
- * portfolio matrix with bubble size = ROI and color = evidence strength.
- * The single recommended item carries a dashed brand ring.
+ * McKinsey-style impact × complexity portfolio matrix. Bubble size is
+ * a safe non-financial proxy (`impactSignal`), color is evidence
+ * strength, and a single recommended item carries a dashed brand
+ * ring. The exhibit is now prop-driven so adapter output from
+ * `lib/charts/adapters/executive-summary-2x2-adapter.ts` flows
+ * straight in — the proof-of-fit's static `SAMPLE_DATA` was moved
+ * into `app/app/charts-preview/page.tsx` and is no longer carried by
+ * the exhibit.
  *
- * Pure server component. SVG output. No browser APIs, no hooks. Scales to
- * its container width via `ChartFrame`'s `viewBox` + `w-full h-auto`.
+ * Pure server component. SVG output. No browser APIs, no hooks. Scales
+ * to its container width via `ChartFrame`'s `viewBox` + `w-full h-auto`.
  *
- * Wiring into the persisted opportunity matrix or report builder is
- * deliberately deferred until the visual direction here is reviewed.
+ *   ⚠ Bubble-size framing.
+ *   `impactSignal` is **business impact**, not annual ROI or dollars.
+ *   The canon (docs/15) prohibits naming this dimension as financial
+ *   until a Gate 1+ financial assumption set exists. The preview
+ *   route may pass its own legend label to keep the proof-of-fit's
+ *   original wording inside that clearly-illustrative context.
  */
 
-interface PortfolioPoint {
+export interface ExecutiveSummaryPortfolioPoint {
   id: string;
   title: string;
-  /** Impact score 0–100. */
+  /** Impact score 0–100. Drives Y position. */
   impact: number;
-  /** Complexity score 0–100. */
+  /** Complexity score 0–100. Drives X position. */
   complexity: number;
-  /** Annual ROI in dollars. Drives bubble radius. */
-  roi: number;
+  /**
+   * Bubble-size signal. Carries business impact as a safe non-financial
+   * proxy. The canon prohibits naming this dimension "ROI" / "savings"
+   * until docs/15 advances to Gate 1+.
+   */
+  impactSignal: number;
   /** Evidence strength → categorical color tone. */
   evidence: ChartTone;
   /** When true, the bubble carries a dashed brand-tinted outer ring. */
   recommended?: boolean;
 }
 
-const SAMPLE_DATA: PortfolioPoint[] = [
-  {
-    id: "ai-recon",
-    title: "AI-assisted reconciliation",
-    impact: 82,
-    complexity: 38,
-    roi: 240_000,
-    evidence: "success",
-    recommended: true,
-  },
-  {
-    id: "intake-auto",
-    title: "Stakeholder intake automation",
-    impact: 71,
-    complexity: 28,
-    roi: 110_000,
-    evidence: "info",
-  },
-  {
-    id: "proposal-draft",
-    title: "Proposal draft acceleration",
-    impact: 78,
-    complexity: 65,
-    roi: 320_000,
-    evidence: "info",
-  },
-  {
-    id: "kb-retrieval",
-    title: "Internal knowledge retrieval",
-    impact: 64,
-    complexity: 72,
-    roi: 180_000,
-    evidence: "warning",
-  },
-  {
-    id: "renewal-triage",
-    title: "Renewal triage assistant",
-    impact: 56,
-    complexity: 42,
-    roi: 90_000,
-    evidence: "info",
-  },
-  {
-    id: "contract-redline",
-    title: "Contract redline screening",
-    impact: 47,
-    complexity: 81,
-    roi: 70_000,
-    evidence: "warning",
-  },
-  {
-    id: "qbr-summary",
-    title: "QBR summary drafting",
-    impact: 38,
-    complexity: 22,
-    roi: 30_000,
-    evidence: "warning",
-  },
-];
+export interface ExecutiveSummaryPortfolioProps {
+  points: ExecutiveSummaryPortfolioPoint[];
+  /**
+   * Optional explicit recommended-item id. When supplied, overrides
+   * any per-point `recommended` flag — the matching point gets the
+   * brand ring.
+   */
+  recommendedId?: string;
+  /** Required source attribution. */
+  sourceNote: SourceNote;
+  /** Optional consultant takeaway. Defaults to the proof-of-fit string. */
+  takeaway?: string;
+  /**
+   * Optional legend label for the bubble-size encoding. The preview
+   * route passes `"annual ROI"` to keep the proof-of-fit's original
+   * label inside its clearly-illustrative context. Default is the
+   * canon-safe neutral phrasing `"business impact"`.
+   */
+  bubbleSizeLabel?: string;
+}
 
 // Logical SVG canvas (viewBox). Aspect ratio is preserved by ChartFrame.
 const WIDTH = 880;
@@ -122,8 +97,21 @@ const MAX_RADIUS = 28;
 
 const QUADRANT_LABEL_PADDING = 8;
 
-export function ExecutiveSummaryTwoByTwo() {
-  const maxRoi = SAMPLE_DATA.reduce((m, p) => Math.max(m, p.roi), 0);
+const DEFAULT_TAKEAWAY =
+  "Quick wins concentrate above the impact midpoint and below the complexity midpoint. Strategic builds with strong evidence sit upper-right; risk-weighted defer items sit lower-right.";
+const DEFAULT_BUBBLE_SIZE_LABEL = "business impact";
+
+export function ExecutiveSummaryTwoByTwo({
+  points,
+  recommendedId,
+  sourceNote,
+  takeaway,
+  bubbleSizeLabel = DEFAULT_BUBBLE_SIZE_LABEL,
+}: ExecutiveSummaryPortfolioProps) {
+  const maxImpactSignal = points.reduce(
+    (m, p) => Math.max(m, p.impactSignal),
+    0,
+  );
 
   return (
     <ChartFrame
@@ -131,14 +119,27 @@ export function ExecutiveSummaryTwoByTwo() {
       height={HEIGHT}
       eyebrow="Executive Summary · 2×2"
       title="Opportunity portfolio · impact × complexity"
-      takeaway="Quick wins concentrate above the impact midpoint and below the complexity midpoint. Strategic builds with strong evidence sit upper-right; risk-weighted defer items sit lower-right."
-      legend={<Legend />}
-      sourceNote={{
-        text: "Static sample data · Phase 1B proof-of-fit",
-        n: SAMPLE_DATA.length,
-      }}
+      takeaway={takeaway ?? DEFAULT_TAKEAWAY}
+      legend={<Legend bubbleSizeLabel={bubbleSizeLabel} />}
+      sourceNote={sourceNote}
     >
       {(innerWidth, innerHeight) => {
+        if (points.length === 0) {
+          return (
+            <Text
+              x={innerWidth / 2}
+              y={innerHeight / 2}
+              fontFamily={CHART_FONT_MONO}
+              fontSize={11}
+              letterSpacing={1.4}
+              fill="var(--color-text-muted)"
+              textAnchor="middle"
+              verticalAnchor="middle"
+            >
+              NO PORTFOLIO POINTS
+            </Text>
+          );
+        }
         const xScale = scaleLinear<number>({
           domain: [0, 100],
           range: [0, innerWidth],
@@ -150,7 +151,7 @@ export function ExecutiveSummaryTwoByTwo() {
           nice: true,
         });
         const radiusScale = scaleLinear<number>({
-          domain: [0, maxRoi],
+          domain: [0, Math.max(1, maxImpactSignal)],
           range: [MIN_RADIUS, MAX_RADIUS],
         });
 
@@ -231,14 +232,17 @@ export function ExecutiveSummaryTwoByTwo() {
 
             {/* Bubbles + per-point labels */}
             <Group>
-              {SAMPLE_DATA.map((p) => {
+              {points.map((p) => {
                 const cx = xScale(p.complexity);
                 const cy = yScale(p.impact);
-                const r = radiusScale(p.roi);
+                const r = radiusScale(p.impactSignal);
                 const fill = CHART_TONE_VAR[p.evidence];
+                const isRecommended = recommendedId
+                  ? p.id === recommendedId
+                  : p.recommended === true;
                 return (
                   <g key={p.id}>
-                    {p.recommended ? (
+                    {isRecommended ? (
                       <Circle
                         cx={cx}
                         cy={cy}
@@ -255,9 +259,9 @@ export function ExecutiveSummaryTwoByTwo() {
                       cy={cy}
                       r={r}
                       fill={fill}
-                      fillOpacity={p.recommended ? 0.32 : 0.18}
+                      fillOpacity={isRecommended ? 0.32 : 0.18}
                       stroke={fill}
-                      strokeWidth={p.recommended ? 1.6 : 1}
+                      strokeWidth={isRecommended ? 1.6 : 1}
                     />
                     <Text
                       x={cx}
@@ -295,7 +299,7 @@ export function ExecutiveSummaryTwoByTwo() {
   );
 }
 
-function Legend() {
+function Legend({ bubbleSizeLabel }: { bubbleSizeLabel: string }) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-text-muted">
       <LegendSwatch tone="success" label="Strong evidence" />
@@ -315,7 +319,9 @@ function Legend() {
       <span aria-hidden className="text-text-disabled">
         ·
       </span>
-      <span className="text-text-muted">Bubble size · annual ROI</span>
+      <span className="text-text-muted">
+        Bubble size · {bubbleSizeLabel}
+      </span>
     </div>
   );
 }
