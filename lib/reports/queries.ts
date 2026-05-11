@@ -52,6 +52,7 @@ const SECTION_SELECT = `
   position,
   reviewed_by,
   last_reviewed_at,
+  exhibit_slot,
   created_at,
   updated_at
 ` as const;

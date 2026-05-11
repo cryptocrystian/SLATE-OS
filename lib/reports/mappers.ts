@@ -1,3 +1,4 @@
+import { assertGroupAReportSlot } from "./slot-map";
 import type {
   Report,
   ReportConfidence,
@@ -53,6 +54,8 @@ export interface DbReportSectionRow {
   position: number | null;
   reviewed_by: string | null;
   last_reviewed_at: string | null;
+  /** Sprint 2 + migration 0012 — nullable Group-A exhibit slot reference. */
+  exhibit_slot: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -245,6 +248,11 @@ export function mapReportSectionRow(
     reviewerNote: row.reviewer_note ?? undefined,
     aiDrafted: Boolean(row.ai_drafted),
     confidence: tsConfidenceFor(row.confidence),
+    // Defense-in-depth: the SQL CHECK constraint already prevents
+    // Group-B values, but a future schema drift or manual DB edit
+    // must not leak through the renderer. `assertGroupAReportSlot`
+    // coerces anything outside the Group-A allowlist to null.
+    exhibitSlot: assertGroupAReportSlot(row.exhibit_slot),
   };
 }
 

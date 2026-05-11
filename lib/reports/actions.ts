@@ -10,6 +10,7 @@ import {
   isUuid,
 } from "./mappers";
 import { SECTION_LABEL, SECTION_ORDER } from "./helpers";
+import { defaultSlotForSectionType } from "./slot-map";
 import type {
   ReportConfidence,
   ReportSectionStatus,
@@ -138,6 +139,10 @@ export async function initializeReportForEngagement(
     ai_drafted: false,
     confidence: "needs_evidence",
     position: idx,
+    // Sprint 2 — seed the canonical Group-A exhibit slot for the five
+    // mapped sections. Other sections (e.g. business-context, appendix)
+    // receive null. The SQL CHECK constraint guards against drift.
+    exhibit_slot: defaultSlotForSectionType(t),
   }));
   const { error: sectionsError } = await supabase
     .from("report_sections")

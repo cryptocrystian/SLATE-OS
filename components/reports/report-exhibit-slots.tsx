@@ -33,6 +33,8 @@ import {
 } from "@/lib/charts/adapters/types";
 import {
   GROUP_A_REPORT_SLOTS,
+  isGroupAReportSlot,
+  reportSlotDefinitionFor,
   type ReportSlotDefinition,
 } from "@/lib/reports/slot-map";
 
@@ -63,6 +65,19 @@ export interface ReportExhibitSlotsProps {
   engagementId: string;
   /** Wall-clock token shared with the adapter calls. ISO 8601 UTC. */
   generatedAt: string;
+  /**
+   * Persisted Group-A slot references — in render order — derived
+   * from `report_sections.exhibit_slot` for this engagement. Sprint 2
+   * sources this list from the persisted report; Group-B values are
+   * already filtered out by the DB read path's `assertGroupAReportSlot`
+   * coercion, but a defensive re-filter here keeps the renderer
+   * robust to upstream changes.
+   *
+   * When the list is empty, the renderer shows an internal
+   * "No persisted exhibit slots configured" notice rather than
+   * silently falling back to the static `GROUP_A_REPORT_SLOTS` table.
+   */
+  slots: ReportExhibitSlot[];
   /** Risk-Adjusted Priority Quadrant adapter result. */
   riskPriority: ChartAdapterResult<RiskAdjustedPriorityQuadrantProps>;
   /** Executive Summary 2×2 adapter result. */
@@ -148,15 +163,33 @@ function fallbackTargetFor(
 export function ReportExhibitSlots({
   engagementId,
   generatedAt,
+  slots,
   riskPriority,
   executiveSummary,
   capabilityMaturity,
   stakeholderCoverage,
   roadmap,
 }: ReportExhibitSlotsProps) {
-  // The slot table fixes render order. The renderer maps each slot id
-  // to its adapter result + exhibit. Adding a slot is a canon-amend
-  // event, not a silent edit here — see `lib/reports/slot-map.ts`.
+  // Sprint 2: render order is driven by the persisted slot list (from
+  // `report_sections.exhibit_slot`), not by the static
+  // `GROUP_A_REPORT_SLOTS` table. The static table now serves only as
+  // the description / definition registry. Defense-in-depth: re-filter
+  // through `isGroupAReportSlot` here so a Group-B value cannot reach
+  // the renderer even if a future schema drift bypasses the DB CHECK
+  // constraint and the read-path coercion.
+  const persistedSlots = slots.filter(isGroupAReportSlot);
+  // Deduplicate while preserving first-seen order — two sections may
+  // legitimately want the same slot but the renderer should mount each
+  // exhibit at most once per report.
+  const uniqueSlots: ReportExhibitSlot[] = [];
+  const seen = new Set<ReportExhibitSlot>();
+  for (const s of persistedSlots) {
+    if (!seen.has(s)) {
+      seen.add(s);
+      uniqueSlots.push(s);
+    }
+  }
+
   return (
     <section
       aria-label="Report exhibits — internal preview"
@@ -171,7 +204,7 @@ export function ReportExhibitSlots({
             Visual exhibits from persisted engagement data.
           </h2>
           <Badge tone="ai" dot>
-            Phase 1B · Sprint 1
+            Phase 1B · Sprint 2
           </Badge>
           <Badge tone="neutral" variant="outline">
             Internal only · not client-facing
@@ -179,32 +212,64 @@ export function ReportExhibitSlots({
         </div>
         <p className="max-w-prose text-xs leading-relaxed text-text-muted">
           Generated from persisted opportunities, findings, stakeholder intake, and roadmap rows via the Group-A adapter layer (
-          <code className="font-mono">lib/charts/adapters/</code>). Slots that lack source data render a fallback card with a deep link to the editing surface — never sample data. Benchmark and financial exhibits remain preview-only at <code className="font-mono">/app/charts-preview</code> until <code className="font-mono">docs/14</code> / <code className="font-mono">docs/15</code> data gates advance. Generated {formatTimestamp(generatedAt)}.
+          <code className="font-mono">lib/charts/adapters/</code>). Slot order is driven by{" "}
+          <code className="font-mono">report_sections.exhibit_slot</code>. Slots that lack source data render a fallback card with a deep link to the editing surface — never sample data. Benchmark and financial exhibits remain preview-only at <code className="font-mono">/app/charts-preview</code> until <code className="font-mono">docs/14</code> / <code className="font-mono">docs/15</code> data gates advance. Generated {formatTimestamp(generatedAt)}.
         </p>
       </header>
 
-      {GROUP_A_REPORT_SLOTS.map((slotDef) => (
-        <ReportExhibitSlotPanel
-          key={slotDef.slot}
-          slotDef={slotDef}
-          engagementId={engagementId}
-          adapterResult={resultFor(slotDef.slot, {
-            riskPriority,
-            executiveSummary,
-            capabilityMaturity,
-            stakeholderCoverage,
-            roadmap,
-          })}
-          exhibit={exhibitFor(slotDef.slot, {
-            riskPriority,
-            executiveSummary,
-            capabilityMaturity,
-            stakeholderCoverage,
-            roadmap,
-          })}
-        />
-      ))}
+      {uniqueSlots.length === 0 ? (
+        <NoSlotsConfiguredCard />
+      ) : (
+        uniqueSlots.map((slot) => {
+          const slotDef = reportSlotDefinitionFor(slot);
+          if (!slotDef) return null;
+          return (
+            <ReportExhibitSlotPanel
+              key={slot}
+              slotDef={slotDef}
+              engagementId={engagementId}
+              adapterResult={resultFor(slot, {
+                riskPriority,
+                executiveSummary,
+                capabilityMaturity,
+                stakeholderCoverage,
+                roadmap,
+              })}
+              exhibit={exhibitFor(slot, {
+                riskPriority,
+                executiveSummary,
+                capabilityMaturity,
+                stakeholderCoverage,
+                roadmap,
+              })}
+            />
+          );
+        })
+      )}
     </section>
+  );
+}
+
+function NoSlotsConfiguredCard() {
+  return (
+    <Card variant="base">
+      <CardBody className="flex flex-col gap-3 p-5 sm:p-6">
+        <div className="flex items-start gap-3">
+          <AlertTriangle
+            className="mt-0.5 h-4 w-4 shrink-0 text-status-warning"
+            aria-hidden
+          />
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              No exhibit slots configured
+            </span>
+            <p className="text-sm leading-relaxed text-text-secondary">
+              No persisted exhibit slots configured for this report. New reports initialized after Sprint 2 receive the five canonical Group-A slots automatically; reports initialized before Sprint 2 may need to be re-seeded by re-running migration <code className="font-mono">0012_report_section_exhibit_slot.sql</code> against your project.
+            </p>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
   );
 }
 

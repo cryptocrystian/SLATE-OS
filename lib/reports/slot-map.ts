@@ -18,6 +18,7 @@
  */
 
 import type { ReportExhibitSlot } from "@/lib/charts/adapters/types";
+import type { ReportSectionType } from "@/lib/reports/types";
 
 /**
  * Report-section grouping. Matches the 12-section advisory report
@@ -88,3 +89,90 @@ export const GROUP_A_REPORT_SLOTS: readonly ReportSlotDefinition[] = [
 ] as const;
 
 export type GroupAReportSlot = (typeof GROUP_A_REPORT_SLOTS)[number]["slot"];
+
+/**
+ * Set of all Group-A slot identifiers. Used by `isGroupAReportSlot`
+ * and by Sprint 2 to validate persisted `report_sections.exhibit_slot`
+ * values at the application boundary (in addition to the SQL CHECK
+ * constraint added by migration `0012_report_section_exhibit_slot.sql`).
+ */
+const GROUP_A_REPORT_SLOT_SET: ReadonlySet<string> = new Set(
+  GROUP_A_REPORT_SLOTS.map((s) => s.slot),
+);
+
+/**
+ * Group-B slot identifiers — explicitly enumerated so callers can
+ * surface a clear "gated" message if they encounter one. Mirrors the
+ * three Group-B exhibits in `docs/17`. **Never authorize wiring of
+ * these values until `docs/14` / `docs/15` advance their data gates.**
+ */
+export const GROUP_B_REPORT_SLOT_IDS = [
+  "benchmark_comparison_bars",
+  "ai_savings_waterfall",
+  "roi_bridge",
+] as const;
+
+/**
+ * Type predicate. Returns true ONLY for the five Group-A slot values.
+ * Group B values, unknown strings, null, undefined, numbers, etc. all
+ * return false. This is the canonical application-side guard at every
+ * DB → TS boundary (mappers, action handlers, render-time gate).
+ *
+ * The SQL CHECK constraint (`report_sections_exhibit_slot_check`)
+ * already enforces the allowlist at write-time; this predicate is
+ * defense-in-depth for read paths so a future schema drift cannot
+ * leak a Group-B value through to the renderer.
+ */
+export function isGroupAReportSlot(
+  value: unknown,
+): value is ReportExhibitSlot {
+  return typeof value === "string" && GROUP_A_REPORT_SLOT_SET.has(value);
+}
+
+/**
+ * Lenient cast: returns the value when it is a valid Group-A slot,
+ * otherwise `null`. Useful at DB-read boundaries where a stray
+ * non-allowlisted value should be coerced to "no slot" rather than
+ * leaking through.
+ */
+export function assertGroupAReportSlot(
+  value: unknown,
+): ReportExhibitSlot | null {
+  return isGroupAReportSlot(value) ? value : null;
+}
+
+/**
+ * Canonical section_type → default Group-A slot map. Matches the
+ * backfill in `supabase/migrations/0012_report_section_exhibit_slot.sql`
+ * and the docs/17 § Group A row table byte-for-byte.
+ *
+ * Used by `initializeReportForEngagement` to seed `exhibit_slot` when
+ * creating new sections. The five mapped sections receive their slot;
+ * the other seven canonical sections receive null (no exhibit).
+ */
+export const DEFAULT_SLOT_BY_SECTION_TYPE: Partial<
+  Record<ReportSectionType, ReportExhibitSlot>
+> = {
+  "executive-summary": "executive_summary_portfolio",
+  "priority-recommendations": "findings_risk_priority",
+  "readiness-assessment": "diagnostic_capability_maturity",
+  "stakeholder-synthesis": "diagnostic_stakeholder_coverage",
+  roadmap: "roadmap_90_day_sequence",
+};
+
+export function defaultSlotForSectionType(
+  sectionType: ReportSectionType,
+): ReportExhibitSlot | null {
+  return DEFAULT_SLOT_BY_SECTION_TYPE[sectionType] ?? null;
+}
+
+/**
+ * Lookup the static `ReportSlotDefinition` (title, description,
+ * section_key) for a Group-A slot id. Returns `null` for unknown /
+ * Group-B values so the renderer can fall back to a safe state.
+ */
+export function reportSlotDefinitionFor(
+  slot: ReportExhibitSlot,
+): ReportSlotDefinition | null {
+  return GROUP_A_REPORT_SLOTS.find((s) => s.slot === slot) ?? null;
+}

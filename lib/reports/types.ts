@@ -42,6 +42,25 @@ export interface ReportSection {
   reviewerNote?: string;
   aiDrafted: boolean;
   confidence: ReportConfidence;
+  /**
+   * Optional persisted reference to a Group-A chart-exhibit slot
+   * (`lib/charts/adapters/types.ts#ReportExhibitSlot`). Sprint 2 +
+   * migration `0012_report_section_exhibit_slot.sql`. Null when the
+   * section does not reference an exhibit. Only Group-A values are
+   * accepted at the SQL CHECK boundary; Group-B values are rejected.
+   *
+   * Typed as a narrowed string union rather than importing the
+   * `ReportExhibitSlot` union directly to keep this module free of
+   * `lib/charts/*` imports — `lib/reports/slot-map.ts` owns the
+   * canonical predicate (`isGroupAReportSlot`).
+   */
+  exhibitSlot?:
+    | "executive_summary_portfolio"
+    | "findings_risk_priority"
+    | "diagnostic_capability_maturity"
+    | "diagnostic_stakeholder_coverage"
+    | "roadmap_90_day_sequence"
+    | null;
 }
 
 export interface Report {

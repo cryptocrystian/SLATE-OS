@@ -30,6 +30,8 @@ import { risksFromOpportunities } from "@/lib/charts/adapters/risk-adjusted-prio
 import { capabilityMaturityFromFindings } from "@/lib/charts/adapters/capability-maturity-heatmap-adapter";
 import { stakeholderCoverageFromIntake } from "@/lib/charts/adapters/stakeholder-coverage-matrix-adapter";
 import { roadmapGanttFromRoadmapItems } from "@/lib/charts/adapters/roadmap-gantt-adapter";
+import { isGroupAReportSlot } from "@/lib/reports/slot-map";
+import type { ReportExhibitSlot } from "@/lib/charts/adapters/types";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
@@ -103,6 +105,15 @@ export default async function EngagementReportPage({
   // until docs/14 / docs/15 advance their data gates.
   // ---------------------------------------------------------------------------
   const exhibitSlotsGeneratedAt = new Date().toISOString();
+  // Sprint 2 — derive the render order from persisted
+  // `report_sections.exhibit_slot` rather than the static
+  // `GROUP_A_REPORT_SLOTS` table. Sections without a slot contribute
+  // nothing; Group-B values are already filtered by the read-path
+  // coercion in `mapReportSectionRow`, but we re-check here for
+  // defense-in-depth.
+  const persistedSlotsInOrder: ReportExhibitSlot[] = (report?.sections ?? [])
+    .map((s) => s.exhibitSlot)
+    .filter((slot): slot is ReportExhibitSlot => isGroupAReportSlot(slot));
   const exhibitSlotResults = isPersisted
     ? {
         executiveSummary: executiveSummaryPortfolioFromOpportunities({
@@ -337,10 +348,11 @@ export default async function EngagementReportPage({
             />
           )}
 
-          {exhibitSlotResults ? (
+          {exhibitSlotResults && report ? (
             <ReportExhibitSlots
               engagementId={engagement.id}
               generatedAt={exhibitSlotsGeneratedAt}
+              slots={persistedSlotsInOrder}
               executiveSummary={exhibitSlotResults.executiveSummary}
               riskPriority={exhibitSlotResults.riskPriority}
               capabilityMaturity={exhibitSlotResults.capabilityMaturity}
