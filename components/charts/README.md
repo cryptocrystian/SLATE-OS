@@ -46,6 +46,10 @@ components/charts/
 
 Shared types and the CSS-variable lookup live in [`lib/charts/types.ts`](../../lib/charts/types.ts).
 
+## Adapter layer (Sprint 0B)
+
+The report-wiring adapter layer lives at [`lib/charts/adapters/`](../../lib/charts/adapters/). Adapters are pure functions — no React, no DB client, no app-route imports, no I/O — that map already-fetched persisted rows into exhibit-specific props inside a canonical `ChartAdapterResult<TProps>` envelope (`status` / `props` / `issues` / `sourceSummary` with `generatedAt` + `freshness`). The contract, slot vocabulary, freshness rules, fallback rules, and the operator-only diagnostic surface at `/app/engagements/[id]/chart-diagnostics` are governed by [`docs/17_PHASE_1B_REPORT_EXHIBIT_WIRING_CANON.md`](../../docs/17_PHASE_1B_REPORT_EXHIBIT_WIRING_CANON.md). Group A (Executive Summary 2×2, Risk Quadrant, Capability Maturity Heatmap, Stakeholder Coverage Matrix, Roadmap Gantt) is scaffolded; Group B (Benchmark Comparison Bars, AI-Savings Waterfall, ROI Bridge) is intentionally not wired and remains preview-only until the `docs/14` / `docs/15` data gates advance.
+
 ## Risk-Adjusted Priority Quadrant — input shape and color rule
 
 Component: `RiskAdjustedPriorityQuadrant`. Located at [`exhibits/risk-adjusted-priority-quadrant.tsx`](./exhibits/risk-adjusted-priority-quadrant.tsx).
