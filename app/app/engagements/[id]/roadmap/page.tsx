@@ -11,6 +11,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { RoadmapPhaseColumn } from "@/components/roadmap/roadmap-phase-column";
 import { CreateRoadmapItemForm } from "@/components/roadmap/create-roadmap-item-form";
+import { GenerateRoadmapDraftButton } from "@/components/roadmap/generate-roadmap-draft-button";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -23,6 +24,7 @@ import {
 import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
 import { PHASE_ORDER } from "@/lib/roadmap/helpers";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
+import { isAiConfigured } from "@/lib/ai/provider";
 import type { RoadmapItem } from "@/lib/roadmap/types";
 import type { Opportunity } from "@/lib/opportunities/types";
 
@@ -187,6 +189,10 @@ export default async function EngagementRoadmapPage({
               engagementId={engagement.id}
               opportunityCandidates={opportunityCandidates}
             />
+          ) : null}
+
+          {isPersisted && isAiConfigured() ? (
+            <GenerateRoadmapDraftButton engagementId={engagement.id} />
           ) : null}
 
           {counts.total === 0 ? (

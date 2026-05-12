@@ -67,6 +67,33 @@ export const COMMERCIAL_FINALITY_PATTERNS: ReadonlyArray<BannedClaimRule> = [
   { code: "executed_sow", pattern: /\bexecuted\s+sow\b/i },
 ];
 
+/**
+ * Roadmap-commitment phrases — AI roadmap-item drafting must not imply
+ * delivery commitments, binding timelines, or finalized schedules. The
+ * canon for roadmap drafts is that they are **proposed sequences**
+ * subject to operator review and stakeholder availability.
+ */
+export const ROADMAP_COMMITMENT_PATTERNS: ReadonlyArray<BannedClaimRule> = [
+  { code: "guaranteed_completion", pattern: /\bguaranteed\s+completion\b/i },
+  { code: "binding_timeline", pattern: /\bbinding\s+timeline\b/i },
+  {
+    code: "final_implementation_schedule",
+    pattern: /\bfinal\s+implementation\s+schedule\b/i,
+  },
+  {
+    code: "committed_delivery_date",
+    pattern: /\bcommitted\s+delivery\s+date\b/i,
+  },
+  {
+    code: "legally_binding_timeline",
+    pattern: /\blegally\s+binding\s+timeline\b/i,
+  },
+  {
+    code: "binding_delivery_commitment",
+    pattern: /\bbinding\s+delivery\s+commitment\b/i,
+  },
+];
+
 export interface BannedClaimViolation {
   field: string;
   code: string;
