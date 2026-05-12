@@ -68,6 +68,23 @@ export function getAiReportSectionProviderConfig(): AiProviderConfig | null {
   return base;
 }
 
+/**
+ * Provider config tailored to proposal-option drafting (Step 4). Falls
+ * back to the findings/default model when no proposal-specific env var
+ * is set. Read-only env access; safe-default-no-key behavior.
+ *
+ *   SLATE_AI_PROPOSAL_OPTIONS_MODEL — optional override.
+ */
+export function getAiProposalOptionProviderConfig(): AiProviderConfig | null {
+  const base = getAiProviderConfig();
+  if (!base) return null;
+  const override = process.env.SLATE_AI_PROPOSAL_OPTIONS_MODEL?.trim();
+  if (override && override.length > 0) {
+    return { provider: base.provider, model: override };
+  }
+  return base;
+}
+
 export function isAiConfigured(): boolean {
   return getAiProviderConfig() !== null;
 }

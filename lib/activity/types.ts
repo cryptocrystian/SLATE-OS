@@ -28,6 +28,7 @@ export type ActivityEventType =
   | "ai_findings_generated"
   | "ai_opportunities_generated"
   | "ai_report_section_drafted"
+  | "ai_proposal_option_drafted"
   | "ai_synthesis_failed";
 
 export type ActivityEntityType =

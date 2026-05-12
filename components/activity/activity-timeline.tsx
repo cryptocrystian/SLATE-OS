@@ -45,6 +45,7 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   ai_findings_generated: "ai",
   ai_opportunities_generated: "ai",
   ai_report_section_drafted: "ai",
+  ai_proposal_option_drafted: "ai",
   ai_synthesis_failed: "risk",
 };
 
@@ -78,6 +79,7 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   ai_findings_generated: "AI findings generated",
   ai_opportunities_generated: "AI opportunities generated",
   ai_report_section_drafted: "AI report section drafted",
+  ai_proposal_option_drafted: "AI proposal option drafted",
   ai_synthesis_failed: "AI synthesis failed",
 };
 

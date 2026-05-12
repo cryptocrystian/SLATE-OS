@@ -1,6 +1,11 @@
 import "server-only";
 
 import {
+  FINANCIAL_CLAIM_PATTERNS,
+  scanForBannedClaims as scanForBannedClaimsShared,
+  type BannedClaimViolation as SharedBannedClaimViolation,
+} from "./claim-guard";
+import {
   callChatJson,
   getAiReportSectionProviderConfig,
 } from "./provider";
@@ -95,32 +100,13 @@ const MAX_ASSUMPTIONS = 5;
 
 // ---------------------------------------------------------------------------
 // Banned-claim scanner — per docs/14 / docs/15 / docs/17.
-// Matching is case-insensitive against a normalized whitespace-collapsed copy
-// of the candidate text. Listed phrases are the canon's prohibition list;
-// they MUST NOT appear in persisted AI draft output. (They are allowed to
-// appear in this file as documentation / prohibition strings.)
+// Step 3 uses the shared FINANCIAL_CLAIM_PATTERNS from
+// `lib/ai/claim-guard.ts`. Matching is case-insensitive against the
+// candidate string fields. Listed phrases are the canon's prohibition
+// list; they MUST NOT appear in persisted AI draft output. (They are
+// allowed to appear in `claim-guard.ts` and canon docs as prohibition
+// strings.)
 // ---------------------------------------------------------------------------
-
-const BANNED_CLAIM_PATTERNS: ReadonlyArray<{ code: string; pattern: RegExp }> = [
-  { code: "guaranteed_roi", pattern: /\bguaranteed\s+roi\b/i },
-  { code: "guaranteed_savings", pattern: /\bguaranteed\s+savings\b/i },
-  { code: "payback", pattern: /\bpayback\b/i },
-  { code: "break_even", pattern: /\bbreak[\s-]?even\b/i },
-  { code: "cash_flow_positive", pattern: /\bcash[\s-]flow[\s-]positive\b/i },
-  { code: "will_save", pattern: /\bwill\s+save\b/i },
-  { code: "will_reduce_cost", pattern: /\bwill\s+reduce\s+cost\b/i },
-  { code: "top_quartile", pattern: /\btop[\s-]quartile\b/i },
-  { code: "above_average", pattern: /\babove\s+average\b/i },
-  { code: "industry_benchmark", pattern: /\bindustry\s+benchmark(s)?\b/i },
-  { code: "peer_benchmark", pattern: /\bpeer\s+benchmark(s)?\b/i },
-  { code: "finance_approved", pattern: /\bfinance[\s-]approved\b/i },
-  { code: "board_ready_roi", pattern: /\bboard[\s-]ready\s+roi\b/i },
-  // Catch-all "guaranteed <anything-financial>" wording.
-  {
-    code: "guaranteed_financial",
-    pattern: /\bguaranteed\s+(return|savings?|payback|cost|reduction)\b/i,
-  },
-];
 
 export interface BannedClaimViolation {
   field: keyof ReportSectionDraftCandidate;
@@ -130,28 +116,22 @@ export interface BannedClaimViolation {
 export function scanForBannedClaims(
   candidate: ReportSectionDraftCandidate,
 ): BannedClaimViolation[] {
-  const violations: BannedClaimViolation[] = [];
-  const fields: Array<{
-    name: keyof ReportSectionDraftCandidate;
-    values: string[];
-  }> = [
-    { name: "sectionTitle", values: [candidate.sectionTitle] },
-    { name: "summary", values: [candidate.summary] },
-    { name: "draftPreview", values: [candidate.draftPreview] },
-    { name: "evidenceNotes", values: candidate.evidenceNotes },
-    { name: "assumptionsAndLimits", values: candidate.assumptionsAndLimits },
-  ];
-  for (const f of fields) {
-    for (const value of f.values) {
-      if (typeof value !== "string" || value.length === 0) continue;
-      for (const rule of BANNED_CLAIM_PATTERNS) {
-        if (rule.pattern.test(value)) {
-          violations.push({ field: f.name, code: rule.code });
-        }
-      }
-    }
-  }
-  return violations;
+  const shared = scanForBannedClaimsShared(
+    [
+      { field: "sectionTitle", values: [candidate.sectionTitle] },
+      { field: "summary", values: [candidate.summary] },
+      { field: "draftPreview", values: [candidate.draftPreview] },
+      { field: "evidenceNotes", values: candidate.evidenceNotes },
+      { field: "assumptionsAndLimits", values: candidate.assumptionsAndLimits },
+    ],
+    FINANCIAL_CLAIM_PATTERNS,
+  );
+  return shared.map<BannedClaimViolation>(
+    (v: SharedBannedClaimViolation) => ({
+      field: v.field as keyof ReportSectionDraftCandidate,
+      code: v.code,
+    }),
+  );
 }
 
 // ---------------------------------------------------------------------------

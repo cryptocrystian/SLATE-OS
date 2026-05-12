@@ -29,6 +29,7 @@ import {
   recommendedActionLabel,
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
+import { isAiConfigured } from "@/lib/ai/provider";
 import type { Proposal } from "@/lib/proposals/types";
 import type { Report } from "@/lib/reports/types";
 import type { Opportunity } from "@/lib/opportunities/types";
@@ -230,6 +231,8 @@ export default async function EngagementProposalPage({
                       <ProposalOptionActionBar
                         optionId={option.id}
                         recommended={option.recommended}
+                        engagementId={engagement.id}
+                        aiAvailable={isAiConfigured()}
                       />
                     )
                   : undefined
