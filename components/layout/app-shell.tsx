@@ -34,10 +34,10 @@ export function AppShell({
     <div className="relative flex min-h-screen bg-bg-page text-text-primary">
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 bg-radial-glow"
+        className="pointer-events-none fixed inset-0 bg-radial-glow print:hidden"
       />
 
-      <aside className="hidden w-64 shrink-0 border-r border-border-subtle lg:block">
+      <aside className="hidden w-64 shrink-0 border-r border-border-subtle lg:block print:hidden">
         <div className="sticky top-0 h-screen">
           <SidebarNav identity={identity} />
         </div>
@@ -65,14 +65,17 @@ export function AppShell({
       ) : null}
 
       <div className="relative flex min-w-0 flex-1 flex-col">
-        <TopBar
-          context={topBarContext}
-          reviewCount={reviewCount}
-          onMenuClick={() => setMobileNavOpen(true)}
-        />
+        <div className="print:hidden">
+          <TopBar
+            context={topBarContext}
+            reviewCount={reviewCount}
+            onMenuClick={() => setMobileNavOpen(true)}
+          />
+        </div>
         <main
           className={cn(
             "relative flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10",
+            "print:p-0",
           )}
         >
           {children}

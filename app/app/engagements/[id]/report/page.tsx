@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ScrollText } from "lucide-react";
+import { ArrowLeft, ArrowRight, Printer, ScrollText } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -243,6 +243,25 @@ export default async function EngagementReportPage({
                   trailingIcon={<ArrowRight className="h-4 w-4" />}
                 >
                   Open Proposal Builder
+                </Button>
+              </Link>
+            ) : null}
+            {/* Sprint 3 — internal preview PDF path. Distinct from the
+                locked client-facing Export Report below; opens an
+                operator-only print-friendly route in a new tab so the
+                operator can use the browser's native "Save as PDF". */}
+            {isPersisted ? (
+              <Link
+                href={`/app/engagements/${engagement.id}/report/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  variant="ghost"
+                  size="md"
+                  leadingIcon={<Printer className="h-4 w-4" />}
+                >
+                  Internal preview PDF
                 </Button>
               </Link>
             ) : null}
