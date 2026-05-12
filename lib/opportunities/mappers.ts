@@ -196,6 +196,7 @@ export function mapOpportunityRow(
     risks: row.risks ?? [],
     successSignals: row.success_signals ?? [],
     status: tsStatusFor(row.status),
+    updatedAt: row.updated_at ?? null,
   };
 }
 

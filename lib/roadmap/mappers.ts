@@ -125,6 +125,7 @@ export function mapRoadmapItemRow(row: DbRoadmapItemRow): RoadmapItem {
     risks: row.risks ?? [],
     ownerPlaceholder: row.owner_placeholder ?? undefined,
     readinessNote: row.readiness_note ?? undefined,
+    updatedAt: row.updated_at ?? null,
   };
 }
 

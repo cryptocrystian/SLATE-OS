@@ -31,7 +31,10 @@ import { capabilityMaturityFromFindings } from "@/lib/charts/adapters/capability
 import { stakeholderCoverageFromIntake } from "@/lib/charts/adapters/stakeholder-coverage-matrix-adapter";
 import { roadmapGanttFromRoadmapItems } from "@/lib/charts/adapters/roadmap-gantt-adapter";
 import { isGroupAReportSlot } from "@/lib/reports/slot-map";
-import type { ReportExhibitSlot } from "@/lib/charts/adapters/types";
+import {
+  latestIsoTimestamp,
+  type ReportExhibitSlot,
+} from "@/lib/charts/adapters/types";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
@@ -114,24 +117,48 @@ export default async function EngagementReportPage({
   const persistedSlotsInOrder: ReportExhibitSlot[] = (report?.sections ?? [])
     .map((s) => s.exhibitSlot)
     .filter((slot): slot is ReportExhibitSlot => isGroupAReportSlot(slot));
+  // Sprint 2.1 — derive each adapter's `lastTouchedAt` from the
+  // latest persisted row timestamp surfaced through the domain
+  // mappers. `latestIsoTimestamp` ignores null / unparseable values
+  // and returns null when no entry is valid; the adapter then falls
+  // through to `"unknown"` freshness per `docs/17` § Data Freshness
+  // Rules. No Date.now() inside any adapter — the page captures the
+  // wall clock once via `exhibitSlotsGeneratedAt` above.
+  const opportunitiesLastTouched = isPersisted
+    ? latestIsoTimestamp(opportunities.map((o) => o.updatedAt))
+    : null;
+  const findingsLastTouched = isPersisted
+    ? latestIsoTimestamp(
+        findings.flatMap((f) => [f.updatedAt, f.lastReviewedAt]),
+      )
+    : null;
+  const stakeholdersLastTouched = isPersisted
+    ? latestIsoTimestamp(
+        (intakeRecord?.stakeholders ?? []).map((s) => s.lastActivityAt),
+      )
+    : null;
+  const roadmapLastTouched = isPersisted
+    ? latestIsoTimestamp(roadmap.map((r) => r.updatedAt))
+    : null;
+
   const exhibitSlotResults = isPersisted
     ? {
         executiveSummary: executiveSummaryPortfolioFromOpportunities({
           opportunities,
           generatedAt: exhibitSlotsGeneratedAt,
-          lastTouchedAt: null,
+          lastTouchedAt: opportunitiesLastTouched,
         }),
         riskPriority: risksFromOpportunities({
           opportunities,
           generatedAt: exhibitSlotsGeneratedAt,
-          lastTouchedAt: null,
+          lastTouchedAt: opportunitiesLastTouched,
         }),
         capabilityMaturity: capabilityMaturityFromFindings({
           findings,
           capabilities: [],
           dimensions: [],
           generatedAt: exhibitSlotsGeneratedAt,
-          lastTouchedAt: null,
+          lastTouchedAt: findingsLastTouched,
         }),
         stakeholderCoverage: stakeholderCoverageFromIntake({
           stakeholders: intakeRecord?.stakeholders ?? [],
@@ -144,12 +171,12 @@ export default async function EngagementReportPage({
           ),
           topics: [],
           generatedAt: exhibitSlotsGeneratedAt,
-          lastTouchedAt: null,
+          lastTouchedAt: stakeholdersLastTouched,
         }),
         roadmap: roadmapGanttFromRoadmapItems({
           items: roadmap,
           generatedAt: exhibitSlotsGeneratedAt,
-          lastTouchedAt: null,
+          lastTouchedAt: roadmapLastTouched,
         }),
       }
     : null;

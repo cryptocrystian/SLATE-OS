@@ -47,4 +47,17 @@ export interface Finding {
   assumptionFlag?: string;
   reviewerNote?: string;
   aiDrafted?: boolean;
+  /**
+   * Last persisted update timestamp (ISO 8601 UTC). Surfaced from
+   * `findings.updated_at` for freshness derivation in chart adapters.
+   * Mock fixtures omit this field.
+   */
+  updatedAt?: string | null;
+  /**
+   * Last reviewer-touched timestamp (ISO 8601 UTC). Surfaced from
+   * `findings.last_reviewed_at`. Distinct from `updatedAt` — captures
+   * specifically when the review state was last changed (approve,
+   * needs-review, report-ready). Mock fixtures omit this field.
+   */
+  lastReviewedAt?: string | null;
 }

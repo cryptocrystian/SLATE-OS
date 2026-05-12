@@ -58,4 +58,11 @@ export interface Opportunity {
   /** Lifecycle status for persisted opportunities. Mock fixtures may
    *  omit this. */
   status?: OpportunityStatus;
+  /**
+   * Last persisted update timestamp (ISO 8601 UTC). Surfaced from
+   * `opportunities.updated_at` for freshness derivation in chart
+   * adapters. Mock fixtures omit this field — adapters fall back to
+   * `"unknown"` freshness when null.
+   */
+  updatedAt?: string | null;
 }

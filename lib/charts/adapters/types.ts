@@ -127,6 +127,44 @@ export function toIsoUtc(value: string | Date): string {
   return new Date(ms).toISOString();
 }
 
+/**
+ * Pick the latest valid ISO-shaped timestamp from a list. Pure helper
+ * used by the report page and the diagnostic page to compute the best
+ * `lastTouchedAt` for an adapter input from an array of persisted
+ * row timestamps (e.g. `opportunities.map(o => o.updatedAt)`).
+ *
+ * Behavior:
+ *   - null / undefined / empty-string entries are ignored.
+ *   - Unparseable strings are ignored (never throws).
+ *   - Returns the latest valid ISO 8601 UTC string, or `null` if no
+ *     entry parsed successfully.
+ *   - No `Date.now()`; the function is pure.
+ *   - Stable: same input ⇒ same output.
+ *
+ * Per `docs/17` § Data Freshness Rules, a `null` return causes the
+ * adapter freshness envelope to fall through to `"unknown"`.
+ */
+export function latestIsoTimestamp(
+  values: Array<string | Date | null | undefined>,
+): string | null {
+  let bestMs = -Infinity;
+  for (const v of values) {
+    if (v === null || v === undefined) continue;
+    let ms: number;
+    if (v instanceof Date) {
+      ms = v.getTime();
+    } else if (typeof v === "string" && v.length > 0) {
+      ms = Date.parse(v);
+    } else {
+      continue;
+    }
+    if (!Number.isFinite(ms)) continue;
+    if (ms > bestMs) bestMs = ms;
+  }
+  if (!Number.isFinite(bestMs)) return null;
+  return new Date(bestMs).toISOString();
+}
+
 // ---------------------------------------------------------------------------
 // Factory helpers — keep adapter call sites concise.
 // ---------------------------------------------------------------------------

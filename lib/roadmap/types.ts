@@ -16,4 +16,10 @@ export interface RoadmapItem {
   risks: string[];
   ownerPlaceholder?: string;
   readinessNote?: string;
+  /**
+   * Last persisted update timestamp (ISO 8601 UTC). Surfaced from
+   * `roadmap_items.updated_at` for freshness derivation in chart
+   * adapters. Mock fixtures omit this field.
+   */
+  updatedAt?: string | null;
 }

@@ -25,6 +25,7 @@ import { stakeholderCoverageFromIntake } from "@/lib/charts/adapters/stakeholder
 import { roadmapGanttFromRoadmapItems } from "@/lib/charts/adapters/roadmap-gantt-adapter";
 import {
   isAdapterReady,
+  latestIsoTimestamp,
   type ChartAdapterIssue,
   type ChartAdapterResult,
   type ChartAdapterStatus,
@@ -149,17 +150,35 @@ export default async function ChartDiagnosticsPage({
 
   const stakeholders = intake?.stakeholders ?? [];
 
+  // Sprint 2.1 — derive each adapter's `lastTouchedAt` from the latest
+  // persisted row timestamp now surfaced through the domain mappers.
+  // `latestIsoTimestamp` returns null when no row has a valid stamp;
+  // the adapter freshness envelope then falls through to `"unknown"`
+  // per `docs/17` § Data Freshness Rules.
+  const opportunitiesLastTouched = latestIsoTimestamp(
+    opportunities.map((o) => o.updatedAt),
+  );
+  const findingsLastTouched = latestIsoTimestamp(
+    findings.flatMap((f) => [f.updatedAt, f.lastReviewedAt]),
+  );
+  const stakeholdersLastTouched = latestIsoTimestamp(
+    stakeholders.map((s) => s.lastActivityAt),
+  );
+  const roadmapLastTouched = latestIsoTimestamp(
+    roadmap.map((r) => r.updatedAt),
+  );
+
   // Run all five Group-A adapters with the shared clock token. Each
   // call is pure; the page just collates the envelopes.
   const executiveResult = executiveSummaryPortfolioFromOpportunities({
     opportunities,
     generatedAt,
-    lastTouchedAt: null,
+    lastTouchedAt: opportunitiesLastTouched,
   });
   const riskResult = risksFromOpportunities({
     opportunities,
     generatedAt,
-    lastTouchedAt: null,
+    lastTouchedAt: opportunitiesLastTouched,
   });
   // Group A row 3 — capability/dimension tagging does not exist on
   // persisted findings today. Adapter returns insufficient_data; pass
@@ -169,7 +188,7 @@ export default async function ChartDiagnosticsPage({
     capabilities: [],
     dimensions: [],
     generatedAt,
-    lastTouchedAt: null,
+    lastTouchedAt: findingsLastTouched,
   });
   // Group A row 4 — topic taxonomy does not exist on persisted intake
   // responses today. Adapter returns insufficient_data with the topic
@@ -183,12 +202,12 @@ export default async function ChartDiagnosticsPage({
     roles: observedRoles,
     topics: [],
     generatedAt,
-    lastTouchedAt: null,
+    lastTouchedAt: stakeholdersLastTouched,
   });
   const roadmapResult = roadmapGanttFromRoadmapItems({
     items: roadmap,
     generatedAt,
-    lastTouchedAt: null,
+    lastTouchedAt: roadmapLastTouched,
   });
 
   return (

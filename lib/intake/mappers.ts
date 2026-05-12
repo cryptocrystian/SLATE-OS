@@ -206,6 +206,7 @@ export function mapSessionToStakeholder(
     completionPercent: completion,
     responseQuality: quality,
     lastActivity: formatRelativeOrDash(session.last_activity_at),
+    lastActivityAt: session.last_activity_at ?? null,
     summary,
     keySignals: [],
     openQuestions: [],

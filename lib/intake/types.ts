@@ -27,7 +27,15 @@ export interface Stakeholder {
   status: StakeholderStatus;
   completionPercent: number;
   responseQuality: ResponseQuality;
+  /** Operator-readable relative time ("Yesterday", "3 days ago", "—"). */
   lastActivity: string;
+  /**
+   * Raw ISO 8601 UTC timestamp from `stakeholder_intake_sessions.last_activity_at`.
+   * Surfaced alongside the display string so chart adapters can derive
+   * freshness without re-parsing the relative-time format. Mock fixtures
+   * omit this field.
+   */
+  lastActivityAt?: string | null;
   summary: string;
   keySignals: string[];
   openQuestions: string[];
