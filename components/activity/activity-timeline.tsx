@@ -44,6 +44,7 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   input_asset_downloaded: "neutral",
   ai_findings_generated: "ai",
   ai_opportunities_generated: "ai",
+  ai_report_section_drafted: "ai",
   ai_synthesis_failed: "risk",
 };
 
@@ -76,6 +77,7 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   input_asset_downloaded: "Document downloaded",
   ai_findings_generated: "AI findings generated",
   ai_opportunities_generated: "AI opportunities generated",
+  ai_report_section_drafted: "AI report section drafted",
   ai_synthesis_failed: "AI synthesis failed",
 };
 

@@ -35,6 +35,7 @@ import {
   latestIsoTimestamp,
   type ReportExhibitSlot,
 } from "@/lib/charts/adapters/types";
+import { isAiConfigured } from "@/lib/ai/provider";
 import {
   recommendedActionLabel,
   recommendedActionRoute,
@@ -368,6 +369,8 @@ export default async function EngagementReportPage({
                       <ReportSectionActionBar
                         sectionId={section.id}
                         status={section.status}
+                        engagementId={engagement.id}
+                        aiAvailable={isAiConfigured()}
                       />
                     )
                   : undefined
