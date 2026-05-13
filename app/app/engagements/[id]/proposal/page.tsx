@@ -12,7 +12,6 @@ import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip";
 import { ImplementationCreditPanel } from "@/components/proposals/implementation-credit-panel";
-import { ProposalOptionActionBar } from "@/components/proposals/proposal-option-action-bar";
 import { InitializeProposalForm } from "@/components/proposals/initialize-proposal-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
@@ -225,18 +224,14 @@ export default async function EngagementProposalPage({
               proposal={proposal}
               opportunities={opportunities}
               roadmap={roadmap}
-              renderOptionActionBar={
-                isPersisted
-                  ? (option) => (
-                      <ProposalOptionActionBar
-                        optionId={option.id}
-                        recommended={option.recommended}
-                        engagementId={engagement.id}
-                        aiAvailable={isAiConfigured()}
-                      />
-                    )
-                  : undefined
-              }
+              // Plain JSON-safe props. The previous
+              // `renderOptionActionBar` render-prop pattern created a
+              // server-side closure that Next.js 14 forbids from
+              // crossing the server → client boundary at runtime. The
+              // action bar is now imported and rendered inside the
+              // (client) workspace.
+              engagementId={isPersisted ? engagement.id : undefined}
+              aiAvailable={isAiConfigured()}
             />
           )}
 

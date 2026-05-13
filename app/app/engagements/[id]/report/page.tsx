@@ -10,7 +10,6 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ReportWorkspace } from "@/components/reports/report-workspace";
-import { ReportSectionActionBar } from "@/components/reports/report-section-action-bar";
 import { InitializeReportForm } from "@/components/reports/initialize-report-form";
 import { ReportExhibitSlots } from "@/components/reports/report-exhibit-slots";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
@@ -382,18 +381,13 @@ export default async function EngagementReportPage({
               findings={findings}
               opportunities={opportunities}
               roadmap={roadmap}
-              renderActionBar={
-                isPersisted
-                  ? (section) => (
-                      <ReportSectionActionBar
-                        sectionId={section.id}
-                        status={section.status}
-                        engagementId={engagement.id}
-                        aiAvailable={isAiConfigured()}
-                      />
-                    )
-                  : undefined
-              }
+              // Plain JSON-safe props. The previous `renderActionBar`
+              // render-prop pattern created a server-side closure that
+              // Next.js 14 forbids from crossing the server → client
+              // boundary at runtime. The action bar is now imported and
+              // rendered inside the (client) workspace.
+              showActionBar={isPersisted}
+              aiAvailable={isAiConfigured()}
             />
           )}
 

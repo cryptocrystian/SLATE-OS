@@ -18,6 +18,7 @@ import {
   OPTION_TYPE_LABEL,
   OPTION_TYPE_TONE,
 } from "@/lib/proposals/helpers";
+import { ProposalOptionActionBar } from "./proposal-option-action-bar";
 import type { Proposal, ProposalOption } from "@/lib/proposals/types";
 import type { Opportunity } from "@/lib/opportunities/types";
 import type { RoadmapItem } from "@/lib/roadmap/types";
@@ -32,14 +33,33 @@ export interface ProposalWorkspaceProps {
   proposal: Proposal;
   opportunities: Opportunity[];
   roadmap: RoadmapItem[];
-  renderOptionActionBar?: (option: ProposalOption) => React.ReactNode;
+  /**
+   * Persisted UUID engagement id. When set, the per-option
+   * `<ProposalOptionActionBar>` renders inline. Mock / legacy slug
+   * engagements omit this prop and the action bar is hidden.
+   *
+   * The previous `renderOptionActionBar` render-prop API was replaced
+   * because a server-component-created function closure cannot cross
+   * the server → client boundary in Next.js 14 (runtime
+   * serialization error). The client workspace now imports
+   * `<ProposalOptionActionBar>` directly and decides whether to
+   * render it from JSON-safe props.
+   */
+  engagementId?: string;
+  /**
+   * Whether the server has confirmed `OPENAI_API_KEY` is configured.
+   * Threaded into `<ProposalOptionActionBar>` so the AI control is
+   * hidden in unconfigured environments. JSON-safe boolean.
+   */
+  aiAvailable?: boolean;
 }
 
 export function ProposalWorkspace({
   proposal,
   opportunities,
   roadmap,
-  renderOptionActionBar,
+  engagementId,
+  aiAvailable = false,
 }: ProposalWorkspaceProps) {
   const initialId =
     proposal.recommendedOptionId ?? proposal.options[0]?.id ?? null;
@@ -94,7 +114,14 @@ export function ProposalWorkspace({
           opportunities={linkedOpportunities}
           roadmapItems={linkedRoadmapItems}
           actionBar={
-            renderOptionActionBar ? renderOptionActionBar(selected) : null
+            engagementId ? (
+              <ProposalOptionActionBar
+                optionId={selected.id}
+                recommended={selected.recommended}
+                engagementId={engagementId}
+                aiAvailable={aiAvailable}
+              />
+            ) : null
           }
         />
       ) : null}

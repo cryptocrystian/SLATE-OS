@@ -14,6 +14,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ReportSectionStatusChip } from "./report-status-chip";
+import { ReportSectionActionBar } from "./report-section-action-bar";
 import {
   CONFIDENCE_LABEL,
   CONFIDENCE_TONE,
@@ -39,7 +40,25 @@ export interface ReportWorkspaceProps {
   findings: Finding[];
   opportunities: Opportunity[];
   roadmap: RoadmapItem[];
-  renderActionBar?: (section: ReportSection) => React.ReactNode;
+  /**
+   * When true, the per-section `<ReportSectionActionBar>` is rendered
+   * inline. Mock / legacy slug engagements pass `false` (or omit) to
+   * suppress the action bar entirely.
+   *
+   * The previous `renderActionBar` render-prop API was replaced because
+   * a server-component-created function closure cannot cross the
+   * server → client boundary in Next.js 14 (runtime serialization
+   * error). The client workspace now imports
+   * `<ReportSectionActionBar>` directly and decides per-section
+   * whether to render it from JSON-safe props.
+   */
+  showActionBar?: boolean;
+  /**
+   * Whether the server has confirmed `OPENAI_API_KEY` is configured.
+   * Threaded into `<ReportSectionActionBar>` so the AI control is
+   * hidden in unconfigured environments. JSON-safe boolean.
+   */
+  aiAvailable?: boolean;
 }
 
 export function ReportWorkspace({
@@ -48,7 +67,8 @@ export function ReportWorkspace({
   findings,
   opportunities,
   roadmap,
-  renderActionBar,
+  showActionBar = false,
+  aiAvailable = false,
 }: ReportWorkspaceProps) {
   const sections = report.sections;
   const [active, setActive] = React.useState<ReportFilterId>("all");
@@ -198,7 +218,16 @@ export function ReportWorkspace({
             linkedFindingsCount={linkedFindings.length}
             linkedOpportunitiesCount={linkedOpportunities.length}
             linkedRoadmapItemsCount={linkedRoadmapItems.length}
-            actionBar={renderActionBar ? renderActionBar(selected) : null}
+            actionBar={
+              showActionBar ? (
+                <ReportSectionActionBar
+                  sectionId={selected.id}
+                  status={selected.status}
+                  engagementId={engagementId}
+                  aiAvailable={aiAvailable}
+                />
+              ) : null
+            }
           />
         ) : (
           <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
