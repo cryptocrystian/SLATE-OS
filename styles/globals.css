@@ -101,4 +101,86 @@
       0 0 0 1px rgba(108, 140, 255, 0.2),
       0 0 24px -4px rgba(108, 140, 255, 0.35);
   }
+
+  /*
+   * Phase 1B Sprint 4B — operator-only light/print palette scope.
+   *
+   * Apply `.slate-print-light` to a wrapper around the report print
+   * route (`/app/engagements/[id]/report/print`) to override the global
+   * dark CSS-variable theme with print-safe values. Every SLATE chart
+   * primitive, exhibit, badge, card, and text token routes through the
+   * same `var(--color-*)` set defined at `:root`, so the variable
+   * cascade re-themes the entire embedded report + Group-A exhibits
+   * without prop threading, exhibit code changes, or primitive churn.
+   *
+   * Strict scope rules:
+   *   - Operator-only. The app dark theme is unchanged everywhere this
+   *     class is not applied (charts-preview, report page, chart
+   *     diagnostics, proposal, roadmap, etc.).
+   *   - Group-B exhibits (Benchmark / Waterfall / ROI Bridge) are not
+   *     rendered on the print route and remain preview-only at
+   *     `/app/charts-preview` until docs/14 / docs/15 advance.
+   *   - This class is referenced from the print route's page wrapper
+   *     only — no global theme provider, no client-side palette
+   *     switcher, no per-exhibit `variant` prop.
+   *
+   * The values below are tuned for printer-safe contrast on white paper
+   * and on-screen readability when an operator opens the route prior
+   * to Save-as-PDF.
+   */
+  .slate-print-light {
+    --color-bg-page: #ffffff;
+    --color-bg-shell: #ffffff;
+    --color-bg-surface: #ffffff;
+    --color-bg-elevated: #f8fafc;
+    --color-bg-panel: #f1f5f9;
+
+    --color-border-subtle: rgba(15, 23, 42, 0.10);
+    --color-border-strong: rgba(15, 23, 42, 0.24);
+
+    --color-text-primary: #0f172a;
+    --color-text-secondary: #334155;
+    --color-text-muted: #475569;
+    --color-text-disabled: #94a3b8;
+    --color-text-inverse: #ffffff;
+
+    --color-brand-primary: #3b5bdb;
+    --color-practice-ai: #1d4ed8;
+    --color-practice-dev: #0d9488;
+    --color-practice-studio: #b45309;
+
+    --color-status-success: #047857;
+    --color-status-warning: #b45309;
+    --color-status-risk: #b91c1c;
+    --color-status-critical: #991b1b;
+    --color-status-info: #1d4ed8;
+    --color-status-neutral: #475569;
+
+    --shadow-card:
+      0 1px 0 rgba(15, 23, 42, 0.02) inset,
+      0 1px 2px rgba(15, 23, 42, 0.06),
+      0 4px 12px -6px rgba(15, 23, 42, 0.08);
+    --shadow-elevated:
+      0 1px 0 rgba(15, 23, 42, 0.02) inset,
+      0 2px 4px rgba(15, 23, 42, 0.08),
+      0 16px 32px -12px rgba(15, 23, 42, 0.10);
+
+    background-color: var(--color-bg-page);
+    color: var(--color-text-primary);
+  }
+
+  /*
+   * Force the cleanest possible state for actual print output (browser
+   * Save-as-PDF / Ctrl-P). Drops every shadow + lightens elevated
+   * surfaces back to white so the paper stays ink-economical.
+   */
+  @media print {
+    .slate-print-light {
+      background-color: #ffffff;
+      --color-bg-elevated: #ffffff;
+      --color-bg-panel: #ffffff;
+      --shadow-card: none;
+      --shadow-elevated: none;
+    }
+  }
 }

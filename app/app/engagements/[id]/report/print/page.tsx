@@ -75,7 +75,7 @@ export default async function EngagementReportPrintPage({
   // operate over fixture data.
   if (!isPersisted) {
     return (
-      <div className="flex flex-col gap-6 print:hidden">
+      <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:hidden print:bg-white print:p-0 sm:px-4">
         <BackToReportLink reportHref={reportHref} />
         <EmptyState
           title="Internal print preview is only available for persisted engagements."
@@ -101,7 +101,7 @@ export default async function EngagementReportPrintPage({
 
   if (!report) {
     return (
-      <div className="flex flex-col gap-6 print:hidden">
+      <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:hidden print:bg-white print:p-0 sm:px-4">
         <BackToReportLink reportHref={reportHref} />
         <Card variant="base">
           <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
@@ -187,7 +187,7 @@ export default async function EngagementReportPrintPage({
     .filter((slot): slot is ReportExhibitSlot => isGroupAReportSlot(slot));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
       <BackToReportLink reportHref={reportHref} />
 
       <ReportPrintDocument

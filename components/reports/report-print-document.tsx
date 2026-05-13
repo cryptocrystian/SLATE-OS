@@ -75,7 +75,8 @@ export function ReportPrintDocument({
   roadmap,
 }: ReportPrintDocumentProps) {
   return (
-    <div className="flex flex-col gap-8 print:gap-6">
+    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+      <OperatorPrintHint />
       <InternalBanner generatedAt={generatedAt} />
 
       <header className="flex flex-col gap-2 border-b border-border-subtle pb-6 print:break-after-avoid">
@@ -137,7 +138,7 @@ export function ReportPrintDocument({
 
       <section
         aria-label="Report exhibits"
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-4 print:break-before-page"
       >
         <ReportExhibitSlots
           engagementId={engagement.id}
@@ -171,7 +172,7 @@ export function ReportPrintDocument({
 
 function InternalBanner({ generatedAt }: { generatedAt: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-after-avoid">
+    <div className="flex flex-col gap-1 rounded-md border border-status-warning/50 bg-status-warning/10 p-3 text-status-warning print:break-after-avoid print:shadow-none">
       <div className="flex items-start gap-2">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
         <div className="flex flex-col gap-0.5">
@@ -184,6 +185,29 @@ function InternalBanner({ generatedAt }: { generatedAt: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Operator print hint — on-screen only; never printed.
+// ---------------------------------------------------------------------------
+
+/**
+ * Sprint 4B — small on-screen note telling the operator how to drive
+ * the browser's print dialog cleanly. Hidden during actual print so
+ * the printed page starts at the internal banner.
+ */
+function OperatorPrintHint() {
+  return (
+    <aside
+      aria-label="Operator print hint"
+      className="rounded-md border border-border-subtle bg-bg-elevated px-3 py-2 text-[11px] leading-relaxed text-text-secondary print:hidden"
+    >
+      <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+        Operator hint ·
+      </span>{" "}
+      For best results in browser <kbd className="font-mono text-[10px]">Save as PDF</kbd>: open Ctrl-P / Cmd-P, set destination to <em>Save as PDF</em>, and disable Headers and footers under <em>More settings</em> so the SLATE banner remains the page identity.
+    </aside>
   );
 }
 
