@@ -1,5 +1,11 @@
 import * as React from "react";
-import { AlertTriangle, FileWarning, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  FileWarning,
+  ShieldCheck,
+  Slash,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
 import type { Engagement } from "@/lib/engagements/types";
@@ -47,18 +53,92 @@ export function ReportPdfCandidateDocument({
   const renderedExhibits = snapshot.exhibitSnapshot.filter(
     (e) => e.renderedInArtifact,
   );
+  const isVoided = snapshot.status === "voided";
+  const acceptedStaleSlots =
+    snapshot.sourceSummarySnapshot.acceptedStaleSlots ?? [];
 
   return (
     <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
       <OperatorCandidateHint />
+      {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
       <CandidateBanner snapshot={snapshot} />
       <IdentityHeader engagement={engagement} snapshot={snapshot} />
       <ClaimGuardStrip snapshot={snapshot} />
+      {acceptedStaleSlots.length > 0 ? (
+        <StaleAcceptanceNote acceptedStaleSlots={acceptedStaleSlots} />
+      ) : null}
       {snapshot.draftWatermark ? <DraftCandidateWatermark /> : null}
       <SectionsList sections={includedSections} />
       <ExhibitSlotsList exhibits={renderedExhibits} />
       <OmittedExhibitsAppendix omissions={snapshot.omittedExhibits} />
       <FooterBanner snapshot={snapshot} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Voided banner — Sprint 4C-D
+// ---------------------------------------------------------------------------
+
+function VoidedBanner({ snapshot }: { snapshot: ReportDeliverySnapshot }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-status-critical/50 bg-status-critical/10 p-3 text-status-critical print:break-after-avoid print:shadow-none">
+      <div className="flex items-start gap-2">
+        <Slash className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+            Snapshot voided · do not deliver
+          </span>
+          <p className="text-xs leading-relaxed">
+            This candidate snapshot was voided
+            {snapshot.voidedAt
+              ? ` on ${formatTimestamp(snapshot.voidedAt)}`
+              : ""}
+            {snapshot.voidReason ? `: ${snapshot.voidReason}` : "."} The
+            content below is preserved for the audit trail only.
+            Regenerate from the report page to produce a fresh candidate.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stale-acceptance note — Sprint 4C-D
+// ---------------------------------------------------------------------------
+
+function StaleAcceptanceNote({
+  acceptedStaleSlots,
+}: {
+  acceptedStaleSlots: ReadonlyArray<string>;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-inside-avoid print:shadow-none">
+      <div className="flex items-start gap-2">
+        <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+            Source data may be stale — accepted by operator
+          </span>
+          <p className="text-xs leading-relaxed">
+            The operator generated this candidate while one or more
+            Group-A source slots were older than the 7-day freshness
+            window. The slot identities below were explicitly
+            acknowledged at generation time:
+          </p>
+          <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+            {acceptedStaleSlots.map((slot) => (
+              <li
+                key={slot}
+                className="font-mono text-[10px] uppercase tracking-[0.14em] text-status-warning"
+              >
+                · {slot}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink, FileText, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import type { ReportExhibitSlot } from "@/lib/charts/adapters/types";
 import {
   generateReportPdfCandidateAction,
   type GenerateReportPdfCandidateResult,
@@ -38,18 +39,62 @@ export function GeneratePdfCandidateButton({
   const [pending, startTransition] = React.useTransition();
   const [result, setResult] =
     React.useState<GenerateReportPdfCandidateResult | null>(null);
+  // Sprint 4C-D — stale-acceptance retry UX. When the server returns
+  // `stale-acceptance-required`, the inline failure notice surfaces a
+  // checkbox per stale slot; ticking + retrying calls the action again
+  // with `acceptedStaleSlots[]`. Acceptance is always explicit; the
+  // checkbox state resets when the operator clicks Generate again from
+  // scratch.
+  const [acceptedStaleSlots, setAcceptedStaleSlots] = React.useState<
+    Set<ReportExhibitSlot>
+  >(new Set());
 
-  function onClick() {
+  function run(slots?: ReportExhibitSlot[]) {
     setResult(null);
     startTransition(async () => {
       try {
-        const r = await generateReportPdfCandidateAction({ engagementId });
+        const r = await generateReportPdfCandidateAction({
+          engagementId,
+          acceptedStaleSlots: slots ?? [],
+        });
         setResult(r);
+        // On success or terminal failure, drop the stale-acceptance
+        // selection so a subsequent generation starts clean.
+        if (r.ok || r.error !== "stale-acceptance-required") {
+          setAcceptedStaleSlots(new Set());
+        }
       } catch {
         setResult({ ok: false, error: "service-error" });
+        setAcceptedStaleSlots(new Set());
       }
     });
   }
+
+  function onGenerateClick() {
+    setAcceptedStaleSlots(new Set());
+    run([]);
+  }
+
+  function onToggleSlot(slot: ReportExhibitSlot, next: boolean) {
+    setAcceptedStaleSlots((prev) => {
+      const updated = new Set(prev);
+      if (next) updated.add(slot);
+      else updated.delete(slot);
+      return updated;
+    });
+  }
+
+  function onRetryWithAcceptance() {
+    run(Array.from(acceptedStaleSlots));
+  }
+
+  const needsStaleAcceptance =
+    !!result && !result.ok && result.error === "stale-acceptance-required";
+  const staleSlots = needsStaleAcceptance
+    ? (result.staleSlots ?? [])
+    : ([] as ReportExhibitSlot[]);
+  const allStaleAccepted =
+    staleSlots.length > 0 && staleSlots.every((s) => acceptedStaleSlots.has(s));
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -59,7 +104,7 @@ export function GeneratePdfCandidateButton({
         size="md"
         leadingIcon={<FileText className="h-4 w-4" />}
         disabled={pending}
-        onClick={onClick}
+        onClick={onGenerateClick}
       >
         {pending ? "Generating…" : "Generate PDF Candidate"}
       </Button>
@@ -74,7 +119,83 @@ export function GeneratePdfCandidateButton({
         />
       ) : null}
 
-      {result && !result.ok ? <FailureNotice result={result} /> : null}
+      {needsStaleAcceptance ? (
+        <StaleAcceptancePrompt
+          staleSlots={staleSlots}
+          accepted={acceptedStaleSlots}
+          onToggle={onToggleSlot}
+          onRetry={onRetryWithAcceptance}
+          allAccepted={allStaleAccepted}
+          pending={pending}
+        />
+      ) : result && !result.ok ? (
+        <FailureNotice result={result} />
+      ) : null}
+    </div>
+  );
+}
+
+function StaleAcceptancePrompt({
+  staleSlots,
+  accepted,
+  onToggle,
+  onRetry,
+  allAccepted,
+  pending,
+}: {
+  staleSlots: ReportExhibitSlot[];
+  accepted: Set<ReportExhibitSlot>;
+  onToggle: (slot: ReportExhibitSlot, next: boolean) => void;
+  onRetry: () => void;
+  allAccepted: boolean;
+  pending: boolean;
+}) {
+  return (
+    <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-[11px] leading-relaxed text-status-warning">
+      <span className="font-mono uppercase tracking-[0.16em]">
+        Stale source data needs acceptance
+      </span>
+      <p className="text-text-secondary">
+        One or more Group-A slots returned stale source data (older than
+        the 7-day freshness window). Tick each slot to acknowledge the
+        staleness; the candidate artifact will carry a visible
+        &ldquo;Source data may be stale — accepted by operator&rdquo;
+        marker for each accepted slot.
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {staleSlots.map((slot) => (
+          <li key={slot}>
+            <label className="flex items-start gap-2 text-text-secondary">
+              <input
+                type="checkbox"
+                checked={accepted.has(slot)}
+                onChange={(e) => onToggle(slot, e.target.checked)}
+                disabled={pending}
+                className="mt-0.5"
+              />
+              <code className="font-mono text-[10px] uppercase tracking-[0.12em]">
+                {slot}
+              </code>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          leadingIcon={<FileText className="h-3.5 w-3.5" />}
+          disabled={pending || !allAccepted}
+          onClick={onRetry}
+        >
+          {pending
+            ? "Generating…"
+            : allAccepted
+              ? "Retry with accepted slots"
+              : "Accept all to retry"}
+        </Button>
+      </div>
     </div>
   );
 }

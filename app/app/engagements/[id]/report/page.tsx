@@ -13,6 +13,7 @@ import { ReportWorkspace } from "@/components/reports/report-workspace";
 import { InitializeReportForm } from "@/components/reports/initialize-report-form";
 import { ReportExhibitSlots } from "@/components/reports/report-exhibit-slots";
 import { GeneratePdfCandidateButton } from "@/components/reports/generate-pdf-candidate-button";
+import { ReportPdfCandidatesPanel } from "@/components/reports/report-pdf-candidates-panel";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -413,6 +414,17 @@ export default async function EngagementReportPage({
               capabilityMaturity={exhibitSlotResults.capabilityMaturity}
               stakeholderCoverage={exhibitSlotResults.stakeholderCoverage}
               roadmap={exhibitSlotResults.roadmap}
+            />
+          ) : null}
+
+          {/* Sprint 4C-D — Past PDF candidates panel. Operator-only,
+              persisted-engagement-only, no public/share/send/storage.
+              Lists prior `report_delivery_snapshots` rows with per-row
+              void affordance for non-voided entries. */}
+          {isPersisted && report ? (
+            <ReportPdfCandidatesPanel
+              engagementId={engagement.id}
+              reportId={report.id}
             />
           ) : null}
 
