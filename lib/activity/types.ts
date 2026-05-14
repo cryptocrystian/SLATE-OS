@@ -30,7 +30,11 @@ export type ActivityEventType =
   | "ai_report_section_drafted"
   | "ai_proposal_option_drafted"
   | "ai_roadmap_items_drafted"
-  | "ai_synthesis_failed";
+  | "ai_synthesis_failed"
+  | "report_pdf_candidate_generated"
+  | "report_pdf_candidate_failed"
+  | "report_pdf_candidate_downloaded"
+  | "report_delivery_snapshot_voided";
 
 export type ActivityEntityType =
   | "lead"
@@ -47,7 +51,8 @@ export type ActivityEntityType =
   | "note"
   | "scorecard_submission"
   | "input_asset"
-  | "ai_synthesis_run";
+  | "ai_synthesis_run"
+  | "report_delivery_snapshot";
 
 export interface ActivityEvent {
   id: string;

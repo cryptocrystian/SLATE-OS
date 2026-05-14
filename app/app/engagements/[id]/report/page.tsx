@@ -12,6 +12,7 @@ import { LockedActionButton } from "@/components/ui/locked-action-button";
 import { ReportWorkspace } from "@/components/reports/report-workspace";
 import { InitializeReportForm } from "@/components/reports/initialize-report-form";
 import { ReportExhibitSlots } from "@/components/reports/report-exhibit-slots";
+import { GeneratePdfCandidateButton } from "@/components/reports/generate-pdf-candidate-button";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -264,7 +265,18 @@ export default async function EngagementReportPage({
                 </Button>
               </Link>
             ) : null}
-            <LockedActionButton label="Export Report" lockedNote="Locked" />
+            {/* Sprint 4C-B — the previously locked `Export Report` chip
+                is replaced for persisted UUID engagements only with an
+                operator-only `Generate PDF Candidate` action backed by
+                the metadata-snapshot pipeline. Mock / legacy slug
+                engagements keep the locked chip — the action never runs
+                against fixture data. Send to Client / Prepare SOW Draft
+                / Prepare Client Review / Prepare Report remain locked. */}
+            {isPersisted ? (
+              <GeneratePdfCandidateButton engagementId={engagement.id} />
+            ) : (
+              <LockedActionButton label="Export Report" lockedNote="Locked" />
+            )}
           </>
         }
         meta={

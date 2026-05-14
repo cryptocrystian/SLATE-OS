@@ -48,6 +48,10 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   ai_proposal_option_drafted: "ai",
   ai_roadmap_items_drafted: "ai",
   ai_synthesis_failed: "risk",
+  report_pdf_candidate_generated: "success",
+  report_pdf_candidate_failed: "risk",
+  report_pdf_candidate_downloaded: "info",
+  report_delivery_snapshot_voided: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -83,6 +87,10 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   ai_proposal_option_drafted: "AI proposal option drafted",
   ai_roadmap_items_drafted: "AI roadmap items drafted",
   ai_synthesis_failed: "AI synthesis failed",
+  report_pdf_candidate_generated: "Report PDF candidate",
+  report_pdf_candidate_failed: "Report PDF candidate failed",
+  report_pdf_candidate_downloaded: "Report PDF candidate downloaded",
+  report_delivery_snapshot_voided: "Snapshot voided",
 };
 
 export function ActivityTimeline({
