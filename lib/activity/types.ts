@@ -34,7 +34,11 @@ export type ActivityEventType =
   | "report_pdf_candidate_generated"
   | "report_pdf_candidate_failed"
   | "report_pdf_candidate_downloaded"
-  | "report_delivery_snapshot_voided";
+  | "report_delivery_snapshot_voided"
+  | "report_share_token_created"
+  | "report_share_token_revoked"
+  | "report_share_token_accessed"
+  | "report_share_token_expired";
 
 export type ActivityEntityType =
   | "lead"
@@ -52,7 +56,8 @@ export type ActivityEntityType =
   | "scorecard_submission"
   | "input_asset"
   | "ai_synthesis_run"
-  | "report_delivery_snapshot";
+  | "report_delivery_snapshot"
+  | "report_share_token";
 
 export interface ActivityEvent {
   id: string;

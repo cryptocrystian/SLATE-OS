@@ -13,6 +13,9 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getReportDeliverySnapshotsForReport } from "@/lib/reports/delivery-snapshot-queries";
+import { evaluateReportShareEligibility } from "@/lib/reports/share-token-eligibility";
+import type { ReportShareEligibilityReason } from "@/lib/reports/share-token-types";
+import { GenerateShareLinkButton } from "./generate-share-link-button";
 import { VoidPdfCandidateButton } from "./void-pdf-candidate-button";
 
 /**
@@ -94,35 +97,39 @@ export async function ReportPdfCandidatesPanel({
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
-            {snapshots.map((s) => (
-              <li key={s.id}>
-                <SnapshotRow
-                  engagementId={engagementId}
-                  snapshotId={s.id}
-                  status={s.status}
-                  deliverySurface={s.deliverySurface}
-                  draftWatermark={s.draftWatermark}
-                  generatedAt={s.generatedAt}
-                  generatedByLabel={s.generatedByLabel}
-                  reportStatusAtGeneration={s.reportStatusAtGeneration}
-                  claimGuardPassed={s.claimGuardResult.passed}
-                  claimGuardViolations={
-                    s.claimGuardResult.violations?.length ?? 0
-                  }
-                  includedSectionCount={
-                    s.sectionSnapshot.filter((x) => x.includedInArtifact).length
-                  }
-                  includedExhibitCount={
-                    s.exhibitSnapshot.filter((x) => x.renderedInArtifact).length
-                  }
-                  staleAcceptedCount={
-                    s.sourceSummarySnapshot.acceptedStaleSlots?.length ?? 0
-                  }
-                  voidReason={s.voidReason}
-                  voidedAt={s.voidedAt}
-                />
-              </li>
-            ))}
+            {snapshots.map((s) => {
+              const eligibility = evaluateReportShareEligibility(s);
+              return (
+                <li key={s.id}>
+                  <SnapshotRow
+                    engagementId={engagementId}
+                    snapshotId={s.id}
+                    status={s.status}
+                    deliverySurface={s.deliverySurface}
+                    draftWatermark={s.draftWatermark}
+                    generatedAt={s.generatedAt}
+                    generatedByLabel={s.generatedByLabel}
+                    reportStatusAtGeneration={s.reportStatusAtGeneration}
+                    claimGuardPassed={s.claimGuardResult.passed}
+                    claimGuardViolations={
+                      s.claimGuardResult.violations?.length ?? 0
+                    }
+                    includedSectionCount={
+                      s.sectionSnapshot.filter((x) => x.includedInArtifact).length
+                    }
+                    includedExhibitCount={
+                      s.exhibitSnapshot.filter((x) => x.renderedInArtifact).length
+                    }
+                    staleAcceptedCount={
+                      s.sourceSummarySnapshot.acceptedStaleSlots?.length ?? 0
+                    }
+                    voidReason={s.voidReason}
+                    voidedAt={s.voidedAt}
+                    shareIneligibilityReasons={eligibility.reasons}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardBody>
@@ -146,6 +153,7 @@ interface SnapshotRowProps {
   staleAcceptedCount: number;
   voidReason: string | null;
   voidedAt: string | null;
+  shareIneligibilityReasons: ReportShareEligibilityReason[];
 }
 
 function SnapshotRow(props: SnapshotRowProps) {
@@ -266,6 +274,10 @@ function SnapshotRow(props: SnapshotRowProps) {
         {!isVoided ? (
           <VoidPdfCandidateButton snapshotId={props.snapshotId} />
         ) : null}
+        <GenerateShareLinkButton
+          snapshotId={props.snapshotId}
+          ineligibilityReasons={props.shareIneligibilityReasons}
+        />
       </div>
     </div>
   );

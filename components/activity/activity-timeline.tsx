@@ -52,6 +52,10 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   report_pdf_candidate_failed: "risk",
   report_pdf_candidate_downloaded: "info",
   report_delivery_snapshot_voided: "neutral",
+  report_share_token_created: "brand",
+  report_share_token_revoked: "warning",
+  report_share_token_accessed: "info",
+  report_share_token_expired: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -91,6 +95,10 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   report_pdf_candidate_failed: "Report PDF candidate failed",
   report_pdf_candidate_downloaded: "Report PDF candidate downloaded",
   report_delivery_snapshot_voided: "Snapshot voided",
+  report_share_token_created: "Share link created",
+  report_share_token_revoked: "Share link revoked",
+  report_share_token_accessed: "Share link accessed",
+  report_share_token_expired: "Share link expired",
 };
 
 export function ActivityTimeline({
