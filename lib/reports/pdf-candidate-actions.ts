@@ -420,9 +420,83 @@ export async function voidReportDeliverySnapshotAction(args: {
     metadata: { reason: reason.slice(0, 120) },
   });
 
+  // Sprint 4D-C — void cascade. Any active share token backed by this
+  // snapshot is now structurally rejected by the public route's
+  // eligibility re-check, but we also flip the row state to `revoked`
+  // so the operator UI does not display a stale "Active" badge. Each
+  // cascaded revoke emits its own `report_share_token_revoked`
+  // activity event so the audit trail is preserved.
+  await cascadeRevokeActiveShareTokens({
+    supabase,
+    snapshotId,
+    engagementId: row.engagement_id,
+    actorUserId: user.id,
+  });
+
   revalidatePath(`/app/engagements/${row.engagement_id}/report`);
 
   return { ok: true, snapshotId };
+}
+
+async function cascadeRevokeActiveShareTokens(args: {
+  supabase: ReturnType<typeof createSupabaseServerClient>;
+  snapshotId: string;
+  engagementId: string;
+  actorUserId: string;
+}): Promise<void> {
+  const { supabase, snapshotId, engagementId, actorUserId } = args;
+  const { data: activeTokens, error: readError } = await supabase
+    .from("report_share_tokens")
+    .select("id")
+    .eq("snapshot_id", snapshotId)
+    .eq("status", "active");
+  if (readError) {
+    console.error("[reports.pdf-candidate] void-cascade-read-failed", {
+      name: readError.name,
+      code: readError.code,
+      message: readError.message,
+    });
+    return;
+  }
+  const ids = (activeTokens ?? []).map((row) => row.id as string);
+  if (ids.length === 0) return;
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("report_share_tokens")
+    .update({
+      status: "revoked",
+      revoked_at: now,
+      revoked_by: actorUserId,
+      revoke_reason: "snapshot_voided",
+    })
+    .in("id", ids);
+  if (updateError) {
+    console.error("[reports.pdf-candidate] void-cascade-update-failed", {
+      name: updateError.name,
+      code: updateError.code,
+      message: updateError.message,
+    });
+    return;
+  }
+
+  await Promise.all(
+    ids.map((tokenId) =>
+      logActivityEvent({
+        eventType: "report_share_token_revoked",
+        entityType: "report_share_token",
+        entityId: tokenId,
+        engagementId,
+        title: "Report share token revoked",
+        summary:
+          "Share token revoked automatically because the backing snapshot was voided.",
+        metadata: {
+          snapshotId,
+          reason: "snapshot_voided",
+        },
+      }),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
