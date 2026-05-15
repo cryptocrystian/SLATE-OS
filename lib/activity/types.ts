@@ -38,7 +38,10 @@ export type ActivityEventType =
   | "report_share_token_created"
   | "report_share_token_revoked"
   | "report_share_token_accessed"
-  | "report_share_token_expired";
+  | "report_share_token_expired"
+  | "proposal_snapshot_generated"
+  | "proposal_snapshot_failed"
+  | "proposal_snapshot_voided";
 
 export type ActivityEntityType =
   | "lead"
@@ -57,7 +60,8 @@ export type ActivityEntityType =
   | "input_asset"
   | "ai_synthesis_run"
   | "report_delivery_snapshot"
-  | "report_share_token";
+  | "report_share_token"
+  | "proposal_delivery_snapshot";
 
 export interface ActivityEvent {
   id: string;
