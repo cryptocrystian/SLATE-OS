@@ -41,7 +41,8 @@ export type ActivityEventType =
   | "report_share_token_expired"
   | "proposal_snapshot_generated"
   | "proposal_snapshot_failed"
-  | "proposal_snapshot_voided";
+  | "proposal_snapshot_voided"
+  | "proposal_snapshot_approved";
 
 export type ActivityEntityType =
   | "lead"

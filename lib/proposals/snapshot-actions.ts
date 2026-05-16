@@ -424,6 +424,241 @@ function deriveInitials(displayName: string): string {
     .join("");
 }
 
+// ---------------------------------------------------------------------------
+// Void action — Sprint P3
+// ---------------------------------------------------------------------------
+
+export type VoidProposalDeliverySnapshotError =
+  | "unauthenticated"
+  | "invalid-snapshot"
+  | "snapshot-not-found"
+  | "already-voided"
+  | "service-error";
+
+export type VoidProposalDeliverySnapshotResult =
+  | { ok: true; snapshotId: string }
+  | { ok: false; error: VoidProposalDeliverySnapshotError };
+
+/**
+ * Phase 1B Proposal/SOW Delivery Sprint P3 — operator-only soft void
+ * for a proposal delivery snapshot. The row is **not deleted**:
+ * `status='voided'`, `voided_at`, `voided_by`, `void_reason`, and
+ * `approval_state='revoked'` (so an approved candidate cannot keep its
+ * approved badge after a void). Activity event
+ * `proposal_snapshot_voided` is emitted with sanitized metadata.
+ *
+ * No cascade-revoke of proposal share tokens here — `proposal_share_tokens`
+ * does not exist until Sprint P4. The Sprint P4 commit will extend this
+ * action with a `cascadeRevokeActiveProposalShareTokens` helper
+ * mirroring the report-side pattern.
+ */
+export async function voidProposalDeliverySnapshotAction(args: {
+  snapshotId: string;
+  reason: string;
+}): Promise<VoidProposalDeliverySnapshotResult> {
+  const { snapshotId, reason } = args;
+  if (!isUuid(snapshotId)) {
+    return { ok: false, error: "invalid-snapshot" };
+  }
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .select("id, engagement_id, proposal_id, status, approval_state")
+    .eq("id", snapshotId)
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      proposal_id: string;
+      status: string;
+      approval_state: string;
+    }>();
+  if (fetchError) {
+    console.error("[proposals.snapshot-actions] void-fetch-failed", {
+      name: fetchError.name,
+      code: fetchError.code,
+      message: fetchError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!row?.id) return { ok: false, error: "snapshot-not-found" };
+  if (row.status === "voided") {
+    return { ok: false, error: "already-voided" };
+  }
+
+  const now = new Date().toISOString();
+  const trimmedReason = reason.trim().slice(0, 280);
+  const { error: updateError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .update({
+      status: "voided",
+      voided_at: now,
+      voided_by: user.id,
+      void_reason: trimmedReason,
+      // A voided candidate cannot keep the operator's prior approval.
+      approval_state: "revoked",
+    })
+    .eq("id", snapshotId);
+  if (updateError) {
+    console.error("[proposals.snapshot-actions] void-update-failed", {
+      name: updateError.name,
+      code: updateError.code,
+      message: updateError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+
+  await logActivityEvent({
+    eventType: "proposal_snapshot_voided",
+    entityType: "proposal_delivery_snapshot",
+    entityId: snapshotId,
+    engagementId: row.engagement_id,
+    title: "Proposal candidate voided",
+    summary: "Operator marked an earlier proposal candidate snapshot stale.",
+    metadata: {
+      proposalId: row.proposal_id,
+      priorApprovalState: row.approval_state,
+      reason: trimmedReason.slice(0, 120),
+    },
+  });
+
+  revalidatePath(`/app/engagements/${row.engagement_id}/proposal`);
+  revalidatePath(
+    `/app/engagements/${row.engagement_id}/proposal/candidate/${snapshotId}`,
+  );
+
+  return { ok: true, snapshotId };
+}
+
+// ---------------------------------------------------------------------------
+// Approve action — Sprint P3
+// ---------------------------------------------------------------------------
+
+export type ApproveProposalDeliverySnapshotError =
+  | "unauthenticated"
+  | "invalid-snapshot"
+  | "snapshot-not-found"
+  | "snapshot-voided"
+  | "already-approved"
+  | "commercial-guard-not-passed"
+  | "service-error";
+
+export type ApproveProposalDeliverySnapshotResult =
+  | { ok: true; snapshotId: string }
+  | { ok: false; error: ApproveProposalDeliverySnapshotError };
+
+/**
+ * Phase 1B Proposal/SOW Delivery Sprint P3 — operator-only approval
+ * flip for a proposal delivery snapshot. Approval is the prerequisite
+ * for Sprint P6's SOW Draft eligibility (`docs/24` § SOW Eligibility
+ * Rules item 2); it does NOT unlock client delivery — `Prepare Client
+ * Review` stays locked until Sprint P5 ships the public route.
+ *
+ * Approval rules:
+ *   - Snapshot must exist and not be voided.
+ *   - Commercial guard result must have passed at generation time
+ *     (a failed guard means there is no eligible snapshot to approve).
+ *   - Pricing review state is NOT auto-advanced — approving a
+ *     candidate means "the content is operator-approved", not "the
+ *     pricing is approved". The Sprint P5 client render will continue
+ *     to hide pricing while `pricing_review_state='placeholder'`.
+ *   - `draft_watermark` is flipped to `false`. The internal candidate
+ *     route still renders a "Proposal discussion draft" marker per
+ *     `docs/24` § Required Disclaimers / Markings, but the
+ *     operator-only "Draft Candidate" warning chrome is removed.
+ */
+export async function approveProposalDeliverySnapshotAction(args: {
+  snapshotId: string;
+}): Promise<ApproveProposalDeliverySnapshotResult> {
+  const { snapshotId } = args;
+  if (!isUuid(snapshotId)) {
+    return { ok: false, error: "invalid-snapshot" };
+  }
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .select(
+      "id, engagement_id, proposal_id, status, approval_state, commercial_guard_result",
+    )
+    .eq("id", snapshotId)
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      proposal_id: string;
+      status: string;
+      approval_state: string;
+      commercial_guard_result: { passed?: boolean } | null;
+    }>();
+  if (fetchError) {
+    console.error("[proposals.snapshot-actions] approve-fetch-failed", {
+      name: fetchError.name,
+      code: fetchError.code,
+      message: fetchError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!row?.id) return { ok: false, error: "snapshot-not-found" };
+  if (row.status === "voided") {
+    return { ok: false, error: "snapshot-voided" };
+  }
+  if (row.approval_state === "approved") {
+    return { ok: false, error: "already-approved" };
+  }
+  if (!row.commercial_guard_result?.passed) {
+    return { ok: false, error: "commercial-guard-not-passed" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .update({
+      approval_state: "approved",
+      // Operator approval removes the operator-only "Draft Candidate"
+      // warning; the mandatory "Proposal discussion draft" marker
+      // remains on the client surface per docs/24.
+      draft_watermark: false,
+    })
+    .eq("id", snapshotId);
+  if (updateError) {
+    console.error("[proposals.snapshot-actions] approve-update-failed", {
+      name: updateError.name,
+      code: updateError.code,
+      message: updateError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+
+  await logActivityEvent({
+    eventType: "proposal_snapshot_approved",
+    entityType: "proposal_delivery_snapshot",
+    entityId: snapshotId,
+    engagementId: row.engagement_id,
+    title: "Proposal candidate approved",
+    summary:
+      "Operator approved the content of a proposal candidate. Pricing approval is independent; Send to Client and SOW Draft remain locked.",
+    metadata: {
+      proposalId: row.proposal_id,
+    },
+  });
+
+  revalidatePath(`/app/engagements/${row.engagement_id}/proposal`);
+  revalidatePath(
+    `/app/engagements/${row.engagement_id}/proposal/candidate/${snapshotId}`,
+  );
+
+  return { ok: true, snapshotId };
+}
+
 // Re-export for any downstream P3+ surface that needs to consume the
 // eligibility shape.
 export type {

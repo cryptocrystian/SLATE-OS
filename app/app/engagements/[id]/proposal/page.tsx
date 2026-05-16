@@ -9,6 +9,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LockedActionButton } from "@/components/ui/locked-action-button";
+import { ProposalCandidatesPanel } from "@/components/proposals/proposal-candidates-panel";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip";
 import { ImplementationCreditPanel } from "@/components/proposals/implementation-credit-panel";
@@ -234,6 +235,13 @@ export default async function EngagementProposalPage({
               aiAvailable={isAiConfigured()}
             />
           )}
+
+          {proposal && isPersisted ? (
+            <ProposalCandidatesPanel
+              engagementId={engagement.id}
+              proposalId={proposal.id}
+            />
+          ) : null}
 
           {proposal ? (
             <Card variant="base">

@@ -59,6 +59,7 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   proposal_snapshot_generated: "success",
   proposal_snapshot_failed: "risk",
   proposal_snapshot_voided: "neutral",
+  proposal_snapshot_approved: "success",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -105,6 +106,7 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   proposal_snapshot_generated: "Proposal candidate",
   proposal_snapshot_failed: "Proposal candidate failed",
   proposal_snapshot_voided: "Proposal candidate voided",
+  proposal_snapshot_approved: "Proposal candidate approved",
 };
 
 export function ActivityTimeline({
