@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, FileSignature } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileSignature, Link2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -117,10 +117,33 @@ export default async function EngagementProposalPage({
                 Back to Report
               </Button>
             </Link>
-            <LockedActionButton
-              label="Prepare Client Review"
-              lockedNote="Locked"
-            />
+            {proposal && isPersisted ? (
+              // Sprint P5 unlock — `Prepare Client Review` no longer
+              // locked for persisted UUID engagements once the public
+              // `/p/[token]` route exists. The button is an in-page
+              // anchor that scrolls the operator to the Past Proposal
+              // Candidates panel; the actual mint affordance is the
+              // per-row `Generate Proposal Review Link` button shipped
+              // in Sprint P4. This is a non-send action by design —
+              // SLATE does not auto-email or push to CRM; the operator
+              // copies the `/p/<token>` URL from the copy-once panel.
+              // `Prepare SOW Draft` (proposal-workspace) + `Send to
+              // Client` (proposal-workspace) remain locked verbatim.
+              <Link href="#proposal-candidates-panel" scroll>
+                <Button
+                  variant="primary"
+                  size="md"
+                  leadingIcon={<Link2 className="h-4 w-4" />}
+                >
+                  Prepare Client Review
+                </Button>
+              </Link>
+            ) : (
+              <LockedActionButton
+                label="Prepare Client Review"
+                lockedNote="Locked"
+              />
+            )}
           </>
         }
         meta={

@@ -96,7 +96,7 @@ export async function ProposalCandidatesPanel({
   const snapshots = await getProposalDeliverySnapshotsForProposal(proposalId);
 
   return (
-    <Card variant="base">
+    <Card variant="base" id="proposal-candidates-panel">
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1.5">
