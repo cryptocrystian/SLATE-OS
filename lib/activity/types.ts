@@ -46,7 +46,10 @@ export type ActivityEventType =
   | "proposal_share_token_created"
   | "proposal_share_token_revoked"
   | "proposal_share_token_accessed"
-  | "proposal_share_token_expired";
+  | "proposal_share_token_expired"
+  | "sow_draft_generated"
+  | "sow_draft_failed"
+  | "sow_draft_voided";
 
 export type ActivityEntityType =
   | "lead"

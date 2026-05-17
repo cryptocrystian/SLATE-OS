@@ -181,7 +181,8 @@ function mapCommercialGuardResult(
         x === "financial" ||
         x === "commercial-finality" ||
         x === "roadmap-commitment" ||
-        x === "proposal-finality",
+        x === "proposal-finality" ||
+        x === "sow-draft-finality",
     ),
     patternCount: asNumber(o.patternCount, 0),
     violations: asArray(
@@ -195,7 +196,8 @@ function mapCommercialGuardResult(
           (v.patternFamily === "financial" ||
             v.patternFamily === "commercial-finality" ||
             v.patternFamily === "roadmap-commitment" ||
-            v.patternFamily === "proposal-finality")
+            v.patternFamily === "proposal-finality" ||
+            v.patternFamily === "sow-draft-finality")
         );
       },
     ),

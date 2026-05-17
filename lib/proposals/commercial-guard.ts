@@ -49,7 +49,8 @@ type ProposalGuardFamily =
   | "financial"
   | "commercial-finality"
   | "roadmap-commitment"
-  | "proposal-finality";
+  | "proposal-finality"
+  | "sow-draft-finality";
 
 /**
  * Proposal/SOW-specific patterns added by `docs/24` § Commercial Claim
@@ -108,6 +109,83 @@ export const PROPOSAL_FINALITY_PATTERNS: ReadonlyArray<BannedClaimRule> = [
   },
 ];
 
+/**
+ * Phase 1B SOW Draft Sprint P6-B — SOW-specific finality patterns added
+ * by `docs/26` § SOW Commercial Guard. These extend (do NOT replace)
+ * the four families above. The SOW Draft surface scans the combined
+ * 70-pattern set (44 proposal + 26 SOW); the Proposal Candidate surface
+ * continues to scan only the 44-pattern base set so existing proposal
+ * generation behaviour is byte-identical.
+ *
+ * The patterns are prohibition strings — they may appear in this file
+ * and in canon docs as prohibition examples; the runtime scanner
+ * rejects them in operator-editable SOW Draft content.
+ *
+ * `net 30 / net-30 / due upon receipt` is implemented as a single
+ * alternation pattern to keep the matcher count aligned with the
+ * canon's 26-distinct-phrase enumeration.
+ */
+export const SOW_DRAFT_FINALITY_PATTERNS: ReadonlyArray<BannedClaimRule> = [
+  { code: "binding_agreement", pattern: /\bbinding\s+agreement\b/i },
+  { code: "executed_agreement", pattern: /\bexecuted\s+agreement\b/i },
+  { code: "signature_block", pattern: /\bsignature\s+block\b/i },
+  { code: "sign_below", pattern: /\bsign\s+below\b/i },
+  { code: "accepted_by", pattern: /\baccepted\s+by\b/i },
+  {
+    code: "authorized_representative",
+    pattern: /\bauthorized\s+representative\b/i,
+  },
+  { code: "payment_due", pattern: /\bpayment\s+due\b/i },
+  { code: "invoice_due", pattern: /\binvoice\s+due\b/i },
+  {
+    // Single alternation covers "net 30", "net-30", and "due upon
+    // receipt" per the canon's 26-phrase enumeration. `net\s*\d{1,3}`
+    // also catches `net 45`, `net60`, etc. — same family.
+    code: "payment_terms_explicit",
+    pattern: /\bnet[\s-]?\d{1,3}\b|\bdue\s+upon\s+receipt\b/i,
+  },
+  {
+    code: "start_date_guaranteed",
+    pattern: /\bstart\s+date\s+guaranteed\b/i,
+  },
+  { code: "delivery_guaranteed", pattern: /\bdelivery\s+guaranteed\b/i },
+  { code: "sla_guaranteed", pattern: /\bSLA\s+guaranteed\b/i },
+  { code: "liquidated_damages", pattern: /\bliquidated\s+damages\b/i },
+  {
+    code: "termination_for_convenience",
+    pattern: /\btermination\s+for\s+convenience\b/i,
+  },
+  { code: "governing_law", pattern: /\bgoverning\s+law\b/i },
+  { code: "indemnification", pattern: /\bindemnification\b/i },
+  {
+    code: "limitation_of_liability",
+    pattern: /\blimitation\s+of\s+liability\b/i,
+  },
+  { code: "warranty", pattern: /\bwarranty\b/i },
+  { code: "auto_renewal", pattern: /\bauto[\s-]renewal\b/i },
+  { code: "cancellation_fee", pattern: /\bcancellation\s+fee\b/i },
+  {
+    code: "change_order_accepted",
+    pattern: /\bchange\s+order\s+accepted\b/i,
+  },
+  // `legally binding` is also in PROPOSAL_FINALITY_PATTERNS. The canon
+  // (`docs/26` § SOW Commercial Guard) explicitly allows the re-check
+  // for the SOW surface — operators editing this phrase into SOW
+  // Draft content deserve to see it flagged with the SOW-finality
+  // family attribution so the violation message reads as
+  // SOW-specific. The duplicate keeps the canon's 70-total-pattern
+  // count exact and produces two violations (one per family) for the
+  // same phrase, which is the intended behaviour.
+  { code: "legally_binding_sow", pattern: /\blegally\s+binding\b/i },
+  { code: "statement_is_binding", pattern: /\bstatement\s+is\s+binding\b/i },
+  {
+    code: "this_sow_is_effective",
+    pattern: /\bthis\s+SOW\s+is\s+effective\b/i,
+  },
+  { code: "work_shall_commence", pattern: /\bwork\s+shall\s+commence\b/i },
+  { code: "client_hereby_agrees", pattern: /\bclient\s+hereby\s+agrees\b/i },
+];
+
 const RULE_FAMILY = new Map<
   ReadonlyArray<BannedClaimRule>,
   ProposalGuardFamily
@@ -116,6 +194,7 @@ const RULE_FAMILY = new Map<
   [COMMERCIAL_FINALITY_PATTERNS, "commercial-finality"],
   [ROADMAP_COMMITMENT_PATTERNS, "roadmap-commitment"],
   [PROPOSAL_FINALITY_PATTERNS, "proposal-finality"],
+  [SOW_DRAFT_FINALITY_PATTERNS, "sow-draft-finality"],
 ]);
 
 const COMBINED_RULES: ReadonlyArray<BannedClaimRule> = [
@@ -123,6 +202,17 @@ const COMBINED_RULES: ReadonlyArray<BannedClaimRule> = [
   ...COMMERCIAL_FINALITY_PATTERNS,
   ...ROADMAP_COMMITMENT_PATTERNS,
   ...PROPOSAL_FINALITY_PATTERNS,
+];
+
+/**
+ * SOW Draft surface scans the proposal base + the SOW finality family.
+ * The proposal-candidate surface continues to scan only the base set,
+ * so this constant exists explicitly rather than reusing `COMBINED_RULES`
+ * with an `if`.
+ */
+const COMBINED_RULES_WITH_SOW: ReadonlyArray<BannedClaimRule> = [
+  ...COMBINED_RULES,
+  ...SOW_DRAFT_FINALITY_PATTERNS,
 ];
 
 function familyForCode(code: string): ProposalGuardFamily {
@@ -257,6 +347,249 @@ export function runProposalCommercialGuard(
       "proposal-finality",
     ],
     patternCount: COMBINED_RULES.length,
+    violations: violations.map((v) => ({
+      field: v.field,
+      code: v.code,
+      patternFamily: familyForCode(v.code),
+    })),
+    passed: violations.length === 0,
+    scanDurationMs,
+    version: COMMERCIAL_GUARD_VERSION,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// SOW Draft commercial guard — Sprint P6-B
+// ---------------------------------------------------------------------------
+
+export interface SowDraftFields {
+  /** Promoted from option.scopeSummary at SOW generation; operator may edit. */
+  scopeStatement?: string | null;
+  /** Promoted from option.deliverables. */
+  deliverables?: ReadonlyArray<string>;
+  /** SOW-specific; operator-authored at generation. */
+  exclusions?: ReadonlyArray<string>;
+  /** Promoted from option.assumptions. */
+  assumptions?: ReadonlyArray<string>;
+  /** Promoted from option.dependencies. */
+  dependencies?: ReadonlyArray<string>;
+  /** Promoted from option.timeline, framed as "Proposed". */
+  proposedTimeline?: string | null;
+  /** SOW-specific structured shape. */
+  responsibilities?: {
+    client?: ReadonlyArray<string>;
+    operator?: ReadonlyArray<string>;
+  };
+  /** SOW-specific; unresolved scope / pricing / dependency items. */
+  openQuestions?: ReadonlyArray<string>;
+  /** Canon-derived per pricing_review_state; operator may edit. */
+  pricingNotice?: string | null;
+  /** Canon-derived; operator may edit. */
+  legalBoundaryNotice?: string | null;
+}
+
+export interface RunSowDraftCommercialGuardInput
+  extends RunProposalCommercialGuardInput {
+  /**
+   * SOW Draft content captured at generation time. Sprint P6-B's
+   * `generateSowDraftCandidateAction` builds this from the source
+   * Proposal Candidate snapshot's option_snapshot + SOW-specific
+   * fields. The guard scans these fields in addition to the base
+   * proposal scan-field surface.
+   */
+  sowDraft: SowDraftFields;
+}
+
+/**
+ * Phase 1B SOW Draft Sprint P6-B — SOW Draft commercial guard wrapper.
+ *
+ * Delegates to the existing `runProposalCommercialGuard` field-build
+ * loop (so the proposal-side scan-field surface is byte-identical) and
+ * then adds the SOW-specific fields + scans the **combined 70-pattern
+ * set** (44 proposal base + 26 SOW-finality) per `docs/26` § SOW
+ * Commercial Guard.
+ *
+ * Existing `runProposalCommercialGuard` for the proposal-candidate
+ * surface is UNCHANGED — its `patternsApplied` still reports the four
+ * base families and its `patternCount` remains 44. Only callers that
+ * invoke this wrapper get the SOW pattern family applied.
+ *
+ * Pure function. Same `commercial-guard.v1` version stamp because the
+ * shape of the result is shared.
+ */
+export function runSowDraftCommercialGuard(
+  input: RunSowDraftCommercialGuardInput,
+): ProposalCommercialGuardResult {
+  const start = Date.now();
+
+  // Build the SAME base field set the proposal-side guard would build.
+  // We duplicate the loop here (rather than calling
+  // `runProposalCommercialGuard` and merging results) because we want a
+  // single combined scan over the union of base + SOW fields, with
+  // distinct family attribution per match. Calling the proposal helper
+  // would scan twice and double-count violations.
+  const fields: Array<{
+    field: string;
+    values: ReadonlyArray<string | null | undefined>;
+  }> = [];
+
+  for (const option of input.optionSnapshot) {
+    if (!option.includedInArtifact) continue;
+    fields.push({
+      field: `option[${option.optionId}].title`,
+      values: [option.title],
+    });
+    fields.push({
+      field: `option[${option.optionId}].bestFitScenario`,
+      values: [option.bestFitScenario],
+    });
+    fields.push({
+      field: `option[${option.optionId}].scopeSummary`,
+      values: [option.scopeSummary],
+    });
+    fields.push({
+      field: `option[${option.optionId}].timeline`,
+      values: [option.timeline],
+    });
+    fields.push({
+      field: `option[${option.optionId}].deliverables`,
+      values: option.deliverables,
+    });
+    fields.push({
+      field: `option[${option.optionId}].assumptions`,
+      values: option.assumptions,
+    });
+    fields.push({
+      field: `option[${option.optionId}].dependencies`,
+      values: option.dependencies,
+    });
+    fields.push({
+      field: `option[${option.optionId}].risks`,
+      values: option.risks,
+    });
+    fields.push({
+      field: `option[${option.optionId}].pricingPlaceholder`,
+      values: [option.pricingPlaceholder],
+    });
+  }
+
+  const credit = input.sourceContextSnapshot.implementationCredit;
+  fields.push({
+    field: "proposal.implementationCredit.creditAmountPlaceholder",
+    values: [credit.creditAmountPlaceholder],
+  });
+  fields.push({
+    field: "proposal.implementationCredit.creditWindow",
+    values: [credit.creditWindow],
+  });
+  fields.push({
+    field: "proposal.implementationCredit.creditNotes",
+    values: [credit.creditNotes],
+  });
+
+  // SOW-specific fields — operator-editable surface per `docs/26`
+  // § SOW Commercial Guard scan field list.
+  const sow = input.sowDraft;
+  if (sow.scopeStatement) {
+    fields.push({
+      field: "sow.scopeStatement",
+      values: [sow.scopeStatement],
+    });
+  }
+  if (sow.deliverables && sow.deliverables.length > 0) {
+    fields.push({
+      field: "sow.deliverables",
+      values: sow.deliverables,
+    });
+  }
+  if (sow.exclusions && sow.exclusions.length > 0) {
+    fields.push({
+      field: "sow.exclusions",
+      values: sow.exclusions,
+    });
+  }
+  if (sow.assumptions && sow.assumptions.length > 0) {
+    fields.push({
+      field: "sow.assumptions",
+      values: sow.assumptions,
+    });
+  }
+  if (sow.dependencies && sow.dependencies.length > 0) {
+    fields.push({
+      field: "sow.dependencies",
+      values: sow.dependencies,
+    });
+  }
+  if (sow.proposedTimeline) {
+    fields.push({
+      field: "sow.proposedTimeline",
+      values: [sow.proposedTimeline],
+    });
+  }
+  if (sow.responsibilities?.client && sow.responsibilities.client.length > 0) {
+    fields.push({
+      field: "sow.responsibilities.client",
+      values: sow.responsibilities.client,
+    });
+  }
+  if (
+    sow.responsibilities?.operator &&
+    sow.responsibilities.operator.length > 0
+  ) {
+    fields.push({
+      field: "sow.responsibilities.operator",
+      values: sow.responsibilities.operator,
+    });
+  }
+  if (sow.openQuestions && sow.openQuestions.length > 0) {
+    fields.push({
+      field: "sow.openQuestions",
+      values: sow.openQuestions,
+    });
+  }
+  if (sow.pricingNotice) {
+    fields.push({
+      field: "sow.pricingNotice",
+      values: [sow.pricingNotice],
+    });
+  }
+  if (sow.legalBoundaryNotice) {
+    fields.push({
+      field: "sow.legalBoundaryNotice",
+      values: [sow.legalBoundaryNotice],
+    });
+  }
+
+  // Sprint P4's `extras` hook still applies — operator-authored SOW
+  // draft text + footer text are scanned alongside the structured
+  // fields above for defense-in-depth.
+  if (input.extras?.sowDraftText) {
+    fields.push({
+      field: "sow.draftText",
+      values: [input.extras.sowDraftText],
+    });
+  }
+  if (input.extras?.footerText) {
+    fields.push({
+      field: "sow.footerText",
+      values: [input.extras.footerText],
+    });
+  }
+
+  const violations = scanForBannedClaims(fields, COMBINED_RULES_WITH_SOW);
+  const scanDurationMs = Date.now() - start;
+
+  return {
+    scannedFields: fields.map((f) => f.field),
+    scannedFieldCount: fields.length,
+    patternsApplied: [
+      "financial",
+      "commercial-finality",
+      "roadmap-commitment",
+      "proposal-finality",
+      "sow-draft-finality",
+    ],
+    patternCount: COMBINED_RULES_WITH_SOW.length,
     violations: violations.map((v) => ({
       field: v.field,
       code: v.code,

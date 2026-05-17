@@ -93,10 +93,16 @@ export interface ProposalSourceContextSnapshot {
 }
 
 /**
- * Result of the export-time commercial-guard scan. The shape extends
- * the report-side `ReportDeliveryClaimGuardResult` with a new
- * `proposal-finality` family for the 18 commercial / SOW patterns
- * added by `docs/24` §Commercial Claim Guard.
+ * Result of the export-time commercial-guard scan. The shape covers
+ * both the proposal candidate surface and the SOW draft surface:
+ *
+ *   - Proposal Candidate snapshots include the four base families
+ *     (financial 14 + commercial-finality 6 + roadmap-commitment 6 +
+ *     proposal-finality 18 = 44 patterns) per `docs/24` §Commercial
+ *     Claim Guard.
+ *   - SOW Draft snapshots (Sprint P6-B+) additionally include the
+ *     `sow-draft-finality` family (26 patterns) per `docs/26`
+ *     §SOW Commercial Guard, total 70 patterns.
  */
 export interface ProposalCommercialGuardResult {
   scannedFields: string[];
@@ -106,6 +112,7 @@ export interface ProposalCommercialGuardResult {
     | "commercial-finality"
     | "roadmap-commitment"
     | "proposal-finality"
+    | "sow-draft-finality"
   >;
   patternCount: number;
   violations: ReadonlyArray<{
@@ -115,7 +122,8 @@ export interface ProposalCommercialGuardResult {
       | "financial"
       | "commercial-finality"
       | "roadmap-commitment"
-      | "proposal-finality";
+      | "proposal-finality"
+      | "sow-draft-finality";
   }>;
   passed: boolean;
   scanDurationMs: number;

@@ -64,6 +64,9 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   proposal_share_token_revoked: "warning",
   proposal_share_token_accessed: "info",
   proposal_share_token_expired: "neutral",
+  sow_draft_generated: "success",
+  sow_draft_failed: "risk",
+  sow_draft_voided: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -115,6 +118,9 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   proposal_share_token_revoked: "Proposal share link revoked",
   proposal_share_token_accessed: "Proposal share link accessed",
   proposal_share_token_expired: "Proposal share link expired",
+  sow_draft_generated: "SOW Draft generated",
+  sow_draft_failed: "SOW Draft generation failed",
+  sow_draft_voided: "SOW Draft voided",
 };
 
 export function ActivityTimeline({
