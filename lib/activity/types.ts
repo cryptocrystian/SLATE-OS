@@ -42,7 +42,11 @@ export type ActivityEventType =
   | "proposal_snapshot_generated"
   | "proposal_snapshot_failed"
   | "proposal_snapshot_voided"
-  | "proposal_snapshot_approved";
+  | "proposal_snapshot_approved"
+  | "proposal_share_token_created"
+  | "proposal_share_token_revoked"
+  | "proposal_share_token_accessed"
+  | "proposal_share_token_expired";
 
 export type ActivityEntityType =
   | "lead"
@@ -62,7 +66,8 @@ export type ActivityEntityType =
   | "ai_synthesis_run"
   | "report_delivery_snapshot"
   | "report_share_token"
-  | "proposal_delivery_snapshot";
+  | "proposal_delivery_snapshot"
+  | "proposal_share_token";
 
 export interface ActivityEvent {
   id: string;

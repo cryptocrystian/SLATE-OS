@@ -18,8 +18,11 @@ import type {
   ProposalDeliverySurface,
   ProposalPricingReviewState,
 } from "@/lib/proposals/delivery-snapshot-types";
+import { evaluateProposalShareEligibility } from "@/lib/proposals/share-token-eligibility";
+import type { ProposalShareEligibilityReason } from "@/lib/proposals/share-token-types";
 import { ApproveProposalCandidateButton } from "./approve-proposal-candidate-button";
 import { GenerateProposalCandidateButton } from "./generate-proposal-candidate-button";
+import { GenerateProposalShareLinkButton } from "./generate-proposal-share-link-button";
 import { VoidProposalCandidateButton } from "./void-proposal-candidate-button";
 
 /**
@@ -139,32 +142,36 @@ export async function ProposalCandidatesPanel({
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
-            {snapshots.map((s) => (
-              <li key={s.id}>
-                <SnapshotRow
-                  engagementId={engagementId}
-                  snapshotId={s.id}
-                  status={s.status}
-                  deliverySurface={s.deliverySurface}
-                  approvalState={s.approvalState}
-                  pricingReviewState={s.pricingReviewState}
-                  draftWatermark={s.draftWatermark}
-                  generatedAt={s.generatedAt}
-                  generatedByLabel={s.generatedByLabel}
-                  proposalStatusAtGeneration={s.proposalStatusAtGeneration}
-                  commercialGuardPassed={s.commercialGuardResult.passed}
-                  commercialGuardViolations={
-                    s.commercialGuardResult.violations?.length ?? 0
-                  }
-                  includedOptionCount={
-                    s.optionSnapshot.filter((o) => o.includedInArtifact).length
-                  }
-                  selectedOptionIdCount={s.selectedOptionIds.length}
-                  voidedAt={s.voidedAt}
-                  voidReason={s.voidReason}
-                />
-              </li>
-            ))}
+            {snapshots.map((s) => {
+              const shareEligibility = evaluateProposalShareEligibility(s);
+              return (
+                <li key={s.id}>
+                  <SnapshotRow
+                    engagementId={engagementId}
+                    snapshotId={s.id}
+                    status={s.status}
+                    deliverySurface={s.deliverySurface}
+                    approvalState={s.approvalState}
+                    pricingReviewState={s.pricingReviewState}
+                    draftWatermark={s.draftWatermark}
+                    generatedAt={s.generatedAt}
+                    generatedByLabel={s.generatedByLabel}
+                    proposalStatusAtGeneration={s.proposalStatusAtGeneration}
+                    commercialGuardPassed={s.commercialGuardResult.passed}
+                    commercialGuardViolations={
+                      s.commercialGuardResult.violations?.length ?? 0
+                    }
+                    includedOptionCount={
+                      s.optionSnapshot.filter((o) => o.includedInArtifact).length
+                    }
+                    selectedOptionIdCount={s.selectedOptionIds.length}
+                    voidedAt={s.voidedAt}
+                    voidReason={s.voidReason}
+                    shareIneligibilityReasons={shareEligibility.reasons}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardBody>
@@ -189,6 +196,7 @@ interface SnapshotRowProps {
   selectedOptionIdCount: number;
   voidReason: string | null;
   voidedAt: string | null;
+  shareIneligibilityReasons: ProposalShareEligibilityReason[];
 }
 
 function SnapshotRow(props: SnapshotRowProps) {
@@ -316,6 +324,10 @@ function SnapshotRow(props: SnapshotRowProps) {
         {!isVoided ? (
           <VoidProposalCandidateButton snapshotId={props.snapshotId} />
         ) : null}
+        <GenerateProposalShareLinkButton
+          snapshotId={props.snapshotId}
+          ineligibilityReasons={props.shareIneligibilityReasons}
+        />
       </div>
     </div>
   );

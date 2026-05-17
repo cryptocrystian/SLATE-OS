@@ -13,6 +13,7 @@ import {
 } from "./eligibility";
 import { isUuid } from "./mappers";
 import { getProposalForEngagementPersisted } from "./queries";
+import { cascadeRevokeActiveProposalShareTokensForSnapshot } from "./share-token-actions";
 import {
   PROPOSAL_GROUP_B_OMISSION_ENTRY,
   type ProposalOptionSnapshot,
@@ -513,6 +514,21 @@ export async function voidProposalDeliverySnapshotAction(args: {
     return { ok: false, error: "service-error" };
   }
 
+  // Cascade-revoke any active proposal share tokens that point at the
+  // just-voided snapshot. Sprint P4 — the helper emits a
+  // `proposal_share_token_revoked` event per cascaded token so the
+  // operator audit trail attributes each token's lifecycle
+  // independently. Failures are best-effort (logged inside the helper)
+  // and never abort the void: the snapshot is already voided, and the
+  // tokens become unreachable through the Sprint P5 public route's
+  // eligibility re-check even if their `status='active'` row lingers.
+  const cascade = await cascadeRevokeActiveProposalShareTokensForSnapshot({
+    snapshotId,
+    engagementId: row.engagement_id,
+    proposalId: row.proposal_id,
+    reason: "snapshot_voided",
+  });
+
   await logActivityEvent({
     eventType: "proposal_snapshot_voided",
     entityType: "proposal_delivery_snapshot",
@@ -524,6 +540,10 @@ export async function voidProposalDeliverySnapshotAction(args: {
       proposalId: row.proposal_id,
       priorApprovalState: row.approval_state,
       reason: trimmedReason.slice(0, 120),
+      // Counts only — the cascade emits its own per-token events with
+      // the token id; this metadata is the rollup on the void event.
+      cascadedRevokedTokenCount: cascade.revokedTokenIds.length,
+      cascadedFailedTokenCount: cascade.failedTokenIds.length,
     },
   });
 

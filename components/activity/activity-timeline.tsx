@@ -60,6 +60,10 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   proposal_snapshot_failed: "risk",
   proposal_snapshot_voided: "neutral",
   proposal_snapshot_approved: "success",
+  proposal_share_token_created: "brand",
+  proposal_share_token_revoked: "warning",
+  proposal_share_token_accessed: "info",
+  proposal_share_token_expired: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -107,6 +111,10 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   proposal_snapshot_failed: "Proposal candidate failed",
   proposal_snapshot_voided: "Proposal candidate voided",
   proposal_snapshot_approved: "Proposal candidate approved",
+  proposal_share_token_created: "Proposal share link created",
+  proposal_share_token_revoked: "Proposal share link revoked",
+  proposal_share_token_accessed: "Proposal share link accessed",
+  proposal_share_token_expired: "Proposal share link expired",
 };
 
 export function ActivityTimeline({
