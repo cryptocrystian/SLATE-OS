@@ -9,6 +9,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { MetricCard } from "@/components/ui/metric-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LockedActionButton } from "@/components/ui/locked-action-button";
+import { PastSowDraftsPanel } from "@/components/proposals/past-sow-drafts-panel";
 import { ProposalCandidatesPanel } from "@/components/proposals/proposal-candidates-panel";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip";
@@ -255,12 +256,25 @@ export default async function EngagementProposalPage({
               // action bar is now imported and rendered inside the
               // (client) workspace.
               engagementId={isPersisted ? engagement.id : undefined}
+              isPersisted={isPersisted}
               aiAvailable={isAiConfigured()}
             />
           )}
 
           {proposal && isPersisted ? (
             <ProposalCandidatesPanel
+              engagementId={engagement.id}
+              proposalId={proposal.id}
+            />
+          ) : null}
+
+          {proposal && isPersisted ? (
+            // Sprint P6-C — Past SOW Drafts panel. Mounted only for
+            // persisted UUID engagements (snapshot pipeline is
+            // persisted-only). Anchored at `#past-sow-drafts-panel`
+            // so the proposal-workspace `Prepare SOW Draft` unlock
+            // can in-page scroll to it.
+            <PastSowDraftsPanel
               engagementId={engagement.id}
               proposalId={proposal.id}
             />

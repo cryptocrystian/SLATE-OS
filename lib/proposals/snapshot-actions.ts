@@ -470,7 +470,9 @@ export async function voidProposalDeliverySnapshotAction(args: {
 
   const { data: row, error: fetchError } = await supabase
     .from("proposal_delivery_snapshots")
-    .select("id, engagement_id, proposal_id, status, approval_state")
+    .select(
+      "id, engagement_id, proposal_id, status, approval_state, delivery_surface",
+    )
     .eq("id", snapshotId)
     .maybeSingle<{
       id: string;
@@ -478,6 +480,7 @@ export async function voidProposalDeliverySnapshotAction(args: {
       proposal_id: string;
       status: string;
       approval_state: string;
+      delivery_surface: string;
     }>();
   if (fetchError) {
     console.error("[proposals.snapshot-actions] void-fetch-failed", {
@@ -529,15 +532,25 @@ export async function voidProposalDeliverySnapshotAction(args: {
     reason: "snapshot_voided",
   });
 
+  // Sprint P6-C — branch the activity event on `delivery_surface` so a
+  // voided SOW Draft snapshot emits `sow_draft_voided` instead of
+  // `proposal_snapshot_voided`. The Past SOW Drafts panel reads
+  // `proposal_delivery_snapshots` filtered by surface; the activity
+  // timeline needs the matching event type to render the SOW-shaped
+  // label (`SOW Draft voided`) instead of the proposal-shaped label.
+  const isSowDraft = row.delivery_surface === "sow_draft_candidate";
   await logActivityEvent({
-    eventType: "proposal_snapshot_voided",
+    eventType: isSowDraft ? "sow_draft_voided" : "proposal_snapshot_voided",
     entityType: "proposal_delivery_snapshot",
     entityId: snapshotId,
     engagementId: row.engagement_id,
-    title: "Proposal candidate voided",
-    summary: "Operator marked an earlier proposal candidate snapshot stale.",
+    title: isSowDraft ? "SOW Draft voided" : "Proposal candidate voided",
+    summary: isSowDraft
+      ? "Operator marked an earlier SOW Draft snapshot stale."
+      : "Operator marked an earlier proposal candidate snapshot stale.",
     metadata: {
       proposalId: row.proposal_id,
+      deliverySurface: row.delivery_surface,
       priorApprovalState: row.approval_state,
       reason: trimmedReason.slice(0, 120),
       // Counts only — the cascade emits its own per-token events with
@@ -548,8 +561,13 @@ export async function voidProposalDeliverySnapshotAction(args: {
   });
 
   revalidatePath(`/app/engagements/${row.engagement_id}/proposal`);
+  // Both internal routes share the path shape `/proposal/{candidate|sow}/{snapshotId}`.
+  // Revalidate the route that matches the just-voided surface so the
+  // operator's open tab re-renders with the voided banner.
   revalidatePath(
-    `/app/engagements/${row.engagement_id}/proposal/candidate/${snapshotId}`,
+    isSowDraft
+      ? `/app/engagements/${row.engagement_id}/proposal/sow/${snapshotId}`
+      : `/app/engagements/${row.engagement_id}/proposal/candidate/${snapshotId}`,
   );
 
   return { ok: true, snapshotId };

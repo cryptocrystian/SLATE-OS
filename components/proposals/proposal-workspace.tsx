@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   Calendar,
   Coins,
+  FileSignature,
   ListChecks,
   Sparkles,
   ShieldAlert,
@@ -13,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { LockedActionButton } from "@/components/ui/locked-action-button";
 import {
   OPTION_TYPE_LABEL,
@@ -47,6 +50,14 @@ export interface ProposalWorkspaceProps {
    */
   engagementId?: string;
   /**
+   * Whether the engagement is a persisted UUID engagement. When true,
+   * `Prepare SOW Draft` unlocks as an in-page anchor that scrolls the
+   * operator to the Past SOW Drafts panel (Sprint P6-C). Mock /
+   * legacy slug engagements keep the locked button — they do not flow
+   * through the snapshot pipeline. JSON-safe boolean.
+   */
+  isPersisted?: boolean;
+  /**
    * Whether the server has confirmed `OPENAI_API_KEY` is configured.
    * Threaded into `<ProposalOptionActionBar>` so the AI control is
    * hidden in unconfigured environments. JSON-safe boolean.
@@ -59,6 +70,7 @@ export function ProposalWorkspace({
   opportunities,
   roadmap,
   engagementId,
+  isPersisted = false,
   aiAvailable = false,
 }: ProposalWorkspaceProps) {
   const initialId =
@@ -113,6 +125,7 @@ export function ProposalWorkspace({
           option={selected}
           opportunities={linkedOpportunities}
           roadmapItems={linkedRoadmapItems}
+          isPersisted={isPersisted}
           actionBar={
             engagementId ? (
               <ProposalOptionActionBar
@@ -203,11 +216,13 @@ function ProposalOptionDetail({
   option,
   opportunities,
   roadmapItems,
+  isPersisted,
   actionBar,
 }: {
   option: ProposalOption;
   opportunities: Opportunity[];
   roadmapItems: RoadmapItem[];
+  isPersisted: boolean;
   actionBar?: React.ReactNode;
 }) {
   const tone = OPTION_TYPE_TONE_MAP[OPTION_TYPE_TONE[option.type]] ?? "brand";
@@ -372,11 +387,32 @@ function ProposalOptionDetail({
         {actionBar ? <div className="border-t border-border-subtle pt-3">{actionBar}</div> : null}
 
         <div className="flex flex-wrap gap-2 border-t border-border-subtle pt-3">
-          <LockedActionButton
-            label="Prepare SOW Draft"
-            lockedNote="Locked"
-            size="sm"
-          />
+          {isPersisted ? (
+            // Sprint P6-C unlock — `Prepare SOW Draft` no longer
+            // locked for persisted UUID engagements. The button is an
+            // in-page anchor that scrolls the operator to the Past
+            // SOW Drafts panel where the actual Generate SOW Draft
+            // affordance lives. This is a non-send action by design:
+            // SLATE does not deliver SOW Drafts to clients, and there
+            // is no public SOW share route in Sprint P6. `Send to
+            // Client` (below) remains locked verbatim.
+            <Link href="#past-sow-drafts-panel" scroll>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                leadingIcon={<FileSignature className="h-3.5 w-3.5" />}
+              >
+                Prepare SOW Draft
+              </Button>
+            </Link>
+          ) : (
+            <LockedActionButton
+              label="Prepare SOW Draft"
+              lockedNote="Locked"
+              size="sm"
+            />
+          )}
           <LockedActionButton
             label="Send to Client"
             lockedNote="Locked"
@@ -384,8 +420,9 @@ function ProposalOptionDetail({
           />
           <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">
             <ArrowRight aria-hidden className="h-3 w-3" />
-            SOW draft, send, and signature stay locked behind a later
-            commercial sprint.
+            {isPersisted
+              ? "Send and signature stay locked behind a later commercial sprint."
+              : "SOW draft, send, and signature stay locked behind a later commercial sprint."}
           </span>
         </div>
       </CardBody>
