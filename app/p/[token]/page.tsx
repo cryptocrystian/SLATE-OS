@@ -153,20 +153,42 @@ function UnavailablePage() {
 async function resolveClientProposalTitle(
   engagementId: string,
 ): Promise<string> {
+  // Sprint H1 — fixed engagement-title fallback. See the matching
+  // comment on the report-side `resolveClientReportTitle` for the full
+  // rationale. Company name lives on `accounts.name`, joined via
+  // `engagements.account_id`; the previous `engagements.company_name`
+  // select was a column that doesn't exist.
   try {
     const supabase = createSupabaseServiceClient();
-    const { data, error } = await supabase
+    const { data: engagement, error: engagementError } = await supabase
       .from("engagements")
-      .select("company_name, engagement_type")
+      .select("name, engagement_type, account_id")
       .eq("id", engagementId)
-      .maybeSingle<{ company_name: string; engagement_type: string }>();
-    if (error || !data?.company_name) {
+      .maybeSingle<{
+        name: string | null;
+        engagement_type: string | null;
+        account_id: string | null;
+      }>();
+    if (engagementError || !engagement) {
       return "Proposal Review";
     }
-    const type = data.engagement_type
-      ? data.engagement_type.replace(/_/g, " ")
+    let companyName: string | null = null;
+    if (engagement.account_id) {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("name")
+        .eq("id", engagement.account_id)
+        .maybeSingle<{ name: string | null }>();
+      companyName = account?.name?.trim() || null;
+    }
+    const displayName = companyName ?? engagement.name?.trim() ?? null;
+    if (!displayName) {
+      return "Proposal Review";
+    }
+    const type = engagement.engagement_type
+      ? engagement.engagement_type.replace(/_/g, " ")
       : "Engagement";
-    return `${data.company_name} · ${capitalize(type)} · Proposal Review`;
+    return `${displayName} · ${capitalize(type)} · Proposal Review`;
   } catch {
     return "Proposal Review";
   }

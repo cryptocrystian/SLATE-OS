@@ -405,6 +405,17 @@ function ShareTokenRow({ token }: { token: ReportShareToken }) {
             {token.audienceLabel}
           </span>
         ) : null}
+        {token.recipientEmailHash ? (
+          <span
+            className="text-text-muted"
+            title="Recipient email captured as a SHA-256 hash. Raw email is never stored."
+          >
+            <span className="font-mono uppercase tracking-[0.12em]">
+              Recipient
+            </span>{" "}
+            hashed at rest
+          </span>
+        ) : null}
       </div>
       {token.status === "revoked" && token.revokeReason ? (
         <p className="text-[11px] text-text-muted">

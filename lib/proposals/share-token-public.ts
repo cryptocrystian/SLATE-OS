@@ -1,9 +1,11 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
-
 import { logActivityEvent } from "@/lib/activity/log";
 import { hashShareToken } from "@/lib/reports/share-token-service";
+import {
+  hashAccessFingerprint,
+  type ShareTokenAccessFingerprint,
+} from "@/lib/share-tokens/access-signature";
 import { createSupabaseServiceClient } from "@/lib/supabase/service";
 
 import { mapProposalDeliverySnapshotRow } from "./delivery-snapshot-mappers";
@@ -329,6 +331,13 @@ export interface ProposalShareTokenAccessMetadata {
 }
 
 /**
+ * 5-minute debounce window for repeat reads from the same fingerprint
+ * (Production Hardening Sprint H1). Same semantics as the report-side —
+ * see `lib/reports/share-token-public.ts` for the canonical doc block.
+ */
+const ACCESS_LOG_DEBOUNCE_MS = 5 * 60 * 1000;
+
+/**
  * Increment access_count + last_accessed_at on a token and emit a
  * sanitized `proposal_share_token_accessed` activity event.
  * Best-effort: a logging or update failure never blocks the public
@@ -337,15 +346,22 @@ export interface ProposalShareTokenAccessMetadata {
  * Privacy:
  *   - The raw token is never an input. The caller passes `tokenId`.
  *   - Raw IP / user-agent are accepted as inputs but NEVER persisted.
- *     We hash both with a server-side pepper from
- *     `SLATE_SHARE_TOKEN_ACCESS_PEPPER`. When the pepper is not
- *     configured we omit the hashes entirely (and surface that fact
- *     via a `hashesOmitted` metadata flag) rather than persist a
- *     low-entropy un-peppered hash.
- *   - Debouncing is intentionally minimal in this MVP (a 5-minute
- *     window per `(tokenId, ipHash)` would require a separate state
- *     store). Documented as backlog mirroring the Client Report
- *     Link MVP carry-forward in `docs/23`.
+ *     The shared `hashAccessFingerprint` helper hashes both with the
+ *     server-side `SLATE_SHARE_TOKEN_ACCESS_PEPPER` pepper. When the
+ *     pepper is not configured the helper omits hashes entirely and
+ *     surfaces that fact via `hashesOmitted: true` rather than persist
+ *     a low-entropy un-peppered hash.
+ *
+ * Debounce (Sprint H1, mirrors the report side):
+ *   - When a combined `(ip, ua)` signature is available, SLATE writes
+ *     it under `metadata.lastAccessSig` + `metadata.lastAccessSigAt`
+ *     on the token row. On a subsequent access, if the signature
+ *     matches and the timestamp is within the 5-minute window, SLATE
+ *     skips the counter bump + activity event. `last_accessed_at`
+ *     stays unchanged (the previous bump captured the start of the
+ *     window).
+ *   - When no signature is available (pepper unset OR missing
+ *     IP / UA), debounce is bypassed and every access is logged.
  */
 export async function recordProposalShareTokenAccess(
   tokenId: string,
@@ -354,14 +370,16 @@ export async function recordProposalShareTokenAccess(
   const supabase = createSupabaseServiceClient();
 
   const accessedAt = new Date().toISOString();
+  const fingerprint = hashAccessFingerprint({
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+  });
 
-  // Read current access_count first (RPC for atomic increment would be
-  // nicer; this MVP uses an explicit read-modify-write under
-  // service-role and accepts the race because access_count is a soft
-  // counter, not a security boundary).
   const { data: existing, error: readError } = await supabase
     .from("proposal_share_tokens")
-    .select("id, engagement_id, proposal_id, snapshot_id, access_count")
+    .select(
+      "id, engagement_id, proposal_id, snapshot_id, access_count, last_accessed_at, metadata",
+    )
     .eq("id", tokenId)
     .maybeSingle<{
       id: string;
@@ -369,6 +387,8 @@ export async function recordProposalShareTokenAccess(
       proposal_id: string;
       snapshot_id: string;
       access_count: number;
+      last_accessed_at: string | null;
+      metadata: Record<string, unknown> | null;
     }>();
   if (readError || !existing?.id) {
     if (readError) {
@@ -381,13 +401,32 @@ export async function recordProposalShareTokenAccess(
     }
     return;
   }
+
+  // Debounce: matching signature within the 5-min window → no-op.
+  if (
+    fingerprint.combinedSig &&
+    isWithinDebounceWindow(
+      existing.metadata,
+      fingerprint.combinedSig,
+      accessedAt,
+    )
+  ) {
+    return;
+  }
+
   const nextCount = (existing.access_count ?? 0) + 1;
+  const nextMetadata = mergeDebounceSignature(
+    existing.metadata,
+    fingerprint.combinedSig,
+    accessedAt,
+  );
 
   const { error: updateError } = await supabase
     .from("proposal_share_tokens")
     .update({
       access_count: nextCount,
       last_accessed_at: accessedAt,
+      metadata: nextMetadata,
     })
     .eq("id", tokenId);
   if (updateError) {
@@ -401,23 +440,6 @@ export async function recordProposalShareTokenAccess(
     // failed to bump (audit trail beats counter accuracy).
   }
 
-  const hashes = sanitizeAccessMetadata(meta);
-  // Activity-logger's FORBIDDEN_KEY_PATTERNS strips any key matching
-  // `/token/i`, `/email/i`, `/ip/i`, `/userAgent/i`, `/raw/i`, etc.
-  // The short keys `ipSig` / `uaSig` survive the strip while staying
-  // explicit about what they hold (peppered SHA-256 fingerprints).
-  const baseMetadata: Record<string, unknown> = {
-    accessedAt,
-    accessCount: nextCount,
-    proposalId: existing.proposal_id,
-    snapshotId: existing.snapshot_id,
-  };
-  if (hashes.uaHash) baseMetadata.uaSig = hashes.uaHash;
-  if (hashes.ipHash) baseMetadata.ipSig = hashes.ipHash;
-  if (!hashes.uaHash && !hashes.ipHash) {
-    baseMetadata.hashesOmitted = true;
-  }
-
   await logActivityEvent(
     {
       eventType: "proposal_share_token_accessed",
@@ -427,10 +449,81 @@ export async function recordProposalShareTokenAccess(
       title: "Proposal share token accessed",
       summary:
         "Public proposal review link rendered. SLATE recorded an access event with peppered request fingerprints only.",
-      metadata: baseMetadata,
+      metadata: buildAccessActivityMetadata(
+        accessedAt,
+        nextCount,
+        fingerprint,
+        existing.proposal_id,
+        existing.snapshot_id,
+      ),
     },
     { viaServiceRole: true },
   );
+}
+
+function buildAccessActivityMetadata(
+  accessedAt: string,
+  accessCount: number,
+  fingerprint: ShareTokenAccessFingerprint,
+  proposalId: string,
+  snapshotId: string,
+): Record<string, unknown> {
+  const base: Record<string, unknown> = {
+    accessedAt,
+    accessCount,
+    proposalId,
+    snapshotId,
+  };
+  // Activity-logger's FORBIDDEN_KEY_PATTERNS strip would catch `ip`,
+  // `userAgent`, etc. `ipSig` / `uaSig` / `hashesOmitted` survive — the
+  // shared helper's return shape is the contract.
+  if (fingerprint.uaHash) base.uaSig = fingerprint.uaHash;
+  if (fingerprint.ipHash) base.ipSig = fingerprint.ipHash;
+  if (fingerprint.hashesOmitted) base.hashesOmitted = true;
+  return base;
+}
+
+function isWithinDebounceWindow(
+  rawMetadata: Record<string, unknown> | null,
+  signature: string,
+  nowIso: string,
+): boolean {
+  if (!rawMetadata || typeof rawMetadata !== "object") return false;
+  const meta = rawMetadata as {
+    lastAccessSig?: unknown;
+    lastAccessSigAt?: unknown;
+  };
+  if (typeof meta.lastAccessSig !== "string" || meta.lastAccessSig.length === 0)
+    return false;
+  if (
+    typeof meta.lastAccessSigAt !== "string" ||
+    meta.lastAccessSigAt.length === 0
+  )
+    return false;
+  if (meta.lastAccessSig !== signature) return false;
+  const last = new Date(meta.lastAccessSigAt).getTime();
+  const now = new Date(nowIso).getTime();
+  if (!Number.isFinite(last) || !Number.isFinite(now)) return false;
+  return now - last < ACCESS_LOG_DEBOUNCE_MS;
+}
+
+function mergeDebounceSignature(
+  rawMetadata: Record<string, unknown> | null,
+  signature: string | null,
+  nowIso: string,
+): Record<string, unknown> {
+  const base =
+    rawMetadata && typeof rawMetadata === "object"
+      ? { ...(rawMetadata as Record<string, unknown>) }
+      : {};
+  if (signature) {
+    base.lastAccessSig = signature;
+    base.lastAccessSigAt = nowIso;
+  } else {
+    delete base.lastAccessSig;
+    delete base.lastAccessSigAt;
+  }
+  return base;
 }
 
 // ---------------------------------------------------------------------------
@@ -446,27 +539,4 @@ function isPlausibleRawToken(raw: unknown): raw is string {
   // base64url alphabet only — rejects path-traversal and shell
   // metacharacters at the boundary.
   return /^[A-Za-z0-9_-]+$/.test(raw);
-}
-
-function sanitizeAccessMetadata(meta: ProposalShareTokenAccessMetadata): {
-  ipHash: string | null;
-  uaHash: string | null;
-} {
-  const pepper = process.env.SLATE_SHARE_TOKEN_ACCESS_PEPPER;
-  if (!pepper || pepper.length === 0) {
-    return { ipHash: null, uaHash: null };
-  }
-  return {
-    ipHash: meta.ip ? peppered(meta.ip, pepper) : null,
-    uaHash: meta.userAgent ? peppered(meta.userAgent, pepper) : null,
-  };
-}
-
-function peppered(value: string, pepper: string): string {
-  // Same shape as the report-side helper — 128 bits of SHA-256 hex
-  // suffices as a fingerprint without leaking PII.
-  return createHash("sha256")
-    .update(`${pepper}:${value}`, "utf8")
-    .digest("hex")
-    .slice(0, 32);
 }

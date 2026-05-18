@@ -121,11 +121,42 @@ const SNAPSHOT_SELECT = `
   updated_at
 ` as const;
 
+/**
+ * Resolve the proposal share-token expiry timestamp. Mirrors the
+ * report-side `resolveShareTokenExpiry` (Sprint H1 dev-only short-
+ * expiry affordance). Production callers passing `expiryMinutes` get
+ * the parameter silently ignored — the 14d default applies.
+ */
+function resolveProposalShareTokenExpiry(args: {
+  expiryDays?: number;
+  expiryMinutes?: number;
+}): string {
+  const allowDevExpiry =
+    process.env.NODE_ENV !== "production" ||
+    process.env.SLATE_SHARE_TOKEN_ALLOW_DEV_EXPIRY === "true";
+  if (
+    allowDevExpiry &&
+    typeof args.expiryMinutes === "number" &&
+    Number.isFinite(args.expiryMinutes) &&
+    args.expiryMinutes > 0 &&
+    args.expiryMinutes <= 60 * 24 * MAX_PROPOSAL_SHARE_TOKEN_EXPIRY_DAYS
+  ) {
+    const ms = args.expiryMinutes * 60 * 1000;
+    return new Date(Date.now() + ms).toISOString();
+  }
+  return calculateShareTokenExpiry({ days: args.expiryDays });
+}
+
 export async function generateProposalShareLinkAction(args: {
   snapshotId: string;
   audienceLabel?: string;
   recipientEmail?: string;
   expiryDays?: number;
+  /**
+   * Dev-only override — see `resolveProposalShareTokenExpiry` doc
+   * block. Production runtimes ignore this parameter.
+   */
+  expiryMinutes?: number;
 }): Promise<GenerateProposalShareLinkResult> {
   const { snapshotId } = args;
   if (!isUuid(snapshotId)) {
@@ -172,7 +203,11 @@ export async function generateProposalShareLinkAction(args: {
 
   // Default to 14d, max 30d. The action layer is the single place we
   // enforce expiry policy; the DB only enforces `expires_at > created_at`.
-  const expiresAt = calculateShareTokenExpiry({ days: args.expiryDays });
+  // Dev-only `expiryMinutes` is resolved before policy validation.
+  const expiresAt = resolveProposalShareTokenExpiry({
+    expiryDays: args.expiryDays,
+    expiryMinutes: args.expiryMinutes,
+  });
   if (
     !isExpiryWithinPolicy(expiresAt, {
       maxDays: MAX_PROPOSAL_SHARE_TOKEN_EXPIRY_DAYS,

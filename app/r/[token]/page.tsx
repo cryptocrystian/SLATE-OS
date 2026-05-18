@@ -136,20 +136,47 @@ function UnavailablePage() {
 // ---------------------------------------------------------------------------
 
 async function resolveClientReportTitle(engagementId: string): Promise<string> {
+  // Sprint H1 — fixed engagement-title fallback. The previous query
+  // selected `engagements.company_name`, which does not exist on the
+  // `engagements` table (canon: company name lives on
+  // `accounts.name`, joined via `engagements.account_id`). The
+  // mismatch caused every public route to fall through to the generic
+  // "Client Report" title. The fix reads `engagements.name` +
+  // `engagements.engagement_type` + `engagements.account_id`, then
+  // resolves the company name from `accounts.name`. Both queries run
+  // under the service-role client and surface only display strings —
+  // no UUIDs ever reach the rendered DOM.
   try {
     const supabase = createSupabaseServiceClient();
-    const { data, error } = await supabase
+    const { data: engagement, error: engagementError } = await supabase
       .from("engagements")
-      .select("company_name, engagement_type")
+      .select("name, engagement_type, account_id")
       .eq("id", engagementId)
-      .maybeSingle<{ company_name: string; engagement_type: string }>();
-    if (error || !data?.company_name) {
+      .maybeSingle<{
+        name: string | null;
+        engagement_type: string | null;
+        account_id: string | null;
+      }>();
+    if (engagementError || !engagement) {
       return "Client Report";
     }
-    const type = data.engagement_type
-      ? data.engagement_type.replace(/_/g, " ")
+    let companyName: string | null = null;
+    if (engagement.account_id) {
+      const { data: account } = await supabase
+        .from("accounts")
+        .select("name")
+        .eq("id", engagement.account_id)
+        .maybeSingle<{ name: string | null }>();
+      companyName = account?.name?.trim() || null;
+    }
+    const displayName = companyName ?? engagement.name?.trim() ?? null;
+    if (!displayName) {
+      return "Client Report";
+    }
+    const type = engagement.engagement_type
+      ? engagement.engagement_type.replace(/_/g, " ")
       : "Engagement";
-    return `${data.company_name} · ${capitalize(type)} · Report`;
+    return `${displayName} · ${capitalize(type)} · Report`;
   } catch {
     return "Client Report";
   }

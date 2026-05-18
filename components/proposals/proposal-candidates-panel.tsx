@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileSignature,
   History,
+  Link2,
   ShieldAlert,
   ShieldCheck,
   Slash,
@@ -19,10 +20,16 @@ import type {
   ProposalPricingReviewState,
 } from "@/lib/proposals/delivery-snapshot-types";
 import { evaluateProposalShareEligibility } from "@/lib/proposals/share-token-eligibility";
-import type { ProposalShareEligibilityReason } from "@/lib/proposals/share-token-types";
+import { getProposalShareTokensForProposal } from "@/lib/proposals/share-token-queries";
+import type {
+  ProposalShareEligibilityReason,
+  ProposalShareToken,
+  ProposalShareTokenStatus,
+} from "@/lib/proposals/share-token-types";
 import { ApproveProposalCandidateButton } from "./approve-proposal-candidate-button";
 import { GenerateProposalCandidateButton } from "./generate-proposal-candidate-button";
 import { GenerateProposalShareLinkButton } from "./generate-proposal-share-link-button";
+import { RevokeProposalShareLinkButton } from "./revoke-proposal-share-link-button";
 import { VoidProposalCandidateButton } from "./void-proposal-candidate-button";
 
 /**
@@ -89,11 +96,35 @@ const PRICING_LABEL: Record<ProposalPricingReviewState, string> = {
   workflow_approved: "Pricing workflow approved",
 };
 
+const SHARE_TOKEN_TONE: Record<ProposalShareTokenStatus, BadgeTone> = {
+  active: "success",
+  revoked: "neutral",
+  expired: "neutral",
+};
+
+const SHARE_TOKEN_LABEL: Record<ProposalShareTokenStatus, string> = {
+  active: "Active",
+  revoked: "Revoked",
+  expired: "Expired",
+};
+
 export async function ProposalCandidatesPanel({
   engagementId,
   proposalId,
 }: ProposalCandidatesPanelProps) {
-  const snapshots = await getProposalDeliverySnapshotsForProposal(proposalId);
+  const [snapshots, shareTokens] = await Promise.all([
+    getProposalDeliverySnapshotsForProposal(proposalId),
+    getProposalShareTokensForProposal(proposalId),
+  ]);
+  // Sprint H1 — group share tokens by snapshot id so each candidate
+  // row can surface its own active/revoked/expired tokens with the
+  // Revoke control beside any still-active token.
+  const tokensBySnapshotId = new Map<string, ProposalShareToken[]>();
+  for (const token of shareTokens) {
+    const bucket = tokensBySnapshotId.get(token.snapshotId) ?? [];
+    bucket.push(token);
+    tokensBySnapshotId.set(token.snapshotId, bucket);
+  }
 
   return (
     <Card variant="base" id="proposal-candidates-panel">
@@ -144,6 +175,7 @@ export async function ProposalCandidatesPanel({
           <ul className="flex flex-col gap-2">
             {snapshots.map((s) => {
               const shareEligibility = evaluateProposalShareEligibility(s);
+              const snapshotShareTokens = tokensBySnapshotId.get(s.id) ?? [];
               return (
                 <li key={s.id}>
                   <SnapshotRow
@@ -168,6 +200,7 @@ export async function ProposalCandidatesPanel({
                     voidedAt={s.voidedAt}
                     voidReason={s.voidReason}
                     shareIneligibilityReasons={shareEligibility.reasons}
+                    shareTokens={snapshotShareTokens}
                   />
                 </li>
               );
@@ -197,6 +230,7 @@ interface SnapshotRowProps {
   voidReason: string | null;
   voidedAt: string | null;
   shareIneligibilityReasons: ProposalShareEligibilityReason[];
+  shareTokens: ProposalShareToken[];
 }
 
 function SnapshotRow(props: SnapshotRowProps) {
@@ -329,6 +363,123 @@ function SnapshotRow(props: SnapshotRowProps) {
           ineligibilityReasons={props.shareIneligibilityReasons}
         />
       </div>
+
+      {props.shareTokens.length > 0 ? (
+        <ShareTokenSummary tokens={props.shareTokens} />
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share-token summary — Sprint H1 production hardening
+// ---------------------------------------------------------------------------
+
+function ShareTokenSummary({ tokens }: { tokens: ProposalShareToken[] }) {
+  const activeCount = tokens.filter((t) => t.status === "active").length;
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-surface/40 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          <Link2 className="h-3 w-3" aria-hidden />
+          Proposal review links
+        </span>
+        <span className="text-[11px] text-text-secondary">
+          {tokens.length} total
+        </span>
+        {activeCount > 0 ? (
+          <Badge tone="success" variant="outline">
+            {activeCount} active
+          </Badge>
+        ) : (
+          <Badge tone="neutral" variant="outline">
+            None active
+          </Badge>
+        )}
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {tokens.map((token) => (
+          <li key={token.id}>
+            <ShareTokenRow token={token} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ShareTokenRow({ token }: { token: ProposalShareToken }) {
+  const expiresAt = new Date(token.expiresAt);
+  const isPastExpiry =
+    !Number.isNaN(expiresAt.getTime()) &&
+    expiresAt.getTime() <= Date.now();
+  const displayStatus: ProposalShareTokenStatus =
+    token.status === "active" && isPastExpiry ? "expired" : token.status;
+  return (
+    <div className="flex flex-col gap-1 rounded border border-border-subtle/60 bg-bg-elevated/40 px-2.5 py-2 text-[11px] leading-relaxed text-text-secondary">
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge tone={SHARE_TOKEN_TONE[displayStatus]} variant="outline">
+          {SHARE_TOKEN_LABEL[displayStatus]}
+        </Badge>
+        <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+          created
+        </span>
+        <span>{formatTimestamp(token.createdAt)}</span>
+        <span aria-hidden className="text-text-disabled">
+          ·
+        </span>
+        <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+          expires
+        </span>
+        <span>{formatTimestamp(token.expiresAt)}</span>
+      </div>
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <span>
+          <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+            Accesses
+          </span>{" "}
+          {token.accessCount}
+        </span>
+        {token.lastAccessedAt ? (
+          <span>
+            <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              Last access
+            </span>{" "}
+            {formatTimestamp(token.lastAccessedAt)}
+          </span>
+        ) : (
+          <span className="text-text-muted">No access recorded</span>
+        )}
+        {token.audienceLabel ? (
+          <span>
+            <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              Audience
+            </span>{" "}
+            {token.audienceLabel}
+          </span>
+        ) : null}
+        {token.recipientEmailHash ? (
+          <span className="text-text-muted" title="Recipient email captured as a SHA-256 hash. Raw email is never stored.">
+            <span className="font-mono uppercase tracking-[0.12em]">
+              Recipient
+            </span>{" "}
+            hashed at rest
+          </span>
+        ) : null}
+      </div>
+      {token.status === "revoked" && token.revokeReason ? (
+        <p className="text-[11px] text-text-muted">
+          <span className="font-mono uppercase tracking-[0.12em]">
+            Revoke reason
+          </span>{" "}
+          · {token.revokeReason}
+        </p>
+      ) : null}
+      {displayStatus === "active" ? (
+        <div className="pt-1">
+          <RevokeProposalShareLinkButton tokenId={token.id} />
+        </div>
+      ) : null}
     </div>
   );
 }

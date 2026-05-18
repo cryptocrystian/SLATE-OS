@@ -48,6 +48,8 @@ export function GenerateShareLinkButton({
     null,
   );
   const [reveal, setReveal] = React.useState(false);
+  const [audienceLabel, setAudienceLabel] = React.useState("");
+  const [recipientEmail, setRecipientEmail] = React.useState("");
 
   if (ineligibilityReasons.length > 0) {
     return <IneligibleNotice reasons={ineligibilityReasons} />;
@@ -56,9 +58,15 @@ export function GenerateShareLinkButton({
   function onGenerate() {
     setResult(null);
     setReveal(true);
+    const trimmedAudience = audienceLabel.trim();
+    const trimmedEmail = recipientEmail.trim();
     startTransition(async () => {
       try {
-        const r = await generateShareLinkAction({ snapshotId });
+        const r = await generateShareLinkAction({
+          snapshotId,
+          audienceLabel: trimmedAudience.length > 0 ? trimmedAudience : undefined,
+          recipientEmail: trimmedEmail.length > 0 ? trimmedEmail : undefined,
+        });
         setResult(r);
       } catch {
         setResult({ ok: false, error: "service-error" });
@@ -68,6 +76,13 @@ export function GenerateShareLinkButton({
 
   return (
     <div className="flex flex-col items-start gap-2">
+      <OperatorTrackingFields
+        disabled={pending}
+        audienceLabel={audienceLabel}
+        onAudienceLabelChange={setAudienceLabel}
+        recipientEmail={recipientEmail}
+        onRecipientEmailChange={setRecipientEmail}
+      />
       <Button
         type="button"
         variant="secondary"
@@ -90,6 +105,73 @@ export function GenerateShareLinkButton({
 
       {result && !result.ok ? <FailureNotice result={result} /> : null}
     </div>
+  );
+}
+
+/**
+ * Sprint H1 — operator-tracking fields. Audience label is a short
+ * operator-visible note (e.g. "CFO", "Board pre-read"). Recipient
+ * email is hashed by the server action before persistence; the raw
+ * email NEVER reaches the DB and NEVER reaches the activity feed.
+ * SLATE does not email the recipient — the fields exist for operator
+ * audit only.
+ */
+function OperatorTrackingFields({
+  disabled,
+  audienceLabel,
+  onAudienceLabelChange,
+  recipientEmail,
+  onRecipientEmailChange,
+}: {
+  disabled: boolean;
+  audienceLabel: string;
+  onAudienceLabelChange: (v: string) => void;
+  recipientEmail: string;
+  onRecipientEmailChange: (v: string) => void;
+}) {
+  return (
+    <details className="w-full max-w-md rounded-md border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-[11px] text-text-secondary">
+      <summary className="cursor-pointer font-mono uppercase tracking-[0.14em] text-text-muted">
+        Optional · audience label and recipient email
+      </summary>
+      <div className="mt-2 flex flex-col gap-2">
+        <p className="text-[11px] leading-relaxed text-text-muted">
+          Optional. Used for operator tracking only. SLATE does not
+          email this recipient. The email is hashed at rest; SLATE never
+          stores the raw address.
+        </p>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            Audience label
+          </span>
+          <input
+            type="text"
+            value={audienceLabel}
+            onChange={(e) => onAudienceLabelChange(e.target.value.slice(0, 80))}
+            disabled={disabled}
+            maxLength={80}
+            placeholder="CFO · Board pre-read"
+            className="rounded border border-border-subtle bg-bg-surface px-2 py-1 text-[11px] text-text-primary placeholder:text-text-disabled"
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            Recipient email (hashed at rest)
+          </span>
+          <input
+            type="email"
+            value={recipientEmail}
+            onChange={(e) =>
+              onRecipientEmailChange(e.target.value.slice(0, 254))
+            }
+            disabled={disabled}
+            maxLength={254}
+            placeholder="reviewer@client.example"
+            className="rounded border border-border-subtle bg-bg-surface px-2 py-1 text-[11px] text-text-primary placeholder:text-text-disabled"
+          />
+        </label>
+      </div>
+    </details>
   );
 }
 
@@ -187,8 +269,8 @@ function CopyOncePanel({
         >
           {reveal ? "Hide" : "Reveal"}
         </Button>
-        <Badge tone="warning" variant="outline">
-          Public route lands in Sprint 4D-C
+        <Badge tone="success" variant="outline">
+          Public route is live
         </Badge>
       </div>
     </div>
