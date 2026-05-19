@@ -67,6 +67,14 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   sow_draft_generated: "success",
   sow_draft_failed: "risk",
   sow_draft_voided: "neutral",
+  // Sprint C2-A — Send to Client foundation. These events record the
+  // operator-mediated handoff of an existing share link; SLATE itself
+  // never sends. Labels deliberately use "marked sent" (not "sent")
+  // to avoid implying email-transport delivery per docs/29 § 1.
+  report_share_token_sent_to_client: "brand",
+  report_share_token_send_failed: "risk",
+  proposal_share_token_sent_to_client: "brand",
+  proposal_share_token_send_failed: "risk",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -121,6 +129,14 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   sow_draft_generated: "SOW Draft generated",
   sow_draft_failed: "SOW Draft generation failed",
   sow_draft_voided: "SOW Draft voided",
+  // Sprint C2-A — Send to Client foundation. Labels deliberately use
+  // "marked sent" not "sent" to avoid implying that SLATE delivered
+  // the link via email or any other transport. The operator delivers
+  // through their own channel; SLATE records the handoff intent only.
+  report_share_token_sent_to_client: "Report link marked sent",
+  report_share_token_send_failed: "Report link send mark failed",
+  proposal_share_token_sent_to_client: "Proposal link marked sent",
+  proposal_share_token_send_failed: "Proposal link send mark failed",
 };
 
 export function ActivityTimeline({

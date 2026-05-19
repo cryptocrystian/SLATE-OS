@@ -49,7 +49,11 @@ export type ActivityEventType =
   | "proposal_share_token_expired"
   | "sow_draft_generated"
   | "sow_draft_failed"
-  | "sow_draft_voided";
+  | "sow_draft_voided"
+  | "report_share_token_sent_to_client"
+  | "report_share_token_send_failed"
+  | "proposal_share_token_sent_to_client"
+  | "proposal_share_token_send_failed";
 
 export type ActivityEntityType =
   | "lead"
