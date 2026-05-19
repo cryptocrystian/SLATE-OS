@@ -23,6 +23,7 @@ import type {
 } from "@/lib/reports/share-token-types";
 import { GenerateShareLinkButton } from "./generate-share-link-button";
 import { RevokeShareLinkButton } from "./revoke-share-link-button";
+import { SendReportLinkToClientButton } from "./send-report-link-to-client-button";
 import { VoidPdfCandidateButton } from "./void-pdf-candidate-button";
 
 /**
@@ -362,6 +363,12 @@ function ShareTokenRow({ token }: { token: ReportShareToken }) {
     expiresAt.getTime() <= Date.now();
   const displayStatus: ReportShareTokenStatus =
     token.status === "active" && isPastExpiry ? "expired" : token.status;
+  // Sprint C2-B — Send-history surfaced from token.metadata jsonb
+  // written by `markReportLinkSentToClientAction`. Never the raw
+  // token / URL / email; just the operator-audit counters.
+  const sendCount = readSendCount(token.metadata);
+  const lastSentToClientAt = readLastSentAt(token.metadata);
+  const lastSentChannel = readLastSentChannel(token.metadata);
   return (
     <div className="flex flex-col gap-1 rounded border border-border-subtle/60 bg-bg-elevated/40 px-2.5 py-2 text-[11px] leading-relaxed text-text-secondary">
       <div className="flex flex-wrap items-center gap-2">
@@ -417,6 +424,35 @@ function ShareTokenRow({ token }: { token: ReportShareToken }) {
           </span>
         ) : null}
       </div>
+      {sendCount > 0 ? (
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px] text-text-secondary">
+          <span>
+            <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              Marked sent by operator
+            </span>{" "}
+            {sendCount} time{sendCount === 1 ? "" : "s"}
+          </span>
+          {lastSentToClientAt ? (
+            <span>
+              <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+                Last marked
+              </span>{" "}
+              {formatTimestamp(lastSentToClientAt)}
+            </span>
+          ) : null}
+          {lastSentChannel === "operator_mediated_copy_link" ? (
+            <span
+              className="text-text-muted"
+              title="SLATE recorded the operator's intent to deliver the link. SLATE did not send email or push to CRM."
+            >
+              <span className="font-mono uppercase tracking-[0.12em]">
+                Channel
+              </span>{" "}
+              Operator-mediated copy-link
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {token.status === "revoked" && token.revokeReason ? (
         <p className="text-[11px] text-text-muted">
           <span className="font-mono uppercase tracking-[0.12em]">
@@ -426,12 +462,46 @@ function ShareTokenRow({ token }: { token: ReportShareToken }) {
         </p>
       ) : null}
       {displayStatus === "active" ? (
-        <div className="pt-1">
+        <div className="flex flex-wrap items-start gap-2 pt-1">
+          <SendReportLinkToClientButton
+            tokenId={token.id}
+            audienceLabel={token.audienceLabel}
+            hasRecipientEmailHash={Boolean(token.recipientEmailHash)}
+          />
           <RevokeShareLinkButton tokenId={token.id} />
         </div>
       ) : null}
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Send-history metadata readers — Sprint C2-B
+//
+// `report_share_tokens.metadata` is a jsonb column whose shape the
+// Sprint C2-A `markReportLinkSentToClientAction` writes to. The
+// readers below are intentionally defensive: a missing key OR a
+// shape-mismatched value yields a safe default (0 for count, null
+// for timestamp / channel) so a malformed metadata blob does not
+// crash the panel.
+// ---------------------------------------------------------------------------
+
+function readSendCount(metadata: Record<string, unknown>): number {
+  const v = metadata?.sendCount;
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
+function readLastSentAt(metadata: Record<string, unknown>): string | null {
+  const v = metadata?.lastSentToClientAt;
+  if (typeof v !== "string" || v.length === 0) return null;
+  return Number.isFinite(new Date(v).getTime()) ? v : null;
+}
+
+function readLastSentChannel(
+  metadata: Record<string, unknown>,
+): string | null {
+  const v = metadata?.lastSentChannel;
+  return typeof v === "string" && v.length > 0 ? v : null;
 }
 
 function formatTimestamp(iso: string): string {
