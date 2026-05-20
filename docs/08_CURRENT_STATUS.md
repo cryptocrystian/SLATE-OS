@@ -24,6 +24,19 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Deployment Environment Decision + Setup Plan (2026-05-20)
+
+`docs/33_PHASE_1B_DEPLOYMENT_SETUP_PLAN.md` is the operator-runnable plan for standing up a deployed staging environment so the Delivery Engine verdict can promote from "✅ Staging cleared, production preconditions partially pending" to "✅ Cleared for controlled external client exposure of /r and /p links." Headline:
+
+- **Chosen path: Option A — Vercel staging deployment on the existing SLATE OS Supabase project**, restricted to canonical test fixture engagement `76097653-fedb-42e5-9ef6-e89a0e97f802` (Sapient Digital) with explicit `STAGING WALKTHROUGH YYYY-MM-DD` audience labeling. Fastest precondition-clearing path; zero new Supabase cost; reuses already-applied migrations.
+- **Option C (separate non-prod Supabase project) remains the recommended long-term staging posture** — operator chooses when to migrate from A to C based on usage growth and isolation needs.
+- **Option B (same Supabase project with separate schema)** declined — would require source-code schema-routing work, not a precondition-clearing path.
+- **Repo deployment readiness verified** — Next.js 14.2.35, App Router, no `engines` pin (default Node 20.x on Vercel), no platform-specific build config needed, `next.config.mjs` clean (only `/r/:token*` + `/p/:token*` security headers), middleware Edge-compatible. Zero-config Vercel detection.
+- **`docs/33` covers**: Vercel project setup (branch `staging`, zero-config detection), Supabase posture (existing project + hard operational guardrails), env vars list with public-vs-server-only annotations, operator-side pepper-generation one-liner, post-deploy `curl` verification commands clearing Precondition 3, manual Supabase verification SQL clearing Precondition 2, Vercel env panel verification clearing Precondition 1, optional end-to-end smoke test, sign-off checklist.
+- **Zero source code changes.** Doc-only sprint: `docs/33` (new — full setup plan), `docs/32` § 4 (cross-reference + summary), `docs/08`, `docs/10`.
+
+Recommended next milestone: **operator executes `docs/33` § 2 + § 4 (Vercel project import + env vars) + § 5 (post-deploy curl) + § 6 (Supabase verification SQL) + § 7 (env-panel pepper check)**, pastes evidence into `docs/32` § 4 inline, then re-issues the Phase 1B Production Preconditions Verification sprint against the deployed host URL. After that pass, verdict promotes to "✅ cleared for controlled external client exposure."
+
 ## Phase 1B Production Preconditions Verification (2026-05-20)
 
 Operator-side deployment verification sprint after UX polish landed. Goal: verify the three production preconditions from `docs/32` § 4 so the Delivery Engine verdict can promote to "✅ cleared for controlled external client exposure of /r and /p links." **Outcome: all three preconditions remain operator-pending — no deployed staging environment exists at this time.** Verdict unchanged: **✅ Staging cleared, production preconditions partially pending**.

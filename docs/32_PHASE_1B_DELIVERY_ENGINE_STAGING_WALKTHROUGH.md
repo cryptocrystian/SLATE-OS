@@ -254,10 +254,18 @@ Attempted verification of the three remaining production-side preconditions. **A
 
 **Operator path forward to clear all three preconditions:**
 
-1. Provision a hosting platform for SLATE — recommended order: (a) Vercel (zero-config for Next.js), (b) Netlify, (c) Render, (d) self-hosted via Docker. Add a `vercel.json` / `netlify.toml` etc. only if non-default configuration is needed; the default Next.js 14 detection should suffice.
-2. Provision a non-prod SLATE Supabase project — recommended: fork / branch the production project to a separate project ref via the Supabase Dashboard, OR create a fresh project + run `supabase db push` against the source-tree migrations.
-3. Set the deployed env vars (operator-side, never via Claude): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL` (to the new HTTPS staging host), `SLATE_SHARE_TOKEN_ACCESS_PEPPER` (a fresh 64+-char value, not the local-dev value), `SLATE_OPERATOR_DOMAIN_ALLOWLIST` (`saipienlabs.com` per `.env.example`), `OPENAI_API_KEY` if AI synthesis should be wired in staging.
-4. Re-run this sprint (or just the precondition curl section) against the deployed host and paste results inline below the precondition table.
+The full operator-runnable plan lives at **`docs/33_PHASE_1B_DEPLOYMENT_SETUP_PLAN.md`** (2026-05-20). It decides Option A (Vercel staging on existing Supabase project, restricted to canonical test fixture only) as the immediate path, with Option C (separate non-prod Supabase project) recommended for the long-term staging posture once Option A clears immediate preconditions. The plan covers:
+
+1. **Vercel project setup** — zero-config Next.js 14 detection; recommended `staging` branch as the production deploy target on Vercel; default Node 20.x runtime; default `next build` / `.next` output.
+2. **Supabase posture** — existing `SLATE OS` project `hhglrcvsmwaheikdvijw` with hard operational guardrails (canonical test fixture only, no service-role SQL writes from outside the action layer, no destructive SQL, no real-client mutation).
+3. **Env vars** — full list with public-vs-server-only annotations + operator-side pepper-generation one-liner (`node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"` for a fresh 64-char value).
+4. **Post-deploy `curl` verification** — clears Precondition 3 (§ 5 of `docs/33`).
+5. **Manual Supabase verification SQL** — 5 read-only queries to clear Precondition 2 (§ 6 of `docs/33`).
+6. **Vercel env panel verification** — clears Precondition 1 (§ 7 of `docs/33`).
+7. **Optional end-to-end smoke test** of all four Lane walkthroughs against the deployed host (§ 8 of `docs/33`).
+8. **Sign-off checklist** (§ 9 of `docs/33`).
+
+Re-run this precondition-verification sprint against the deployed host once `docs/33` § 5–§ 7 evidence is in hand, and the verdict promotes to **✅ Phase 1B Delivery Engine cleared for controlled external client exposure of `/r` and `/p` links**.
 
 ### This UI-walkthrough pass (audit-agent scope, executed against `localhost:3000` + canonical test fixture):
 **⚠️ Cleared with operator-tracked exceptions.**
