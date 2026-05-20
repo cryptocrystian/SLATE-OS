@@ -24,6 +24,27 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B UX Polish / Operator Guidance (2026-05-19)
+
+Operator-guidance + canon-drift-prevention sprint after Phase 1B staged clearance. Goal: improve clarity and reduce canon-disclaimer drift risk without expanding scope. No new feature surfaces.
+
+Outcomes:
+
+- **Operator guidance copy added** at the share-links section of both `report-pdf-candidates-panel.tsx` and `proposal-candidates-panel.tsx` — small muted callout (operator-only, never on public `/r` or `/p`) summarizing: SLATE never sends email or pushes CRM; Mark sent records operator handoff only; copy URL and deliver through own approved channel; audience label required before Mark sent; recipient email is optional and hashed at rest. Canon-derived from `docs/29` § 13.
+- **Recipient-hash visual clarified** on every share-token row in both panels — now shows explicit "Recipient hash present" or "Recipient no recipient hash" with the same tooltip ("SLATE never stores the raw email address.") instead of the previous render-only-when-present "hashed at rest" chip. Never renders the hash value; never renders the raw email.
+- **Canon disclaimer pin script landed** at `scripts/check-send-to-client-disclaimers.cjs` + `npm run check:send-to-client-disclaimers`. Pure Node (no new dependency, no TypeScript parser). Verifies 3 report + 3 proposal canonical substrings are present in BOTH `lib/client-delivery/send-to-client-types.ts:SEND_TO_CLIENT_DISCLAIMERS` AND `docs/29` § 13. Closes `docs/30` Audit Note 2.
+- **Modal canon unchanged** — `components/client-delivery/send-to-client-confirm-modal.tsx` continues to render the verbatim `SEND_TO_CLIENT_DISCLAIMERS[artifactKind]` text; the pin script is the drift gate.
+- **Lint clean ✅ · production build clean ✅ · disclaimer pin check passes ✅ · 29 routes unchanged ✅ · no new dependencies ✅ · no schema changes ✅ · no Group-B wiring ✅ · no public SOW route ✅ · no email/CRM/e-signature/alternative-transport wiring ✅ · public `/r` and `/p` rendered artifacts unchanged ✅.**
+- **Source files changed (5 source + 1 script + 1 package.json + 3 docs):** `components/reports/report-pdf-candidates-panel.tsx`, `components/proposals/proposal-candidates-panel.tsx`, `scripts/check-send-to-client-disclaimers.cjs` (new), `package.json` (1 script entry added), `docs/30_SEND_TO_CLIENT_MVP_ACCEPTANCE_AUDIT.md`, `docs/08_CURRENT_STATUS.md`, `docs/10_SESSION_HANDOFF.md`.
+
+Recommended next milestone: **complete the three operator-side production preconditions** documented in `docs/32` § 4 before any controlled client exposure:
+
+1. Deployed env panel sets `SLATE_SHARE_TOKEN_ACCESS_PEPPER`.
+2. Deployed-staging migrations 0012-0016 parity verified via Supabase MCP against a non-prod project.
+3. Deployed-host re-curl of `/r/test-noop` + `/p/test-noop` + `/s/test` + `/sow/test`.
+
+After those clear, **Option C** (CRM / email / e-sign / SOW share canon authoring at `docs/33`+) opens IF business priority requires it. `Send to Client` stays at operator-mediated copy-link posture across both options until a separate canon explicitly authorizes an alternative transport.
+
 ## Phase 1B Delivery Engine — Walkthrough Caveat Closure (2026-05-19)
 
 `docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` is updated with closure-sprint outcomes that promote the verdict from "⚠️ Cleared with operator-tracked exceptions" to **✅ Staging cleared for controlled client use** (pending three operator-side production preconditions). Headline:

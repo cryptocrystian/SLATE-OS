@@ -398,6 +398,7 @@ function ShareTokenSummary({ tokens }: { tokens: ProposalShareToken[] }) {
           </Badge>
         )}
       </div>
+      <ShareTokenOperatorGuidance />
       <ul className="flex flex-col gap-1.5">
         {tokens.map((token) => (
           <li key={token.id}>
@@ -405,6 +406,42 @@ function ShareTokenSummary({ tokens }: { tokens: ProposalShareToken[] }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/**
+ * Phase 1B UX Polish — operator-only inline guidance for the proposal
+ * share-token surface. Canon-derived from `docs/29` § 13: SLATE never
+ * sends email, never pushes to CRM. The mark-sent control records the
+ * operator's handoff intent only; the operator must hand-deliver the
+ * URL through their own approved channel. Audience label is required
+ * before Mark sent. Recipient email is optional and hashed at rest.
+ *
+ * Operator-only surface — does NOT appear on the public `/p/[token]`
+ * route. Render-time eligibility / send-eligibility evaluators are
+ * unchanged.
+ */
+function ShareTokenOperatorGuidance() {
+  return (
+    <div
+      role="note"
+      aria-label="Send to Client operator guidance"
+      className="rounded-md border border-border-subtle bg-bg-elevated/60 px-2.5 py-2 text-[11px] leading-relaxed text-text-muted"
+    >
+      <p>
+        <span className="font-mono uppercase tracking-[0.12em] text-text-secondary">
+          SLATE never sends.
+        </span>{" "}
+        Mark sent records the operator handoff only — copy the URL and
+        deliver through your own approved channel (email client, CRM,
+        in-person). Audience label required before Mark sent. Recipient
+        email is optional and{" "}
+        <span title="SLATE never stores the raw email address.">
+          hashed at rest
+        </span>
+        .
+      </p>
     </div>
   );
 }
@@ -466,13 +503,26 @@ function ShareTokenRow({ token }: { token: ProposalShareToken }) {
           </span>
         ) : null}
         {token.recipientEmailHash ? (
-          <span className="text-text-muted" title="Recipient email captured as a SHA-256 hash. Raw email is never stored.">
+          <span
+            className="text-text-secondary"
+            title="SLATE never stores the raw email address."
+          >
+            <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              Recipient
+            </span>{" "}
+            hash present
+          </span>
+        ) : (
+          <span
+            className="text-text-muted"
+            title="SLATE never stores the raw email address."
+          >
             <span className="font-mono uppercase tracking-[0.12em]">
               Recipient
             </span>{" "}
-            hashed at rest
+            no recipient hash
           </span>
-        ) : null}
+        )}
       </div>
       {sendCount > 0 ? (
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[11px] text-text-secondary">
