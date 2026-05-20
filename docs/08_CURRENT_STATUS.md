@@ -24,6 +24,28 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Production Preconditions Verification (2026-05-20)
+
+Operator-side deployment verification sprint after UX polish landed. Goal: verify the three production preconditions from `docs/32` § 4 so the Delivery Engine verdict can promote to "✅ cleared for controlled external client exposure of /r and /p links." **Outcome: all three preconditions remain operator-pending — no deployed staging environment exists at this time.** Verdict unchanged: **✅ Staging cleared, production preconditions partially pending**.
+
+Findings:
+
+- **Pepper (Precondition 1):** Local `.env.local` pepper is 96 chars base64url-shaped (well above the 64-char production minimum); never disclosed. No deployed env panel exists to host the var. Repo has no deployment config (no `vercel.json` / `netlify.toml` / `render.yaml` / `fly.toml` / `Dockerfile`). GitHub API confirms **zero deployments + zero environments** registered against `cryptocrystian/SLATE-OS`. `NEXT_PUBLIC_SITE_URL` is HTTP-scheme (localhost-grade).
+- **Migrations parity (Precondition 2):** Source-side ✅ all 5 migration files present at canonical sizes in `supabase/migrations/` (`0012`-`0016`); source-grep confirms `to authenticated` RLS policies (no `to anon`) on share-token tables. Deployed-side: Supabase MCP `list_projects` shows the SLATE org has only **one** SLATE project — the production-labeled `SLATE OS` project (`hhglrcvsmwaheikdvijw`). No non-prod SLATE Supabase project exists. `list_migrations` against the production project returned `{"migrations":[]}` (Supabase-CLI registry empty, meaning prior migrations were applied via a non-CLI mechanism); `list_tables` against the production project is classifier-blocked per the staging-sprint boundary.
+- **Deployed-host curl (Precondition 3):** Localhost re-run (2026-05-20T17:02 UTC, head `d5b9760`, post-`.next/`-cache-clear): `/r/test-noop` → 200 OK + all three security headers + canon generic-unavailable body shape (9147 B); `/p/test-noop` → 200 OK + all three security headers + canon generic-unavailable body shape (9500 B); `/s/test` → 404 Not Found; `/sow/test` → 404 Not Found. No deployed host exists to re-curl against. **Note**: first localhost curl returned 500 Internal Server Error for `/r` and `/p`; root cause was stale `.next/` webpack chunk references from the prior `npm run build`. Resolved by `pkill next` + `rm -rf .next/` + `npm run dev`. Dev-environment artifact, not a source-tree or deployment issue.
+- **Boundary preservation:** No source changes this sprint (zero files in `app/` / `lib/` / `components/` / `supabase/` / `package.json` touched for code reasons); no public SOW route added; no SOW share tokens; no email/CRM/e-signature wiring; no schema or migration changes; no Group-B wiring; top-level `Send to Client` at `proposal-workspace.tsx:417` still LOCKED.
+
+`docs/32` § 4 now carries the full precondition table inline with status + per-precondition operator path forward. Operator must:
+
+1. Provision a hosting platform (recommended Vercel for zero-config Next.js 14 detection).
+2. Provision a non-prod SLATE Supabase project (fork prod OR create fresh + apply migrations 0012-0016).
+3. Set deployed env vars (operator-side; never via Claude): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL`, `SLATE_SHARE_TOKEN_ACCESS_PEPPER`, `SLATE_OPERATOR_DOMAIN_ALLOWLIST`, `OPENAI_API_KEY` (optional).
+4. Re-run the precondition curl section against the deployed host + paste headers into `docs/32` § 4.
+
+Files modified by this sprint: `docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` (§ 4 precondition table + operator path), `docs/08_CURRENT_STATUS.md` (this block), `docs/10_SESSION_HANDOFF.md` (latest paragraph). **Zero source code changes.**
+
+Recommended next milestone: **provision a deployed staging host + non-prod Supabase project, then re-run this precondition verification.** No code sprint is appropriate until the deployment exists.
+
 ## Phase 1B UX Polish / Operator Guidance (2026-05-19)
 
 Operator-guidance + canon-drift-prevention sprint after Phase 1B staged clearance. Goal: improve clarity and reduce canon-disclaimer drift risk without expanding scope. No new feature surfaces.
