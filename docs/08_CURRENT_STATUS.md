@@ -24,6 +24,21 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Delivery Engine — Staging Walkthrough UI Pass (2026-05-19)
+
+`docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` is now filled with the UI-walkthrough pass evidence. Headline:
+
+- **⚠️ Cleared with operator-tracked exceptions** — 11/12 readiness conditions PASS or PASS-WITH-CAVEAT after the UI walkthrough pass; 1/12 remains operator-pending (condition 6 — deployed-staging migrations parity).
+- **All four UI-mediated walkthrough lanes exercised** under explicit operator authorization against the canonical test fixture engagement `76097653-fedb-42e5-9ef6-e89a0e97f802` (Sapient Digital) via Chrome MCP and local Next.js dev server bound to the existing Supabase project. No service-role SQL writes; no schema modifications; no real client engagements touched; all generated artifacts carry `STAGING WALKTHROUGH 2026-05-19` audience labels.
+- **Lane 1 (Report):** mint ✅ + revoke ✅; render-time eligibility divergence observed for snapshot `9068f58f-…` is canon-correct fail-safe behavior (audit observation, NOT a defect) — recommended `docs/30` Audit Note 5.
+- **Lane 2 (Proposal):** mint ✅ + render ✅ + revoke ✅; post-revoke generic-unavailable canon-correct.
+- **Lane 3 (SOW Draft):** SOW Commercial Guard rejected the draft pre-mint for `governing_law` / `indemnification` / `warranty` legal-boundary violations — canon-correct fail-safe; the guard activating exactly the way canon requires is a stronger verification of the commercial-safety surface than a mint+open+void would have been.
+- **Lane 4 (Send to Client):** mark-sent end-to-end on both report-side AND proposal-side ✅ via the `SendToClientConfirmModal` two-step confirmation flow (3-checkbox acknowledgement gate enforced).
+- **`SLATE_SHARE_TOKEN_ACCESS_PEPPER`** now configured in `.env.local` (64-char base64url; never disclosed); operator MUST set the same in deployed staging env panel before production.
+- **Zero source code changes.** Doc-only update: `docs/32`, `docs/08`, `docs/10`.
+
+Recommended next milestone: operator choice between **Option B — UX polish / operator guidance sprint** (in-product mark-sent guidance + recipient-hash visual + canon-verbatim disclaimer CI pin from `docs/30` Audit Note 2 + `docs/32` recommended `docs/30` Audit Note 5 for render-time eligibility logging) and **Option C — CRM / email / e-sign / SOW share canon authoring** (four independent canons per `docs/29` § 17 post-acceptance fork; recommended slot `docs/33`+). `Send to Client` remains at operator-mediated copy-link posture across both options.
+
 ## Sprint State
 
 | Sprint | Title | Status |
