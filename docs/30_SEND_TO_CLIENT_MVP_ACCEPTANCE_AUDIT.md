@@ -298,6 +298,48 @@ Carry-forward items (none blocking the acceptance decision):
 11. **Pattern-count documentation reconciliation (from `docs/27` Audit note 1)** carries forward — `PROPOSAL_FINALITY_PATTERNS` runtime is 19 vs canon-claimed 18. Independent doc-only fix.
 12. **`unsupported_surface` eligibility union member (`docs/27` Audit note 2)** — declared but unreachable. Independent code-only cleanup.
 
+## Post-Audit Notes (added 2026-05-19 — `docs/32` closure sprint)
+
+### Audit Note 4 — Next.js App Router RSC stream echoes the URL token segment
+
+**Context.** During the `docs/32` walkthrough pass, `curl -s http://localhost:3000/r/<token>` body grep showed the raw token string appearing exactly once in the response body. Initial reaction was "the public route is leaking the token." Investigation showed the appearance is at the framework layer, not the SLATE layer.
+
+**Finding.** Next.js App Router dynamic routes hydrate via an RSC stream that includes the URL segment value as part of `["token", "<segment>", "d"]` + `urlParts: ["", "r", "<segment>"]` + the `initialTree` blob. This is a framework hydration payload, not a SLATE-emitted log entry. The recipient already has the token in their URL bar; the body echoing it in the JS payload does not expose new information to anyone who didn't already access the URL.
+
+**Boundaries that remain intact.**
+
+- The token is NOT persisted raw in the DB (only the SHA-256 hash via `token_hash`).
+- The token is NOT in any server-side activity event metadata (`*_share_token_*` and `*_sent_to_client` events sanitize via the activity logger's `FORBIDDEN_KEY_PATTERNS`).
+- `Referrer-Policy: no-referrer` on `/r/:token*` and `/p/:token*` prevents the URL from leaking via referrer chains to third-party sites.
+- `Cache-Control: no-store, must-revalidate` prevents intermediary cache storage.
+- `X-Robots-Tag: noindex, nofollow` + inline robots meta prevent search-engine indexing.
+
+**Disposition.** Not a SLATE leak. Expected framework-level behavior. Expected occurrence count for any future curl-grep audit is 1 per dynamic-route render (RSC payload), not 0.
+
+### Audit Note 5 — Report mint-vs-render eligibility divergence (`docs/32` Lane 1)
+
+**Context.** During the `docs/32` UI walkthrough pass, the report-side lane minted a token successfully via `generateShareLinkAction` (eligibility check passed at mint time) but the public `/r/<token>` route rendered the generic-unavailable shape (eligibility check rejected at render time) for canonical-test-fixture snapshot `9068f58f-…`. Both paths invoke the identical pure evaluator `evaluateReportShareEligibility(snapshot)` — no rule divergence between mint and render — so the divergence was either (a) a snapshot whose stored shape passed at mint via a different code path historically and now fails the same evaluator, or (b) data drift between mint and render (snapshot voided, etc.) we could not isolate without DB introspection (which the auto-mode classifier blocks against the production project).
+
+**Closure sprint fix.** Added a development-only server-side diagnostic log in `app/r/[token]/page.tsx` (`logBlockedAccessForDev`) that emits a single sanitized `console.warn` line on every non-allowed render in non-production runtimes:
+
+```
+[reports.share-tokens.public] render-blocked {
+  status: "snapshot_ineligible" | "revoked" | "expired" | "snapshot_voided" | "not_found",
+  reason: "<comma-separated eligibility reason codes, or null>",
+  tokenId: "<uuid or null>",
+  snapshotId: "<uuid or null>",
+  engagementId: "<uuid or null>",
+}
+```
+
+**What the log does NOT do.** It does NOT reach the client bundle. It does NOT include the raw token. It does NOT echo any banned-claim text, internal guard codes, or reviewer notes. It is suppressed entirely in production (`NODE_ENV === "production"`) to keep rejection-reason emissions out of production telemetry; the public response shape is unchanged in every environment — the renderer still returns the generic-unavailable page identically across all blocked states.
+
+**Why this is the right closure.** The eligibility logic is canon-correct and the public response is canon-correct (defense-in-depth gate, no internal reason leak). The historical gap was operator diagnosability: when render rejected, the operator had no surface to learn WHY without DB access. The diagnostic log closes that gap without touching the public surface or the eligibility rules.
+
+**Operator path for future renders that reject in dev.** Run `npm run dev`, visit the failing `/r/<token>`, read the most recent `[reports.share-tokens.public] render-blocked` line from server stdout, decode the `reason` codes against `lib/reports/share-token-types.ts:ReportShareEligibilityReasonCode` (`snapshot_voided`, `snapshot_not_client_pdf_candidate`, `draft_watermark_set`, `claim_guard_failed`, `group_b_block_violation`, `snapshot_too_old`). For production debugging, operator can re-run the eligibility evaluator manually via a one-off SQL query against `report_delivery_snapshots` + a local recreation of the snapshot row.
+
+**Disposition.** Closed by code change (server-side dev-only diagnostic log) + this audit note. Public route behavior unchanged. Generic-unavailable surface still identical-shape across all blocked states.
+
 ## Acceptance Decision
 
 **Accepted with notes.**

@@ -17,6 +17,7 @@ import {
 import { isUuid } from "./mappers";
 import {
   evaluateSowDraftEligibility,
+  LEGAL_BOUNDARY_NOTICE,
   type SowDraftEligibilityReason,
 } from "./sow-draft-eligibility";
 
@@ -444,8 +445,9 @@ function buildSowDraftFromSource(
     source.pricingReviewState === "placeholder"
       ? "Pricing is pending manual review and is intentionally omitted from this draft."
       : "Estimated · subject to final approval. Not a binding quote.";
-  const legalBoundaryNotice =
-    "Legal terms (governing law, indemnification, liability, warranty, termination) are intentionally omitted from this draft. They will be provided separately during the execution review process.";
+  // Imported from `sow-draft-eligibility` so the action layer + the
+  // eligibility evaluator emit byte-identical legal-boundary text.
+  const legalBoundaryNotice = LEGAL_BOUNDARY_NOTICE;
 
   return {
     scopeStatement: primary?.scopeSummary ?? "",

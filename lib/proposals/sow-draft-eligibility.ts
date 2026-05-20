@@ -122,8 +122,17 @@ const PRICING_NOTICE_PLACEHOLDER =
   "Pricing is pending manual review and is intentionally omitted from this draft.";
 const PRICING_NOTICE_APPROVED =
   "Estimated · subject to final approval. Not a binding quote.";
-const LEGAL_BOUNDARY_NOTICE =
-  "Legal terms (governing law, indemnification, liability, warranty, termination) are intentionally omitted from this draft. They will be provided separately during the execution review process.";
+// Per docs/26 § Required Markings / Disclaimers — preserves the
+// canon-required legal boundary warning while avoiding enumeration of
+// the specific legal terms that the SOW commercial guard scans for
+// (governing law, indemnification, warranty, limitation of liability,
+// etc.). The prior wording enumerated those terms verbatim, which
+// caused the guard to trip on the auto-generated legalBoundaryNotice
+// field on every SOW Draft mint. The canon intent — operator + reader
+// understand that legal terms are intentionally absent and will be
+// handled separately — is preserved.
+export const LEGAL_BOUNDARY_NOTICE =
+  "Legal terms are intentionally omitted from this draft. Any legal terms will be provided separately during execution review.";
 
 function buildOptionOmission(
   optionId: string,

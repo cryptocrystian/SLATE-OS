@@ -70,6 +70,7 @@ export default async function ClientReportShareRoutePage({
   const access = evaluateShareTokenPublicAccess(lookup);
 
   if (access.status !== "allowed" || !lookup) {
+    logBlockedAccessForDev(access, lookup);
     // Best-effort expiry flip — never blocks the render.
     if (access.shouldFlipExpired && lookup?.token?.id) {
       await flipShareTokenExpired(lookup.token.id);
@@ -203,6 +204,29 @@ function captureRequestMetadata() {
 function capitalize(s: string): string {
   if (s.length === 0) return s;
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// Operator-only diagnostic for blocked /r/[token] renders. Emits a
+// single sanitized server-side log line in non-production runtimes only,
+// so operators running `npm run dev` can see WHY a token rejected
+// (e.g. mint-vs-render eligibility divergence per docs/30 Audit Note 5).
+// NEVER reaches the client bundle. NEVER includes the raw token. The
+// internal IDs surfaced (token id, snapshot id, engagement id) are
+// operator-facing — the same shape already lands in operator-only
+// activity events. Suppressed entirely in production to keep
+// rejection-reason emissions out of production telemetry.
+function logBlockedAccessForDev(
+  access: ShareTokenPublicAccessResult,
+  lookup: ShareTokenLookupResult | null,
+) {
+  if (process.env.NODE_ENV === "production") return;
+  console.warn("[reports.share-tokens.public] render-blocked", {
+    status: access.status,
+    reason: access.reason ?? null,
+    tokenId: lookup?.token?.id ?? null,
+    snapshotId: lookup?.snapshot?.id ?? null,
+    engagementId: lookup?.token?.engagementId ?? null,
+  });
 }
 
 // Re-exported so the next.config.js or downstream tests can pin the

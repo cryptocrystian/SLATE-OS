@@ -24,6 +24,20 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Delivery Engine — Walkthrough Caveat Closure (2026-05-19)
+
+`docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` is updated with closure-sprint outcomes that promote the verdict from "⚠️ Cleared with operator-tracked exceptions" to **✅ Staging cleared for controlled client use** (pending three operator-side production preconditions). Headline:
+
+- **Lane 1 caveat closed by code change** — dev-only server diagnostic log `logBlockedAccessForDev` added at `app/r/[token]/page.tsx`. Operators see the specific eligibility rejection reason (`status` + `reason` codes + tokenId + snapshotId + engagementId) in `npm run dev` server stdout for every render-blocked `/r/[token]` hit. Public surface unchanged; generic-unavailable shape preserved verbatim. Root cause for the original snapshot `9068f58f-…` divergence now diagnosable: canonical test fixture has 0 approved sections → all snapshots from it are `draft_watermark = true` → eligibility correctly rejects with `draft_watermark_set` at both mint and render. Panel correctly surfaces "Share disabled · Snapshot is the draft / Needs Review variant" pre-mint.
+- **Lane 3 caveat closed by code change** — `LEGAL_BOUNDARY_NOTICE` constant in `lib/proposals/sow-draft-eligibility.ts` (+ matching sites in `lib/proposals/sow-draft-actions.ts` and `components/proposals/sow-draft-document.tsx`) rewritten to "Legal terms are intentionally omitted from this draft. Any legal terms will be provided separately during execution review." Guard unchanged (same 71 patterns, same scope, same strength). Re-verified end-to-end via Chrome MCP: SOW Draft `5fb27e8e-13d1-4d09-a292-2a71e087b98b` mint ✅ → open internal route ✅ (full canon chrome) → void ✅.
+- **`docs/30` Audit Notes 4 + 5 added** — Note 4 documents the Next.js App Router RSC URL-echo (framework-level, not a SLATE leak); Note 5 documents the report mint-vs-render eligibility divergence + closure via dev-only diagnostic log.
+- **Lint clean ✅ · production build clean ✅ · 29 routes unchanged ✅ · zero new dependencies ✅ · zero schema changes ✅ · zero Group-B wiring ✅ · zero public SOW route ✅ · zero email/CRM/e-signature/alternative-transport wiring ✅.**
+- **Source files changed (4 source + 3 docs):** `app/r/[token]/page.tsx`, `lib/proposals/sow-draft-eligibility.ts`, `lib/proposals/sow-draft-actions.ts`, `components/proposals/sow-draft-document.tsx`, `docs/30_SEND_TO_CLIENT_MVP_ACCEPTANCE_AUDIT.md`, `docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md`, `docs/08_CURRENT_STATUS.md`, `docs/10_SESSION_HANDOFF.md`.
+
+Remaining operator preconditions before any controlled client exposure (operator-side, not source-tree): (1) deployed env panel sets `SLATE_SHARE_TOKEN_ACCESS_PEPPER`; (2) deployed-staging migrations 0012-0016 parity verified via Supabase MCP against a non-prod project; (3) deployed-host re-curl of `/r/test-noop` + `/p/test-noop` + `/s/test` + `/sow/test` and operator pastes headers into `docs/32` § 1 row 9 / 10 / 12.
+
+Recommended next milestone after operator confirms the three preconditions: operator choice between **Option B — UX polish / operator guidance sprint** (in-product mark-sent guidance + recipient-hash visual + canon-verbatim disclaimer CI pin) and **Option C — CRM / email / e-sign / SOW share canon authoring** (four independent canons per `docs/29` § 17 post-acceptance fork, recommended slot `docs/33`+). `Send to Client` remains at operator-mediated copy-link posture across both options.
+
 ## Phase 1B Delivery Engine — Staging Walkthrough UI Pass (2026-05-19)
 
 `docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` is now filled with the UI-walkthrough pass evidence. Headline:

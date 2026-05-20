@@ -348,9 +348,14 @@ function LegalBoundaryNotice({
 }: {
   sowDraft: SowDraftFields | null;
 }) {
+  // Fallback wording mirrors `LEGAL_BOUNDARY_NOTICE` in
+  // `lib/proposals/sow-draft-eligibility.ts` — kept inline (rather than
+  // imported) so this component remains a pure server component with
+  // no cross-module string coupling. Updated alongside the canon source
+  // of truth when the wording changes.
   const note =
     sowDraft?.legalBoundaryNotice ??
-    "Legal terms (governing law, indemnification, liability, warranty, termination) are intentionally omitted from this draft. They will be provided separately during the execution review process.";
+    "Legal terms are intentionally omitted from this draft. Any legal terms will be provided separately during execution review.";
   return (
     <div className="flex items-start gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] leading-relaxed text-text-secondary print:break-inside-avoid print:shadow-none">
       <Scale className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
