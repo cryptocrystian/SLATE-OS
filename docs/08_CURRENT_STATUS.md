@@ -24,6 +24,33 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Controlled First-Client Pilot Audit (2026-05-21)
+
+`docs/34_PHASE_1B_FIRST_CLIENT_PILOT_AUDIT.md` is the canonical pilot audit. Headline: **⚠️ Pilot passed with operator-tracked items**. All 7 lanes execute canon-correctly end-to-end against the deployed Vercel staging host (`https://slate-os-staging.vercel.app`).
+
+Test client: `SLATE Pilot Test Client` (Lead `58ccc2bf-…`, Engagement `ed7f1f7d-…`, email `devtest@sapientdigital.io`, audience prefix `CONTROLLED PILOT 2026-05-21`).
+
+Lane outcomes:
+
+- **Lane 1 (Free Audit submission)** ✅ — Public `/scorecard/start` 8-section form completes → submission `2e18ff1c-…` lands → **Lead row created**, no auto-engagement (canon-correct, operator promotes via "Start AI Opportunity Sprint" on lead detail).
+- **Lane 2 (Lead → Engagement promotion)** ✅ — One-click promotion produces engagement `ed7f1f7d-…`. Separate "New Project" path not exercised but unnecessary for the pilot flow.
+- **Lane 3 (Report link)** ✅ — Initialize → AI-draft → Approve section → Generate PDF Candidate → Generate Share Link with `CONTROLLED PILOT 2026-05-21` audience → public `/r/<token>` rendered **26 682 B canon-correct client-safe artifact** (10 positive markers, zero forbidden markers) → revoke → **8 584 B canon generic-unavailable** (no test client name leak).
+- **Lane 4 (Proposal link)** ✅ — Initialize proposal (3 canonical SOW options seeded) → Generate + Approve Proposal Candidate → Generate Proposal Review Link → `/p/<token>` rendered **20 587 B canon proposal artifact** with four-denial footer + zero e-sign/contract/pay language → revoke → **8 892 B canon generic-unavailable**.
+- **Lane 5 (Internal SOW Draft)** ✅ — Guard PASSED **16 fields × 71 patterns** (confirms `docs/32` Lane 3 closure fix — sanitized `LEGAL_BOUNDARY_NOTICE` — is live on deployed). Internal route renders `Draft SOW · not executed` with all canon chrome + zero forbidden markers (no sign-here, no Send to Client button for SOW, no public share link, no e-sign). Void → snapshot preserved in audit trail.
+- **Lane 6 (Send to Client mark-sent)** ✅ — Both lanes: modal with canon-required heading + audience-required + recipient-hashed-at-rest + 3 acknowledgement checks + `Confirm send` button gated on all 3. Send-history row visible immediately with `sendCount=1`, `lastSentToClientAt`, `channel = operator_mediated_copy_link`. **No email sent by SLATE.**
+- **Lane 7 (Deployed route security)** ✅ — `/r/test-noop` + `/p/test-noop` → 200 + canon security headers + canon body markers; `/s/test` + `/sow/test` → 404. Captured 2026-05-21T13:30 UTC.
+
+Operator-tracked items (non-blocking):
+
+1. **Supabase URL configuration gap** — found + remediated mid-audit. Initial magic-link redirect pointed to `http://localhost:3001` (Supabase project Site URL fallback because deployed host wasn't in Redirect URLs allowlist). Operator updated Supabase Dashboard → Authentication → URL Configuration. **Recommended permanent fix:** extend `docs/33` § 2 with an explicit "Configure Supabase URL settings BEFORE inviting first operator sign-in" step.
+2. **Custom subdomain DNS recommended for long-term posture** — non-blocking. Pilot proceeds on `slate-os-staging.vercel.app`. Future enhancement: `staging.saipienlabs.com` custom domain when graduating from pilot to first billable engagement.
+
+Boundary preservation: ✅ no public SOW route, ✅ no SOW share tokens, ✅ no email/CRM/e-signature wiring, ✅ no schema/migration/package changes, ✅ no Group-B wiring, ✅ no real client engagement touched, ✅ Top-level Send to Client still LOCKED, ✅ zero source code changes.
+
+Files modified by this audit: `docs/34_PHASE_1B_FIRST_CLIENT_PILOT_AUDIT.md` (new), `docs/08_CURRENT_STATUS.md` (this block), `docs/10_SESSION_HANDOFF.md` (latest paragraph).
+
+**Recommended next milestone:** Phase 1B Delivery Engine is now cleared for **controlled first-client billable pilot** using the deployed `slate-os-staging.vercel.app` host. Operator may invite the first real client to the SLATE-mediated copy-link Send to Client flow. Optional follow-on enhancements (operator-choice, no canon prerequisite): docs/33 § 2 amendment for Supabase URL setup step; custom-subdomain DNS migration; Option C-1/C-2/C-3/C-4 (email/CRM/e-sign/public-SOW canons) only if a specific business need triggers the canon.
+
 ## Phase 1B Deployment Landed — All Production Preconditions Cleared (2026-05-20)
 
 Vercel staging deployment landed end-to-end under explicit operator authorization (overriding `docs/33` § 4's "Claude must NEVER see or set deployed env vars" clause for this specific provisioning). Operator then ran `docs/33` § 6 SQL verification queries in the Supabase Dashboard SQL editor and pasted all 5 result blocks into `docs/32` § 4 Precondition 2. **Verdict promotes to ✅ Phase 1B Delivery Engine FULLY cleared for controlled external client exposure of /r and /p links.**
