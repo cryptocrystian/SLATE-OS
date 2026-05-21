@@ -152,10 +152,53 @@ After a successful first-client pilot, the operator may evaluate:
 
 ---
 
+## Post-pilot cleanup (2026-05-21)
+
+After audit acceptance the operator directed a post-pilot cleanup of all active share tokens on the `SLATE Pilot Test Client` engagement (`ed7f1f7d-…`) to avoid stale-test-token pollution before the first real-client pilot.
+
+**Executed via operator UI / two-step `Revoke` → `Confirm revoke` action-layer flow only. No service-role SQL writes.**
+
+| Token (audience label) | Lane | Pre-cleanup status | Post-cleanup status |
+|---|---|---|---|
+| `CONTROLLED PILOT 2026-05-21 LANE 6 REPORT MARK SENT` | Report | Active | ✅ Revoked |
+| `CONTROLLED PILOT 2026-05-21 LANE 6 PROPOSAL MARK SENT` | Proposal | Active | ✅ Revoked |
+| (no audience label) created 2026-05-21 08:07 PM | Report | Active (mint-side artifact, no audience set) | ✅ Revoked |
+| (no audience label) created 2026-05-21 07:59 PM | Report | Active (mint-side artifact, no audience set) | ✅ Revoked |
+| (no audience label) created 2026-05-21 08:10 PM | Proposal | Active (mint-side artifact, no audience set) | ✅ Revoked |
+
+**Final share-token state on `SLATE Pilot Test Client` engagement:**
+
+- **Report share links:** 4 total, **0 active** (all revoked)
+- **Proposal review links:** 2 total, **0 active** (all revoked)
+
+### Cleanup audit observation — `Generate share link` button mint-on-open behavior
+
+Three "Active" share tokens on the engagement had **no audience label** ("Mark sent disabled · Audience label required before marking sent" chip) — meaning they were minted without an audience set. Root cause: the audit's Lane 3 + Lane 6 mint flow used a programmatic click-pattern that triggered the audience form to open AND auto-submitted before the audience text was typed, producing extra empty-audience tokens alongside the intended labeled ones.
+
+This is **not a SLATE source defect** — it's a side effect of the audit's automation pattern, not the operator's normal manual flow. A human operator typing into the audience field manually doesn't double-trigger the action. The audit revoked these accidental tokens during cleanup; documenting here so any future audit using similar automation expects to do the same cleanup.
+
+**Recommendation for future audits:** when automating the mint flow, click `Generate share link` exactly once on the candidate row, wait for the form to open, fill the audience, then click the form's submit button (which has the same label) — confirm via DOM inspection that the click landed on the form-internal submit rather than re-triggering the panel-level open action.
+
+### Post-revoke render verification (canon deterministic behavior)
+
+The audit did not retain the raw `/r/<token>` and `/p/<token>` URLs for the LANE 6 tokens because the canon-mandated copy-once panel only surfaces them at mint time and not again afterward. The audit therefore cannot directly `curl` those specific URLs post-revoke to confirm the `200 OK + generic-unavailable body` shape.
+
+**However:** the public-route render path (`app/r/[token]/page.tsx` and `app/p/[token]/page.tsx`) is **deterministic on `token.status`** — it calls `evaluateShareTokenPublicAccess()` which returns `"revoked"` as soon as the DB row's `status` flips to `revoked`, then the renderer serves the identical generic-unavailable shape for the `revoked` / `expired` / `not_found` / `snapshot_voided` / `snapshot_ineligible` branches alike. That shape was directly verified end-to-end during this audit at:
+
+- **Lane 3 post-revoke** — 8 584 B canon generic-unavailable on the just-revoked report token (raw URL captured at mint, post-revoke `curl` confirmed)
+- **Lane 4 post-revoke** — 8 892 B canon generic-unavailable on the just-revoked proposal token (same)
+- **Lane 7** — `/r/test-noop` and `/p/test-noop` both serve generic-unavailable for an unknown token (same shape as revoked, by canon design)
+
+So once a token's row is marked `status='revoked'` in the deployed Supabase (which the operator panel confirmed for all 5 LANE 6 + accidental tokens above), **any URL using that raw token is functionally equivalent to a non-existent token URL** from the public render's perspective. The post-revoke render of the LANE 6 URLs is therefore confirmed by deterministic equivalence to the Lane 3/4/7 evidence.
+
+If the operator wants explicit `curl` proof of a specific LANE 6 URL, the only way is to record the raw URL at the next mint cycle (before clicking "Hide" on the copy-once panel). The audit explicitly chose to discard those URLs during the audit to honor the canon's "raw token never persisted" rule.
+
+---
+
 ## Files modified by this audit
 
-- `docs/34_PHASE_1B_FIRST_CLIENT_PILOT_AUDIT.md` (this file — new)
+- `docs/34_PHASE_1B_FIRST_CLIENT_PILOT_AUDIT.md` (this file — new + post-pilot cleanup note appended)
 - `docs/08_CURRENT_STATUS.md` (status block updated)
 - `docs/10_SESSION_HANDOFF.md` (chronology + next-planned updated)
 
-**Zero source code changes.** Operator-driven audit per the pilot validation prompt.
+**Zero source code changes.** Operator-driven audit per the pilot validation prompt. Post-pilot cleanup executed via operator UI / two-step Revoke flow only — no service-role SQL writes; no real-client engagement touched; no schema / migration / package / Group-B mutation.
