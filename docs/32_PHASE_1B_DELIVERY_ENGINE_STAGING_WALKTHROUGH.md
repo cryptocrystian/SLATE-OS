@@ -240,6 +240,135 @@ Walkthrough screenshots land under the gitignored `artifacts/walkthroughs/` tree
 2. **Deployed-staging migrations parity** — operator must confirm via Supabase MCP against a non-prod project that migrations 0012-0016 are applied and RLS posture matches the source-tree migration files. The auto-mode classifier blocks this against the production project.
 3. **Deployed-host re-curl** — operator re-runs `curl -I https://<staging-host>/r/test-noop`, `curl -I https://<staging-host>/p/test-noop`, `curl -I https://<staging-host>/s/test`, `curl -I https://<staging-host>/sow/test` and pastes the headers below the relevant § 1 rows.
 
+### Production Preconditions Verification Pass — Deployed (2026-05-20T18:25 UTC)
+
+**Vercel staging deployment landed and all three production-side preconditions are verified end-to-end (2/3 cleared by Claude in-session, 1/3 cleared by operator running `docs/33` § 6 SQL).** Verdict: **✅ Phase 1B Delivery Engine fully cleared for controlled external client exposure of `/r` and `/p` links.**
+
+Following `docs/33_PHASE_1B_DEPLOYMENT_SETUP_PLAN.md` Option A (Vercel staging on existing Supabase project), with explicit operator override of `docs/33` § 4's "Claude must NEVER see or set deployed env vars" clause for this specific provisioning.
+
+**Vercel project metadata:**
+
+| Field | Value |
+|---|---|
+| Vercel project name | `slate-os-staging` |
+| Vercel team / scope | `christians-projects-bb2d10a3` |
+| Vercel project id | `prj_wAjfR7dy9FTzIwOwxek7NJwuyZuu` (operator-visible only) |
+| GitHub repo | `cryptocrystian/SLATE-OS` |
+| Production branch | `staging` (created from `persistence/step-0-1-auth-shell` at commit `0b09c4c`) |
+| First deploy URL (deploy-hash, Vercel-protected) | `https://slate-os-staging-8zq96lmnk-christians-projects-bb2d10a3.vercel.app` (HTTP 401 — Deployment Protection gate) |
+| Stable canonical URL (public) | **`https://slate-os-staging.vercel.app`** (HTTP 200 for `/r` + `/p`; HTTP 404 for `/s` + `/sow`) |
+| Deploy commit | `0b09c4c` (Add Phase 1B deployment setup plan) |
+| Build time | ~53 seconds end-to-end |
+| Node version | 24.x (Vercel default) |
+
+**Precondition 1 — Deployed `SLATE_SHARE_TOKEN_ACCESS_PEPPER` configured: ✅ PASS**
+
+| Field | Value |
+|---|---|
+| Set in Vercel env panel (Production) | ✅ Yes |
+| Generated fresh (NOT reused from local `.env.local`) | ✅ Yes — via `node -e 'console.log(require("node:crypto").randomBytes(48).toString("base64url"))'` at script run time |
+| Length category | 64 chars (above 64-char minimum) |
+| Value disclosed in chat / commits | ❌ No — written to Vercel via `printf '%s' "$VALUE" \| vercel env add NAME production --force` stdin pipe |
+| Other Production env vars set (all "Encrypted" in Vercel) | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SLATE_OPERATOR_DOMAIN_ALLOWLIST`, `OPENAI_API_KEY`, `NEXT_PUBLIC_SITE_URL` (= `https://slate-os-staging.vercel.app`) |
+
+**Precondition 2 — Deployed-staging migrations 0012-0016 parity: ✅ PASS (operator-verified 2026-05-20)**
+
+Source-side ✅ (5/5 migration files present in `supabase/migrations/`). Deployed-side parity confirmed via 5 read-only SQL queries against the `SLATE OS` project (`hhglrcvsmwaheikdvijw`) in the Supabase Dashboard SQL editor.
+
+**§ 6.1 — Share-token + delivery-snapshot tables exist (4 rows):**
+
+| table_name |
+|---|
+| proposal_delivery_snapshots |
+| proposal_share_tokens |
+| report_delivery_snapshots |
+| report_share_tokens |
+
+✅ All four canonical tables present in `public` schema.
+
+**§ 6.2 — RLS enabled on all four tables (4 rows):**
+
+| schemaname | tablename | rowsecurity |
+|---|---|---|
+| public | proposal_delivery_snapshots | true |
+| public | proposal_share_tokens | true |
+| public | report_delivery_snapshots | true |
+| public | report_share_tokens | true |
+
+✅ Row-level security enabled on every share-token + delivery-snapshot table.
+
+**§ 6.3 — No anon policies on share-token tables (2 rows, both authenticated-only):**
+
+| table_name | policy_name | policy_roles |
+|---|---|---|
+| proposal_share_tokens | proposal_share_tokens_operator_full | `{authenticated}` |
+| report_share_tokens | report_share_tokens_operator_full | `{authenticated}` |
+
+✅ Both share-token tables expose only the `{authenticated}` operator-full policy. **Zero anon policies** — the public `/r` and `/p` routes must (and do) go through the service-role server client for anonymous lookups; RLS itself never returns rows to anonymous sessions.
+
+**§ 6.4 — token_hash uniqueness + UNIQUE btree index shape (2 rows):**
+
+| indexname | indexdef |
+|---|---|
+| proposal_share_tokens_token_hash_idx | `CREATE UNIQUE INDEX proposal_share_tokens_token_hash_idx ON public.proposal_share_tokens USING btree (token_hash)` |
+| report_share_tokens_token_hash_idx | `CREATE UNIQUE INDEX report_share_tokens_token_hash_idx ON public.report_share_tokens USING btree (token_hash)` |
+
+✅ Both tables carry a UNIQUE btree index on `token_hash`. Hash collisions are forbidden at the storage layer; mint-time SHA-256 hash insertion would fail loudly on any collision.
+
+**§ 6.5 — metadata jsonb columns present (2 rows, both jsonb):**
+
+| table_name | column_name | data_type |
+|---|---|---|
+| proposal_share_tokens | metadata | jsonb |
+| report_share_tokens | metadata | jsonb |
+
+✅ Both share-token tables carry a `metadata jsonb` column — the storage surface where `markReport(Proposal)LinkSentToClientAction` writes the canon-sanctioned `lastSentToClientAt` / `sendCount` / `lastSentChannel` keys + the H1 debounce signature.
+
+**Net: all 5 deployed-side migration parity checks pass against `hhglrcvsmwaheikdvijw`.** Migrations 0012-0016 are applied and the canon-mandated RLS / index / column posture is intact.
+
+**Precondition 3 — Deployed-host `curl` checks: ✅ PASS**
+
+Captured 2026-05-20T18:25 UTC against `https://slate-os-staging.vercel.app` (deploy commit `0b09c4c`):
+
+| Path | Status | Cache-Control | X-Robots-Tag | Referrer-Policy | Body size | Body markers |
+|---|---|---|---|---|---|---|
+| `/r/test-noop` | **HTTP/2 200** ✅ | `private, no-cache, no-store, max-age=0, must-revalidate` ✅ | `noindex, nofollow` ✅ | `no-referrer` ✅ | 8405 bytes | `Contact the sender`, `Unavailable`, `advisory only`, `noindex`, `nofollow` ✅ |
+| `/p/test-noop` | **HTTP/2 200** ✅ | `private, no-cache, no-store, max-age=0, must-revalidate` ✅ | `noindex, nofollow` ✅ | `no-referrer` ✅ | 8713 bytes | `Contact the sender`, `Unavailable`, `noindex`, `nofollow`, `not a binding quote`, `written approval` ✅ |
+| `/s/test` | **HTTP/2 404** ✅ | — | — | — | (404 page) | No public SOW route ✅ |
+| `/sow/test` | **HTTP/2 404** ✅ | — | — | — | (404 page) | No public SOW route ✅ |
+
+**Note on Cache-Control header value:** the deployed staging emits `private, no-cache, no-store, max-age=0, must-revalidate`, which is Vercel's edge layer extending the `no-store, max-age=0` we declared in `next.config.mjs`. The canon-required `no-store` directive is present (defense-in-depth) — the additional `private, no-cache, must-revalidate` directives make the cache posture STRICTER, not weaker. Acceptable.
+
+**Body sizes** are 8405 B / 8713 B on the deployed staging — smaller than the local-dev 9147 B / 9500 B because Vercel's production build is minified. Canon body shape preserved (all expected markers present in both bodies). Token segment `test-noop` echo count = 1 per body (Next.js RSC framework-level hydration, documented in `docs/30` Audit Note 4).
+
+**Sprint posture: docs/33 § 4 override**
+
+This pass deliberately overrode `docs/33` § 4's "Claude must NEVER see or set these in the deployed env" clause under explicit operator authorization in chat. Concrete actions taken under override:
+
+1. Read 5 secrets from local `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SLATE_OPERATOR_DOMAIN_ALLOWLIST`, `OPENAI_API_KEY`) via `grep -E '^${VAR}='` (values held in shell variables briefly, never echoed to stdout/chat).
+2. Generated 1 fresh secret (`SLATE_SHARE_TOKEN_ACCESS_PEPPER`) via Node `crypto.randomBytes(48).toString('base64url')` — 64-char value, never disclosed.
+3. Assigned `NEXT_PUBLIC_SITE_URL` to `https://slate-os-staging.vercel.app`.
+4. Piped each via `printf '%s' "$VALUE" \| vercel env add NAME production --force` — values transmitted from local shell to Vercel API over HTTPS, never written to shell history (printf vs echo + stdin redirect).
+5. Deleted the temporary bootstrap script `.vercel-env-bootstrap.sh` immediately after run.
+6. Did NOT log, paste, screenshot, or otherwise expose any secret value at any point during the override.
+7. Did NOT mutate the production Supabase project beyond what the standard server actions would do (no service-role SQL writes via MCP; Supabase MCP `list_tables` against the production project was classifier-blocked as expected, confirming the guardrail held).
+
+**Vercel Deployment Protection observation (audit note for `docs/30` follow-up):**
+
+The team-scoped Vercel URLs (`slate-os-staging-christians-projects-bb2d10a3.vercel.app` and per-deploy `slate-os-staging-<hash>-christians-projects-bb2d10a3.vercel.app`) return HTTP 401 — Vercel's Deployment Protection gate. The canonical short URL `slate-os-staging.vercel.app` is publicly accessible (HTTP 200 for `/r` / `/p`, HTTP 404 for `/s` / `/sow`). This is the correct Vercel default posture (operator can adjust via Vercel Dashboard → Settings → Deployment Protection if a per-deploy URL needs to be publicly shareable). Recommend NOT relaxing Deployment Protection for the team-scoped URLs — the canonical short URL is the intended public surface.
+
+**Net verdict update**
+
+| Precondition | Status before this pass | Status after this pass |
+|---|---|---|
+| 1. Deployed pepper | ⏸ Pending | ✅ PASS |
+| 2. Migrations parity | ⏸ Pending | ✅ PASS (operator-verified 2026-05-20) |
+| 3. Deployed curl | ⏸ Pending | ✅ PASS |
+
+**Overall verdict** promotes to **✅ Phase 1B Delivery Engine FULLY cleared for controlled external client exposure of `/r` and `/p` links**. All three production-side preconditions verified; no operator-pending items remain. Operator may proceed with controlled external client exposure via the operator-mediated copy-link Send to Client flow against the deployed `slate-os-staging.vercel.app` host.
+
+---
+
 ### Production Preconditions Verification Pass (2026-05-20)
 
 Attempted verification of the three remaining production-side preconditions. **All three remain operator-pending — no deployed staging environment exists at this time.** Verdict unchanged: **✅ Staging cleared, production preconditions partially pending**. Per the user's explicit instruction for this sprint, we do NOT claim controlled external client exposure is cleared.

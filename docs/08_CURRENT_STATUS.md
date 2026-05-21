@@ -24,6 +24,34 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Phase 1B Deployment Landed — All Production Preconditions Cleared (2026-05-20)
+
+Vercel staging deployment landed end-to-end under explicit operator authorization (overriding `docs/33` § 4's "Claude must NEVER see or set deployed env vars" clause for this specific provisioning). Operator then ran `docs/33` § 6 SQL verification queries in the Supabase Dashboard SQL editor and pasted all 5 result blocks into `docs/32` § 4 Precondition 2. **Verdict promotes to ✅ Phase 1B Delivery Engine FULLY cleared for controlled external client exposure of /r and /p links.**
+
+Deployment summary:
+
+- **Vercel project:** `slate-os-staging` (team `christians-projects-bb2d10a3`, id `prj_wAjfR7dy9FTzIwOwxek7NJwuyZuu`)
+- **GitHub repo:** `cryptocrystian/SLATE-OS` connected; production branch set to `staging` (created from `persistence/step-0-1-auth-shell` at commit `0b09c4c`)
+- **Stable canonical URL:** `https://slate-os-staging.vercel.app` (publicly accessible — 200 on `/r` + `/p`, 404 on `/s` + `/sow`)
+- **Per-deploy URL:** `https://slate-os-staging-8zq96lmnk-christians-projects-bb2d10a3.vercel.app` (Vercel Deployment Protection gate — 401, correct posture)
+- **Build:** ~53 s; Node 24.x default; framework auto-detected Next.js 14
+- **Env vars set:** 7 in Production scope (all "Encrypted" in Vercel panel): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SLATE_OPERATOR_DOMAIN_ALLOWLIST`, `OPENAI_API_KEY`, `SLATE_SHARE_TOKEN_ACCESS_PEPPER` (fresh 64-char value generated at script run, never reused from local, never disclosed), `NEXT_PUBLIC_SITE_URL`
+- **Override discipline:** secrets piped via `printf '%s' "$VAL" \| vercel env add NAME production --force` stdin (no shell-history echo, no chat echo); temporary bootstrap script deleted post-run; fresh pepper generated rather than reused from local
+
+Precondition outcomes:
+
+| # | Precondition | Status | Evidence |
+|---|---|---|---|
+| 1 | Deployed `SLATE_SHARE_TOKEN_ACCESS_PEPPER` | ✅ **PASS** | Set in Vercel env panel; fresh 64-char value; never disclosed |
+| 2 | Deployed-staging migrations 0012-0016 parity | ✅ **PASS** (operator-verified 2026-05-20) | All 5 `docs/33` § 6 SQL queries ran clean against `SLATE OS` project: 4 share-token + delivery-snapshot tables present ✅, RLS enabled on all 4 ✅, both share-token tables expose only `{authenticated}` policy (zero anon) ✅, UNIQUE btree indexes on `token_hash` for both share-token tables ✅, `metadata jsonb` columns present on both share-token tables ✅. Full result grids in `docs/32` § 4 Precondition 2 |
+| 3 | Deployed-host `curl` checks | ✅ **PASS** | `/r/test-noop` → 200 + all 3 canon security headers + canon body markers; `/p/test-noop` → 200 + same; `/s/test` → 404; `/sow/test` → 404. Body sizes 8405 B / 8713 B (smaller than local-dev due to production minification; canon body shape preserved) |
+
+Files modified by this sprint: `docs/32_PHASE_1B_DELIVERY_ENGINE_STAGING_WALKTHROUGH.md` (§ 4 deployed-pass evidence block + verdict promotion), `docs/08_CURRENT_STATUS.md` (this block), `docs/10_SESSION_HANDOFF.md`. **Zero source code changes.** `.vercel/project.json` produced locally is gitignored (line 36 of `.gitignore`).
+
+Audit note recommended for `docs/30` follow-up: Vercel Deployment Protection gates the team-scoped URLs (`slate-os-staging-christians-projects-bb2d10a3.vercel.app` and per-deploy hash URLs) with HTTP 401; the canonical short URL `slate-os-staging.vercel.app` is publicly accessible. Recommended posture: keep team-scoped URLs gated; the canonical short URL is the intended public surface.
+
+**Recommended next milestone:** Phase 1B Delivery Engine is now ✅ FULLY cleared for controlled external client exposure of `/r` and `/p` links via the deployed `slate-os-staging.vercel.app` host. Operator may begin a controlled first-client pilot using the operator-mediated copy-link Send to Client flow. Optional next sprints (operator-choice, no canon prerequisite): **Option B-2** — UX polish round 2 (in-product mark-sent guidance pulse, recipient-hash visual A/B, send-history filter); **Option C-1** — email send canon authoring at `docs/34` (if business priority requires SLATE-sent email); **Option C-2** — CRM-specific canon authoring at `docs/35` (per-CRM); **Option C-3** — e-signature canon authoring at `docs/36`; **Option C-4** — public SOW share canon re-decision at `docs/37` (revisits `docs/28` deferral). `Send to Client` stays at operator-mediated copy-link posture across all options until a separate canon explicitly authorizes an alternative transport.
+
 ## Phase 1B Deployment Environment Decision + Setup Plan (2026-05-20)
 
 `docs/33_PHASE_1B_DEPLOYMENT_SETUP_PLAN.md` is the operator-runnable plan for standing up a deployed staging environment so the Delivery Engine verdict can promote from "✅ Staging cleared, production preconditions partially pending" to "✅ Cleared for controlled external client exposure of /r and /p links." Headline:
