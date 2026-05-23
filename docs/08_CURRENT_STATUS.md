@@ -24,6 +24,20 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Sapient Digital Engagement Readiness Plan (2026-05-22)
+
+First attempt to drive a real first-client billable pilot for Sapient Digital (lead `fee3895a-…`, engagement `76097653-…`) hit the audit stop condition: the engagement is at **Stage 1 of 6 — Setup** with no real Sprint content. Minting `/r` or `/p` against the current 0-of-12-approved report would either trip the canon-correct draft-watermark gate OR (if forced past) hand the client a thin 1-section "deliverable" inappropriate for a paid first pilot.
+
+`docs/35_SAPIENT_DIGITAL_ENGAGEMENT_READINESS_PLAN.md` is the read-only inspection + plan. Headline:
+
+- **Current state snapshot:** Stage 1 of 6 · stakeholder intake not sent (0 of 6 required roles invited) · 0 findings · 0 opportunities · 3 unlinked seed roadmap items from prior audit cycles (`REPORT-READY INPUTS 0` confirms none link to opportunities) · 12 report sections, 0 approved, 1 needs-review, 0 drafted · 4 historical PDF candidates all draft-watermarked · 10 historical share tokens of which **5 are stale-active leftovers from prior audit cycles** (data-hygiene blocker before real-client exposure — `Finding S-1` in `docs/35`) · 7 historical proposal candidates, latest is voided audit-cycle leftover · 0 SOW drafts (clean after `docs/34` cleanup).
+- **15-item quality gate defined** (`docs/35` § 5) — covers stakeholder intake invited/completed thresholds, finding count thresholds, opportunity scoring, roadmap linkage, report-section drafting + approval, fresh non-draft snapshots, fresh approved Proposal Candidate, commercial guard pass, stale-token revocation, explicit operator sign-off. **Currently 0 of 15 gates passing.**
+- **Sprint sequence recommended:** Stage 1-2 Execution → Stage 3 Findings → Stage 4 Opportunities → Stage 5 Roadmap → Stage 6A Report → Stage 6B Proposal → Pre-Delivery Audit → Delivery. Each sprint individually scoped + reviewed.
+- **Boundary held during inspection:** zero mutations, zero mint, zero send, zero mark-sent, zero schema/package changes, zero service-role SQL writes. Read-only Chrome MCP inspection only.
+- **Recommended next sprint:** Sapient Digital Stage 1-2 Execution — confirm stakeholder list, send/stage intake, collect or simulate operator-provided responses, optional AI-draft initial findings. Strictly no client links minted; no Mark sent; no SOW external sharing.
+- **Files modified:** `docs/35` (new), `docs/08` (this block), `docs/10`. Zero source code changes.
+- **Open product-side questions surfaced** (`docs/35` § 8): does intake support operator-pasted offline responses? are the 3 unlinked roadmap items audit leftovers or intentional seeds? are any of the 5 stale active tokens currently held by anyone externally?
+
 ## Phase 1B Controlled First-Client Pilot Audit (2026-05-21)
 
 `docs/34_PHASE_1B_FIRST_CLIENT_PILOT_AUDIT.md` is the canonical pilot audit. Headline: **⚠️ Pilot passed with operator-tracked items**. All 7 lanes execute canon-correctly end-to-end against the deployed Vercel staging host (`https://slate-os-staging.vercel.app`).
