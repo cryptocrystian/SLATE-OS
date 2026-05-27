@@ -24,6 +24,22 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Sapient Digital Stage 1-2 Execution Log (2026-05-23)
+
+`docs/36_SAPIENT_DIGITAL_STAGE_1_2_EXECUTION_LOG.md` is the execution log. Headline outcomes:
+
+- **Stale share-token cleanup landed:** 5 unlabeled stale tokens revoked via UI two-step Revoke flow (created May 14 + May 20 2026; all `Audience label required before marking sent`; none ever marked-sent per canon since audience-label is required). Sapient Digital report share links now `10 total · None active`. Readiness gate (`docs/35` § 5) advances from 0/15 → **1/15**.
+- **Intake path decision: Path C (planning-only) selected.** Path A requires real stakeholder identities + send authorization (out of scope per sprint's no-send boundary). Path B (operator-staged offline responses) confirmed as **product gap** — SLATE intake UI mints token-gated URLs that require operator manual hand-delivery and there is no "operator-pasted response" affordance. The intake form copy explicitly says "Email automation lands later" and "Enter the stakeholder's details, copy the generated link, and send it manually."
+- **Stakeholder list NOT staged in SLATE** (would mint per-stakeholder real-token-hash-persisted 21-day intake URLs against placeholder identities — operator did not authorize and `docs/35` boundary forbids inventing real stakeholder emails). All 6 required role slots remain `Missing`.
+- **Intake question packet authored inline in `docs/36` § 6** — 5 universal questions + 30 role-specific questions across all 6 stakeholder slots (Executive, Operations, Sales, Marketing, Delivery/CS, Technical). Operator-distributable for offline collection or in-meeting use.
+- **Roadmap seed items preserved** — 3 AI-generated pre-engagement-setup planning items (e.g., "Confirm Stakeholder List · Quick Win") preserved per sprint spec ("ambiguous → preserve and document operator decision required"). Operator decides at Stage 5 sprint whether to clear-and-replace or keep as operator runbook items.
+- **Findings scaffold deferred** — would have produced only scorecard-derived findings (no intake responses available), honored sprint's no-fabrication boundary.
+- **5 open product-side observations surfaced** (`docs/36` § 9): no operator-staged-response intake path; no bulk stakeholder import; no draft-stakeholder save-without-send mode; no bulk stale-token cleanup affordance; `Generate AI roadmap draft` clickable before opportunities exist (produces meta-planning items mistakable for client scope).
+- **Zero source code changes; zero `/r` or `/p` minted; zero Mark sent; zero SLATE-sent email/CRM/e-sign; zero public SOW; zero SOW share tokens; zero schema/package changes; zero service-role SQL writes; only Sapient Digital engagement touched.**
+- **Files modified:** `docs/36` (new), `docs/35` (readiness gate progress updated), `docs/08`, `docs/10`.
+
+Recommended next sprint (operator decides which branch): **A** Sapient Digital Stage 2 Live Intake Sprint (if operator supplies real stakeholder identities + authorizes send); **B** Intake Workflow Product Gap Sprint (if operator has offline responses + wants Path B canon/implementation); **C** Pause Sapient Digital pilot, strategy session offline; **D** Switch to a different real client engagement with more substantive content. Until operator picks a branch, Sapient Digital sits at "Stage 1 setup partially cleaned, 1/15 readiness gates passing."
+
 ## Sapient Digital Engagement Readiness Plan (2026-05-22)
 
 First attempt to drive a real first-client billable pilot for Sapient Digital (lead `fee3895a-…`, engagement `76097653-…`) hit the audit stop condition: the engagement is at **Stage 1 of 6 — Setup** with no real Sprint content. Minting `/r` or `/p` against the current 0-of-12-approved report would either trip the canon-correct draft-watermark gate OR (if forced past) hand the client a thin 1-section "deliverable" inappropriate for a paid first pilot.

@@ -205,11 +205,11 @@ Per canon plus first-pilot operator judgement, the engagement must satisfy ALL o
 | Report PDF candidate — fresh, non-draft | exists; `Share disabled` text absent on the target snapshot | none | ❌ |
 | Proposal Candidate — fresh + approved | exists; one of the 3 SOW options edited to reflect real Sapient scope | none | ❌ |
 | Commercial guard — proposal | `passed` on the target snapshot | n/a (no current snapshot) | ❌ |
-| Stale share tokens — revoked | active count = 0 before mint | 5 active stale | ❌ |
+| Stale share tokens — revoked | active count = 0 before mint | ~~5 active stale~~ → **0 active** after 2026-05-23 Stage 1-2 sprint cleanup | ✅ (2026-05-23) |
 | Operator sign-off | explicit confirmation in chat that the report + proposal are client-quality | not requested yet | ❌ |
 | Audience label discipline | every minted token carries `FIRST CLIENT PILOT 2026-05-22 SAPIENT DIGITAL` (or revised date) | n/a | n/a |
 
-**Net:** 0 / 15 gate items currently passing. Engagement is NOT cleared for client-facing share-link mint.
+**Net:** ~~0~~ → **1 / 15** gate items currently passing (stale-token cleanup landed during the 2026-05-23 Stage 1-2 sprint — see `docs/36`). Engagement is NOT cleared for client-facing share-link mint.
 
 ---
 
