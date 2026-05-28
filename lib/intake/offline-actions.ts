@@ -872,7 +872,7 @@ export type {
   VoidOfflineResponseResult,
 };
 
-// Helper re-export so the document mapper is available to query
-// modules that consume documents alongside other intake entities.
-export { mapEngagementIntakeDocumentRow } from "./mappers";
-export type { DbEngagementIntakeDocumentRow } from "./mappers";
+// NOTE: The mapEngagementIntakeDocumentRow helper and the
+// DbEngagementIntakeDocumentRow type live in ./mappers — query modules
+// should import them directly from there. "use server" files can only
+// export async functions, so we cannot re-export helpers from this file.

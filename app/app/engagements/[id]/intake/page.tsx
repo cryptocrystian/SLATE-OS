@@ -14,17 +14,30 @@ import { FollowUpQueue } from "@/components/intake/follow-up-queue";
 import { CreateStakeholderForm } from "@/components/intake/create-stakeholder-form";
 import { OperatorUploadForm } from "@/components/intake/operator-upload-form";
 import { PersistedSupportingInputs } from "@/components/intake/persisted-supporting-inputs";
+import { StageOfflineStakeholderForm } from "@/components/intake/stage-offline-stakeholder-form";
+import { OfflineIntakePanel } from "@/components/intake/offline-intake-panel";
+import { OfflineIntakeReadinessHint } from "@/components/intake/offline-intake-readiness-hint";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { EngagementRisksPanel } from "@/components/engagements/engagement-risks-panel";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getIntakeForEngagement } from "@/lib/intake/mock-intake";
 import { getIntakeRecordForEngagement } from "@/lib/intake/queries";
+import {
+  getEngagementIntakeDocuments,
+  getOfflineIntakeReadinessSummary,
+  getOfflineSessionsForEngagement,
+  type OfflineIntakeReadinessSummary,
+  type OfflineStakeholderSession,
+} from "@/lib/intake/offline-queries";
 import { getOperatorAssetsForEngagement } from "@/lib/assets/server";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { IntakeRecord } from "@/lib/intake/types";
+import type {
+  EngagementIntakeDocument,
+  IntakeRecord,
+} from "@/lib/intake/types";
 import type { OperatorAsset } from "@/lib/assets/types";
 
 export const dynamic = "force-dynamic";
@@ -58,9 +71,19 @@ export default async function EngagementIntakePage({
   let trustWarning: string | undefined;
   let isPersisted = false;
   let persistedAssets: OperatorAsset[] = [];
+  let offlineSessions: OfflineStakeholderSession[] = [];
+  let offlineDocuments: EngagementIntakeDocument[] = [];
+  let offlineReadiness: OfflineIntakeReadinessSummary | null = null;
 
   if (loaded.kind === "real") {
-    [intake, trustWarning, persistedAssets] = await Promise.all([
+    [
+      intake,
+      trustWarning,
+      persistedAssets,
+      offlineSessions,
+      offlineDocuments,
+      offlineReadiness,
+    ] = await Promise.all([
       getIntakeRecordForEngagement(engagement.id).then(
         (record) =>
           record ?? {
@@ -74,6 +97,9 @@ export default async function EngagementIntakePage({
       ),
       loadTrustWarning(engagement.linkedLeadId),
       getOperatorAssetsForEngagement(engagement.id),
+      getOfflineSessionsForEngagement(engagement.id),
+      getEngagementIntakeDocuments(engagement.id),
+      getOfflineIntakeReadinessSummary(engagement.id),
     ]);
     isPersisted = true;
   } else {
@@ -224,6 +250,19 @@ export default async function EngagementIntakePage({
             />
           ) : null}
 
+          {isPersisted ? (
+            <section
+              aria-label="Offline intake"
+              className="flex flex-col gap-4"
+            >
+              <StageOfflineStakeholderForm engagementId={engagement.id} />
+              <OfflineIntakePanel
+                sessions={offlineSessions}
+                documents={offlineDocuments}
+              />
+            </section>
+          ) : null}
+
           {intake.roleCoverage.length > 0 ? (
             <RoleCoverageMap rows={intake.roleCoverage} />
           ) : null}
@@ -289,6 +328,9 @@ export default async function EngagementIntakePage({
             );
           })()}
           <EngagementContextCard engagement={engagement} />
+          {isPersisted && offlineReadiness ? (
+            <OfflineIntakeReadinessHint summary={offlineReadiness} />
+          ) : null}
           <EngagementRisksPanel
             risks={intake.intakeRiskNotes}
             dependencies={engagement.dependencies}
@@ -302,7 +344,8 @@ export default async function EngagementIntakePage({
                 Stakeholder responses and documents are evidence inputs to
                 synthesis. AI-drafted findings appear in the findings workspace
                 and require consultant approval before they become
-                report-ready.
+                report-ready. Offline-staged rows stay operator-only until you
+                explicitly clear them through the readiness gate.
               </p>
             </CardBody>
           </Card>
