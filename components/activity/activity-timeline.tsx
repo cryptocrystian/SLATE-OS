@@ -75,6 +75,16 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   report_share_token_send_failed: "risk",
   proposal_share_token_sent_to_client: "brand",
   proposal_share_token_send_failed: "risk",
+  // Sprint I2 — Offline intake (docs/37 Mode B + Mode C). Neutral
+  // tone for staging / drafting actions; success when a response is
+  // promoted ready-for-synthesis; neutral when voided so the audit
+  // trail stays calm. Documents follow the same scheme.
+  offline_intake_session_created: "info",
+  offline_intake_response_created: "info",
+  offline_intake_response_ready: "success",
+  offline_intake_response_voided: "neutral",
+  intake_document_created: "info",
+  intake_document_voided: "neutral",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -137,6 +147,17 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   report_share_token_send_failed: "Report link send mark failed",
   proposal_share_token_sent_to_client: "Proposal link marked sent",
   proposal_share_token_send_failed: "Proposal link send mark failed",
+  // Sprint I2 — Offline intake (docs/37 Mode B + Mode C). Labels use
+  // "staged" / "drafted" / "ready" / "voided" to make the operator-
+  // mediated nature explicit and to avoid implying SLATE collected the
+  // content itself. SLATE never sends; the operator collected the
+  // content outside SLATE and staged it here.
+  offline_intake_session_created: "Offline stakeholder staged",
+  offline_intake_response_created: "Offline response drafted",
+  offline_intake_response_ready: "Response ready for synthesis",
+  offline_intake_response_voided: "Offline response voided",
+  intake_document_created: "Intake document attached",
+  intake_document_voided: "Intake document voided",
 };
 
 export function ActivityTimeline({

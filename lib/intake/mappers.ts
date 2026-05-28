@@ -1,5 +1,8 @@
 import type {
+  EngagementIntakeDocument,
+  IntakeDocumentSourceType,
   IntakeRecord,
+  IntakeSourceConfidence,
   ResponseQuality,
   RoleCoverageRow,
   StakeholderRole,
@@ -439,4 +442,88 @@ const UUID_RE =
 
 export function isUuid(s: string): boolean {
   return UUID_RE.test(s);
+}
+
+// ---------------------------------------------------------------------------
+// Sprint I2 — Offline intake document mapping
+// ---------------------------------------------------------------------------
+
+export interface DbEngagementIntakeDocumentRow {
+  id: string;
+  workspace_id: string;
+  engagement_id: string;
+  stakeholder_id: string | null;
+  title: string;
+  source_type: string;
+  content_text: string | null;
+  external_url: string | null;
+  storage_path: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  source_confidence: string | null;
+  operator_notes: string | null;
+  client_visible: boolean;
+  created_by: string | null;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+const INTAKE_DOCUMENT_SOURCE_TYPES: IntakeDocumentSourceType[] = [
+  "document_upload",
+  "meeting_notes",
+  "transcript",
+  "email_paste",
+  "external_link",
+];
+
+const INTAKE_SOURCE_CONFIDENCE_VALUES: IntakeSourceConfidence[] = [
+  "first_hand",
+  "second_hand",
+  "inferred",
+];
+
+function fitDocumentSourceType(value: string | null): IntakeDocumentSourceType {
+  if (!value) return "document_upload";
+  return (INTAKE_DOCUMENT_SOURCE_TYPES as string[]).includes(value)
+    ? (value as IntakeDocumentSourceType)
+    : "document_upload";
+}
+
+function fitSourceConfidence(
+  value: string | null,
+): IntakeSourceConfidence | null {
+  if (!value) return null;
+  return (INTAKE_SOURCE_CONFIDENCE_VALUES as string[]).includes(value)
+    ? (value as IntakeSourceConfidence)
+    : null;
+}
+
+export function mapEngagementIntakeDocumentRow(
+  row: DbEngagementIntakeDocumentRow,
+): EngagementIntakeDocument {
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    engagementId: row.engagement_id,
+    stakeholderId: row.stakeholder_id,
+    title: row.title,
+    sourceType: fitDocumentSourceType(row.source_type),
+    contentText: row.content_text,
+    externalUrl: row.external_url,
+    storagePath: row.storage_path,
+    mimeType: row.mime_type,
+    sizeBytes: row.size_bytes,
+    sourceConfidence: fitSourceConfidence(row.source_confidence),
+    operatorNotes: row.operator_notes,
+    clientVisible: row.client_visible,
+    createdBy: row.created_by,
+    voidedAt: row.voided_at,
+    voidedBy: row.voided_by,
+    voidReason: row.void_reason,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }

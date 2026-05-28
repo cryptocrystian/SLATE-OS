@@ -185,13 +185,20 @@ This gate prevents Stage 3 from running on Mode-C document-only thin data unless
 
 ## 7. Implementation sequence (Sprints I2-I6)
 
-### Sprint I1 — Offline Intake Canon (THIS SPRINT)
+### Sprint I1 — Offline Intake Canon (LANDED 2026-05-23)
 
 - **Scope:** Author `docs/37` (this file). Update `docs/35` + `docs/36` + `docs/08` + `docs/10` to reference it.
 - **Non-goals:** No source code, no migration, no engagement mutation, no Sapient interaction.
-- **Acceptance:** `docs/37` lands; canon is operator-reviewable; next sprint (I2) is clearly scoped.
+- **Acceptance:** `docs/37` lands; canon is operator-reviewable; next sprint (I2) is clearly scoped. ✅ Landed in commit `8dc9005`.
 
-### Sprint I2 — Data Model + Server Actions
+### Sprint I2 — Data Model + Server Actions (LANDED 2026-05-28)
+
+- **Scope as implemented:** Migration `supabase/migrations/0017_offline_intake_extensions.sql` adds the field changes specified in § 3.1, § 3.2, and the new `engagement_intake_documents` table per § 3.3. Type extensions in `lib/intake/types.ts` add `IntakeSourceType`, `IntakeDocumentSourceType`, `IntakeSourceConfidence`, `IntakeResponseStatus`, `EngagementIntakeDocument`, and the `Create*Input` / `*Result` shapes for every action. Mapper extensions in `lib/intake/mappers.ts` add `DbEngagementIntakeDocumentRow` + `mapEngagementIntakeDocumentRow`. New action module `lib/intake/offline-actions.ts` implements 6 guarded server actions (`createOfflineStakeholderIntakeSessionAction`, `createOfflineStakeholderResponseAction`, `markStakeholderResponseReadyForSynthesisAction`, `voidStakeholderResponseAction`, `createEngagementIntakeDocumentAction`, `voidEngagementIntakeDocumentAction`). Activity event types in `lib/activity/types.ts` extended with 6 new event types + 1 new entity type (`engagement_intake_document`). Activity timeline labels + tones in `components/activity/activity-timeline.tsx` extended for the 6 new event types.
+- **What didn't ship in I2 (deferred to I3-I6):** No UI surfaces (Sprint I3 wires them). No public route changes. No findings synthesis logic changes (Sprint I5). No document storage backend hookup beyond the `storage_path` field (Sprint I4). No actual Sapient Digital data captured (Sprint I6).
+- **Boundary preserved:** Live-link Mode A behavior is byte-identical (existing `createStakeholderSession` in `lib/intake/actions.ts` untouched; migration backfills all pre-existing rows to `source_type='live_link'` + `client_visible=true` + `response_status='ready_for_synthesis'`; CHECK constraint replaces the prior `token_hash NOT NULL` invariant without weakening it for live mode). Offline modes default `client_visible=false`. Server actions enforce per-action guardrails: cookie-bound auth, workspace-scoped queries, response status transition matrix, soft-delete for void (no hard delete). Activity event metadata carries only safe fields (role, source_type, question_id, response_status, document title / source_type) — never `answer_text`, never `content_text`, never raw email, never PII.
+- **Verification:** `npm run lint` clean ✅; `NEXT_TELEMETRY_DISABLED=1 npm run build` clean ✅; 29 routes unchanged byte-identical to prior baseline; package.json unchanged (no new dependencies); no UI files added; no public routes added; no service-role SQL writes anywhere in the new module (cookie-bound `createSupabaseServerClient` only); zero `mailto:` / `sendgrid` / `nodemailer` / `docusign` / `hellosign` / `adobesign` / `crm_push` / `app/s/[` / `app/sow/[` / `service_role` / `group_b_block_advance` references introduced.
+
+### Sprint I3 — Operator UI for Draft Stakeholders + Offline Responses
 
 - **Scope:** New migration `supabase/migrations/0017_offline_intake_extensions.sql` adding the field changes in § 3.1, § 3.2, and the new `engagement_intake_documents` table in § 3.3. New server actions in `lib/intake/actions.ts` (or sibling `lib/intake/offline-actions.ts`): `createOfflineStakeholder(...)`, `addOfflineResponse(...)`, `markResponseReadyForSynthesis(...)`, `voidResponse(...)`, `supersedeResponse(...)`, `uploadIntakeDocument(...)`. Type extensions in `lib/intake/types.ts`. Query extensions in `lib/intake/queries.ts` (no anon access; same RLS posture as existing intake; documents follow the established intake RLS pattern). Domain mapper updates. Activity event types (`stakeholder_offline_staged`, `intake_response_drafted`, `intake_response_marked_ready`, `intake_response_voided`, `intake_document_uploaded`).
 - **Non-goals:** No UI in this sprint. No public route changes (canon: offline mode is operator-only, never client-facing). No client-visible artifact changes. No findings-synthesis logic changes (that's Sprint I5).

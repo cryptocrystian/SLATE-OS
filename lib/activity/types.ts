@@ -53,7 +53,19 @@ export type ActivityEventType =
   | "report_share_token_sent_to_client"
   | "report_share_token_send_failed"
   | "proposal_share_token_sent_to_client"
-  | "proposal_share_token_send_failed";
+  | "proposal_share_token_send_failed"
+  // Sprint I2 — Offline intake (docs/37 Mode B + Mode C). These events
+  // track operator-staged offline stakeholder sessions, the draft +
+  // ready-for-synthesis lifecycle of their per-question responses, and
+  // attached offline source documents. None of these events imply
+  // external delivery — SLATE never sends; the operator collected the
+  // content outside SLATE.
+  | "offline_intake_session_created"
+  | "offline_intake_response_created"
+  | "offline_intake_response_ready"
+  | "offline_intake_response_voided"
+  | "intake_document_created"
+  | "intake_document_voided";
 
 export type ActivityEntityType =
   | "lead"
@@ -74,7 +86,9 @@ export type ActivityEntityType =
   | "report_delivery_snapshot"
   | "report_share_token"
   | "proposal_delivery_snapshot"
-  | "proposal_share_token";
+  | "proposal_share_token"
+  // Sprint I2 — Offline intake document entity (docs/37 § 3.3).
+  | "engagement_intake_document";
 
 export interface ActivityEvent {
   id: string;
