@@ -217,9 +217,11 @@ Per canon plus first-pilot operator judgement, the engagement must satisfy ALL o
 
 Smallest unit of work that meaningfully advances the engagement without skipping the canonical workflow. Stage 1-2 only — stops before any client-facing artifact is touched.
 
+**Update 2026-05-23:** Path B (offline-staged responses) was canonized in `docs/37_SAPIENT_DIGITAL_OFFLINE_INTAKE_CANON.md` (Sprint I1). Implementation lands in Sprints I2 (data model + actions) → I3 (UI) → I4 (documents) → I5 (synthesis integration) → I6 (Sapient Stage 2 execution). Until Sprint I3 lands, the operator may use the `docs/36` § 6 question packet externally as a bridge — collected responses can be backfilled into SLATE once the offline ingest UI exists.
+
 **In scope:**
 
-1. **Operator inputs collected** — full stakeholder list (6 roles: identity + email + title + slot match), any supporting documents, decision on Path A (SLATE-managed intake) vs Path B (offline-staged responses)
+1. **Operator inputs collected** — full stakeholder list (6 roles: identity + email + title + slot match), any supporting documents, decision on Path A (SLATE-managed intake) vs Path B (offline-staged responses, now canonized in `docs/37`)
 2. **Stakeholder list confirmed in SLATE** — Claude navigates `/app/engagements/.../intake`, types per-stakeholder fields from operator-supplied list
 3. **Intake invites sent OR responses staged** — depending on operator's Path A vs Path B choice (and the product-side answer about whether Path B is UI-supported)
 4. **Documents uploaded** — operator provides files; Claude uploads through the operator-only documents surface (`/intake` → Manage Documents)

@@ -24,6 +24,23 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Sapient Digital Offline Intake Canon (2026-05-23 — Sprint I1)
+
+`docs/37_SAPIENT_DIGITAL_OFFLINE_INTAKE_CANON.md` is the canonical authorization for an operator-staged offline intake workflow. Closes the product gap identified in `docs/36` § 9 Observation 1. Headline:
+
+- **3 intake modes defined:** Mode A (Live stakeholder intake — existing, unchanged), Mode B (Operator-staged offline responses — new path), Mode C (Document-only intake — subset of B).
+- **Data model extensions specified** (Sprint I2 implements via migration `0017_offline_intake_extensions.sql`): `stakeholder_intake_sessions` gets `source_type` + nullable `token_hash` (CHECK-constrained) + `entered_by` + `collected_at` + `source_confidence` + `operator_notes` + `client_visible` (default false for offline); `stakeholder_responses` gets matching `source_type` + `response_status` (`draft`/`ready_for_synthesis`/`superseded`/`voided`) + `entered_by` + `collected_at` + `operator_notes` + `supersedes_response_id`; new entity `engagement_intake_documents` for offline source attachments (workspace-scoped, RLS authenticated-only, never client-visible).
+- **UI requirements specified** (Sprint I3): "Stage offline stakeholder" form (no email required, no token minted, "Save without sending" + "No message sent" affirmation chips), `Source` chip on every stakeholder + response card, per-response Mark ready / Void / Supersede actions, PII-warning toast on text paste, intake completeness updated to count live + offline responses uniformly.
+- **Findings synthesis readiness gate** (Sprint I5): standard gate (≥2 role perspectives + ≥4 of 6 question topics + no PII warnings + operator sign-off) OR explicit operator override with audit-logged reason text.
+- **Sapient Digital 5-step path** (`docs/37` § 6): pre-implementation (operator distributes `docs/36` § 6 question packet externally today, no SLATE-side work needed) → Sprint I2 lands ingest backend → Sprint I3 lands UI → operator stages offline responses → Stage 3 findings synthesis unblocks. Until then, Sapient Stage 3 stays blocked.
+- **6 future sprints scoped** (`docs/37` § 7): I2 Data Model + Server Actions; I3 Operator UI; I4 Document Attachment; I5 Findings Synthesis Integration; I6 Sapient Digital Stage 2 Execution Using Offline Intake.
+- **8 safety boundaries explicitly preserved** (`docs/37` § 8): no external send by default; no SLATE email/CRM/e-sign/mailto; no `/r` or `/p` mint during any I2-I6 sprint; no public SOW route or share tokens; no service-role SQL writes outside operator action layer; no Group-B claims; no client-visible artifact from unapproved offline notes; no auto-override of synthesis readiness gate.
+- **7 open decisions surfaced** (`docs/37` § 10) — question taxonomy enforcement, document storage backend, PII-warning threshold, stakeholder-name optionality for offline mode, `docs/36` § 6 question packet ID assignment, bridge-state handling between Sprint I2 and Sprint I3, Sapient-first-pilot framing.
+- **Zero source code changes; zero engagement mutations; zero Sapient Digital interaction; zero `/r` or `/p` minting; zero send; zero schema/package changes during this canon sprint.** Read-only inspection of `lib/intake/types.ts`, `lib/intake/actions.ts`, `supabase/migrations/0005_stakeholder_intake.sql` for canon grounding only.
+- **Files modified:** `docs/37` (new), `docs/36` (Path B canonized reference), `docs/35` (readiness plan updated), `docs/08` (this block), `docs/10`.
+
+Recommended next sprint: **Sprint I2 — Offline Intake Data Model + Server Actions** (per `docs/37` § 7). Operator may alternatively choose to collect Sapient Digital offline responses today using the `docs/36` § 6 question packet externally (no SLATE changes needed) and defer Sprint I2 until ready to bring the data into SLATE.
+
 ## Sapient Digital Stage 1-2 Execution Log (2026-05-23)
 
 `docs/36_SAPIENT_DIGITAL_STAGE_1_2_EXECUTION_LOG.md` is the execution log. Headline outcomes:
