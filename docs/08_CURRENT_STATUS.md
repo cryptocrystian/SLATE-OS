@@ -24,6 +24,24 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Consulting Module Completion Roadmap Lock (2026-06-02)
+
+Locks the remaining sprint sequence for completing the Consulting module so reactive side sprints stop competing with the critical path. Full controlling document: `docs/39_CONSULTING_MODULE_COMPLETION_ROADMAP.md`. Headline:
+
+- **Canonical data hierarchy declared** (§ 4 of `docs/39`): **primary** = online stakeholder intake forms (`/intake/[token]` live-link Mode A); **secondary** = meeting transcripts / AI notetaker imports (currently absent — Sprint S2 lane); **secondary** = CRM read context (currently absent — Sprint S3 lane); **tertiary** = offline / manual operator entry (Sprint I3 path; now classified as support, not preferred). AI synthesis weighting rules codified — `live_link` and `first_hand` transcript are full-weight; `second_hand` transcript and `first_hand` operator-entered are moderate; `inferred` is "needs validation"; `draft` and `voided` are discarded; CRM is engagement-level only, not stakeholder-level.
+- **13-sprint critical path frozen** (Sprints S1–S13): S1 Online Intake Flow Audit + Readiness · S2 Transcript / Notetaker Intake · S3 CRM Read Context · S4 AI Findings Synthesis Integration (formerly Sprint I5) · S5 Findings Approval Polish · S6 Opportunities AI Drafting · S7 Roadmap AI Drafting · S8 Report Section AI Drafting · S9 Proposal AI Drafting · S10 Internal SOW Draft validation · S11 Pre-Delivery Audit Code Enforcement · S12 Sapient Digital controlled `/r` + `/p` mint · S13 Sapient Digital Mark Sent + closure.
+- **7-sprint MVP consolidation queued** (Sprints S14–S20): second real engagement → time-to-deliverable optimization → multi-engagement triage UX → email send → CRM writeback → findings quality feedback loop → roadmap status tracking post-delivery.
+- **Deferred expansion lanes** (canon-only, NOT scheduled): SLATE-mediated email send · CRM writeback · e-signature · public SOW share route · SOW template library. Pre-conditions for scheduling each lane explicitly stated in `docs/39` § 7.
+- **No-side-sprint governance rule** (§ 9): no reactive side sprints; no scope creep within a sprint; no revisiting completed capabilities; no pulling deferred expansion lanes forward; no working in a vacuum; no premature optimization; no new third-party dependencies without explicit canon authorization.
+- **Architect decision rule** (§ 11): discoveries during sprint execution route as blocker → current sprint, critical-path dependency → scheduled future sprint, improvement → backlog, expansion → canon only. The operator (Architect) is the only authority that can reclassify; Claude proposes, operator decides.
+- **Claude role bounded** (§ 10): implementer + verifier + surfacer of blockers + documenter + canon pinner. Claude does NOT re-architect the sprint sequence, self-schedule expansion-lane work, mint `/r` or `/p` for real clients before S11+S12, mutate real engagements outside authorized scope, or add third-party dependencies without authorization.
+- **Sprint I3 live-walkthrough findings reclassified.** The "live-link role-coverage map + risk-derivation rules don't branch on source_type" cosmetic finding from `docs/38` § 4.6 is classified as **Improvement** per § 11 — backlog, NOT a side sprint. Sprint I4 (binary document upload behind `engagement_intake_documents.storage_path`) is **rolled into Sprint S2** because transcript ingest is the actual use case for that storage field; standalone Sprint I4 is no longer scheduled.
+- **Files modified:** `docs/39` (new), `docs/08` (this block), `docs/10`. **Zero source code changes. Zero migration runs. Zero engagement mutations. Zero `/r` or `/p` mint. Zero send. Zero schema/package changes. Zero Sapient Digital interaction.**
+
+Recommended next sprint: **Sprint S1 — Online Intake Flow Audit + Stakeholder Intake Readiness** per `docs/39` § 12. The canonical primary input lane (live-link `/intake/[token]`) must be audited end-to-end against a controlled test fixture (NOT Sapient Digital) before any AI synthesis sprint consumes responses. Readiness gate wording finalized + code-side enforcement hook stubbed (full enforcement lands in S11).
+
+---
+
 ## Offline Intake Live Walkthrough on Sapient Digital (2026-06-02 — Sprint I3 Live Walkthrough)
 
 Promotes Sprint I3 from build-clean source-only landing to operationally ready against deployed staging. Full evidence: `docs/38_SAPIENT_DIGITAL_I3_LIVE_WALKTHROUGH.md`. Headline:
