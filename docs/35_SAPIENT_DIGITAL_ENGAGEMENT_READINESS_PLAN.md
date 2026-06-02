@@ -188,6 +188,8 @@ Given operator-provided inputs above, these are the UI actions Claude can drive 
 
 ## 5. Minimum content quality gate — must pass BEFORE `/r` or `/p` may be minted for Sapient Digital
 
+**Sprint S1 alignment note (2026-06-02):** The intake portion of this gate (rows 1-2 below) has been formally aligned with the canonical input hierarchy in `docs/39` § 4 — primary online intake, secondary transcripts + CRM, tertiary offline operator entry. The aligned wording lives in `docs/40` § 6. The thresholds below are unchanged; the change is that "completed" now means "at least one `response_status='ready_for_synthesis'` row across any lane (live-link, transcript, or offline)". Per-lane signal weighting at synthesis time (Sprint S4) follows `docs/39` § 4.5; the GATE itself looks at cumulative coverage only. Code-side enforcement of the gate lands in **Sprint S11** per the locked roadmap; until then this remains operator discipline. A non-enforcing pure-function helper at `lib/engagement-readiness/intake-readiness.ts` (landed in Sprint S1) is the contract S11 will wire.
+
 Per canon plus first-pilot operator judgement, the engagement must satisfy ALL of the following before any client-facing share link is minted:
 
 | Gate item | Minimum threshold | Current state for Sapient Digital | Pass? |
