@@ -382,9 +382,9 @@ The following are explicitly NOT in scope for S3-A or S3-B. They are listed so t
 
 The five open decisions identified during this canon authoring are RESOLVED below by the operator on 2026-06-02. Sprint S3-B may proceed using the answers in this section as canonical inputs. Each subsection includes the original question, the operator's resolution, and any constraint the resolution places on S3-B implementation.
 
-### 16.1 Attio workspace name — **`Saipien Labs HQ`**
+### 16.1 Attio workspace name — **`Saipien Labs`** (slug `saipien-labs`)
 
-The canonical Attio workspace for Saipien's CRM context is named **`Saipien Labs HQ`**. S3-B configuration documents and any operator-visible labels reference this name. Sub-brand engagements live in this workspace via the Brand property (§ 8), not in separate workspaces.
+**Operator correction during S3-B kickoff (2026-06-02):** the canonical Attio workspace name is **`Saipien Labs`** with slug `saipien-labs`. The earlier "Saipien Labs HQ" working name was renamed before the S3-B token was provisioned. S3-B's mapper module hard-codes the slug into the Attio permalink builder (`https://app.attio.com/saipien-labs/...`); changing the slug later requires a one-line mapper edit. Sub-brand engagements live in this single workspace via the Brand property (§ 8), not in separate workspaces.
 
 ### 16.2 Final Brand property values — **locked per § 8.1**
 
@@ -406,9 +406,11 @@ The Attio properties listed in § 10 (Brand, SLATE Account ID, SLATE Engagement 
 
 S3-B implementation still handles missing properties gracefully — any property absent at fetch time renders as `null` in `CrmContext` and the corresponding UI surface either omits the field or shows an "—" placeholder, without erroring. This makes S3-B robust to future Attio-side property additions or removals.
 
-### 16.4 API auth posture — **server-only `ATTIO_API_KEY` env var**
+### 16.4 API auth posture — **server-only `ATTIO_ACCESS_TOKEN` env var**
 
-Sprint S3-B uses an **Attio API key stored as a server-only environment variable** (`ATTIO_API_KEY`). The variable is set in Vercel Production + local `.env.local`; never bundled into client code; never echoed in logs; never written to any commit. The `lib/crm/attio/client.ts` module reads the env var server-side only.
+**Operator correction during S3-B kickoff (2026-06-02):** the env var name is `ATTIO_ACCESS_TOKEN`, not `ATTIO_API_KEY`. Attio's own terminology is "Access Token"; the SLATE side honors that to keep operator setup self-consistent. The auth posture is otherwise identical to what § 16.4 originally specified.
+
+Sprint S3-B uses an **Attio Access Token stored as a server-only environment variable** (`ATTIO_ACCESS_TOKEN`). The variable is set in Vercel Production + local `.env.local`; never bundled into client code; never echoed in logs; never written to any commit. The `lib/crm/attio/client.ts` module reads the env var server-side only.
 
 OAuth is rejected for this sprint because the connector is internal-only against a single Saipien workspace and does not act on behalf of multiple Attio users. If a future multi-tenant or per-operator use case emerges (extremely unlikely for an internal OS), an OAuth lane can be added without changing the `CrmContext` shape.
 
@@ -471,3 +473,101 @@ After S3-B: **Sprint S4 — AI Findings Synthesis Integration** per `docs/39` §
 - `docs/10_SESSION_HANDOFF.md` (Latest line replaced with S3-A outcome + next-planned pointer to S3-B)
 
 **Zero source code changes. Zero migration runs. Zero engagement mutations. Zero `/r` or `/p` mint. Zero send. Zero schema or package changes. Zero Attio connection. Zero Sapient Digital interaction.**
+
+---
+
+## Sprint S3-B landing note (2026-06-02)
+
+Implementation of the read-only Attio connector per § 12 landed on the same day as this canon. Summary:
+
+### Code shipped
+
+| Module / file | Role |
+|---|---|
+| `supabase/migrations/0018_accounts_attio_company_id.sql` | Additive `accounts.attio_company_id text null` + partial index. Idempotent. No CHECK, no RLS change. |
+| `lib/crm/types.ts` | Provider-neutral `CrmContext`, `CrmAccountContext`, `CrmContactContext`, `CrmDealContext`, `CrmActivityContext`, `CrmContextWarning`, `CrmContextSourceStatus`, server-action input/result shapes. UI imports this only. |
+| `lib/crm/queries.ts` | Server-only `getCrmContextForEngagement(engagementId)` returning `CrmContextSourceStatus | null` (`linked` / `not-linked` / `fetch-failed` / `not-configured`). Workspace-scoped Supabase read precedes the Attio fetch so an unauthorized caller can never trigger an outbound Attio request for a foreign account. |
+| `lib/crm/actions.ts` | `"use server"` `linkAccountToAttioCompanyAction`. Cookie-bound auth + workspace-scoped write to `accounts.attio_company_id` only. NEVER writes to Attio. Activity event metadata is `{accountId, attioCompanyId}` only — no Attio payload, no auth material. |
+| `lib/crm/attio/client.ts` | Server-only Attio HTTP client. Reads `ATTIO_ACCESS_TOKEN` server-side. `AttioNotConfiguredError` + `AttioApiError` with sanitized messages (token never logged, never returned). `attioGet` + `attioPostQuery` exposed; the POST helper is guarded to only route to documented `/records/query` + `/notes/query` endpoints. **No PUT / PATCH / DELETE helpers.** |
+| `lib/crm/attio/types.ts` | Attio API response types (confined to connector boundary; marked `server-only`). |
+| `lib/crm/attio/companies.ts` | `fetchAttioCompanyById(id)` — single-record fetch; returns null on 404. |
+| `lib/crm/attio/people.ts` | `fetchAttioPeopleByCompanyId(id)` — bounded list (≤10) via `/records/query`. Soft-fails on attribute-slug mismatch. |
+| `lib/crm/attio/deals.ts` | `fetchAttioDealsByCompanyId(id)` — bounded list (≤5) via `/records/query`. Soft-fails when Deals object isn't enabled. |
+| `lib/crm/attio/mappers.ts` | `mapAttioContextToCrmContext` — translates Attio shape to provider-neutral shape. All custom-property reads emit `CrmContextWarning` entries when absent so the UI renders gracefully. |
+| `components/engagements/engagement-attio-context-card.tsx` | Read-only Attio context surface on the engagement page. Renders four states: silent when not-configured, link-form when not-linked, broken-link warning when fetch-failed, full context (brand chip, owner, last touch, deals, contacts, missing-attribute warnings) when linked. |
+| `components/engagements/link-attio-company-form.tsx` | Minimal client form for operator to paste an Attio Company `record_id`. Calls `linkAccountToAttioCompanyAction`. Boundary copy verbatim: "Read-only. SLATE will not write to Attio." |
+| `app/app/engagements/[id]/page.tsx` | Mounts the new card in the sidebar after `EngagementContextCard` (persisted engagements only). |
+| `lib/activity/types.ts` + `components/activity/activity-timeline.tsx` | New `account_linked_to_attio` event type + new `account` entity type + "info" tone + "Account linked to Attio" label. |
+
+### Attio API connectivity audit (recorded for future reference)
+
+- `GET /v2/self` → HTTP 200. `workspace_name: "Saipien Labs"`, `workspace_slug: "saipien-labs"`, `workspace_id: a48799e0-5a0b-46d5-a425-1bbcf202dcc1`, `token_type: Bearer`.
+- `GET /v2/objects/companies` → HTTP 200. `api_slug: companies`, `object_id: dcd7c861-4354-45f9-9f63-a95ea60498db`.
+- `GET /v2/objects/people` → HTTP 200.
+- `GET /v2/objects/deals` → HTTP 200. Deals object IS enabled in this workspace.
+- `GET /v2/objects/companies/attributes` → HTTP 200, 32 standard attributes.
+
+### Property audit vs § 10 required list
+
+| Required property | api_slug expected | Present in Saipien Labs workspace at S3-B kickoff? |
+|---|---|---|
+| Brand / Business Unit | `brand` | ❌ Missing — operator-side `Single-select` to create |
+| SLATE Account ID | `slate_account_id` | ❌ Missing — operator-side `Text` |
+| SLATE Engagement ID | `slate_engagement_id` | ❌ Missing — operator-side `Text` |
+| Lead Source | `lead_source` | ❌ Missing — operator-side `Single-select` |
+| Pipeline Stage | `stage` (on Deal object) | ❌ Missing — operator-side `Single-select` on Deal |
+| Deal Value | `value` (on Deal object) | ❌ Missing — operator-side `Currency` on Deal |
+| Last Touch | `last_interaction` (standard) | ✅ Present |
+| Relationship Owner | `relationship_owner` OR `strongest_connection_user` (standard) | ✅ Fallback present (standard); curated optional |
+| Known Pain Points | `known_pain_points` | ❌ Missing — operator-side `Long text` |
+| Buying Timeline | `buying_timeline` | ❌ Missing — operator-side `Single-select` |
+| Notes / Recent Activity pointer | `/v2/notes` API path | ⚠️ Different model — deferred to follow-on sprint |
+
+**Per task spec, this does NOT block S3-B implementation.** The mappers handle missing properties gracefully (return `null` + push `CrmContextWarning` entries). Live Attio context fetch returns a `linked` status with warnings until the operator creates the missing custom properties; after creation, the same code path renders the full context with zero warnings.
+
+### Operator-side prerequisite before live context fetch
+
+1. Apply migration `supabase/migrations/0018_accounts_attio_company_id.sql` to the deployed Supabase project `hhglrcvsmwaheikdvijw` (Sprint I3 walkthrough used the Supabase MCP `apply_migration` pattern — same pattern works here).
+2. Create the 9 missing Attio properties in the Saipien Labs workspace (Brand, SLATE Account ID, SLATE Engagement ID, Lead Source, Known Pain Points, Buying Timeline on Company; Pipeline Stage + Deal Value on Deal; optional `relationship_owner` on Company).
+3. On the next Vercel Production promotion, the EngagementContextCard sidebar renders the new "Attio context" card for any persisted engagement; operator pastes the Company `record_id` from Attio into the link form to enable context enrichment per-account.
+
+### Live walkthrough
+
+NOT performed in this sprint. Reasons:
+- Migration 0018 is not yet applied to the deployed Supabase (verified via `information_schema.columns` lookup against `public.accounts.attio_company_id` → no rows).
+- The 9 custom Attio properties are not yet present in the Saipien Labs workspace.
+- A Vercel Production promotion is not authorized in this sprint per `docs/39` § 9 no-side-sprint discipline.
+
+The connector, types, action, UI, and migration are all source-clean and build-clean. The next operator action (apply migration + create Attio fields + Vercel promote) unlocks live walkthrough on a controlled fixture.
+
+### Verification
+
+- `npm run lint` → ✅ clean
+- `NEXT_TELEMETRY_DISABLED=1 npm run build` → ✅ clean. `/app/engagements/[id]` route grew 143 B → 1.66 kB First Load JS (+1.5 kB — driven by the link-form client component; the connector + queries are server-only and ship 0 bytes to the client). All other 28 routes byte-identical.
+- `npm run check:send-to-client-disclaimers` → ✅ clean.
+- Boundary scan (`artifacts/s3b-boundary-scan.sh`) → ✅ all 4 checks pass: zero `ATTIO_ACCESS_TOKEN` references in `.next/static`; every CRM server module marked `server-only` or `"use server"`; zero PATCH/PUT/DELETE methods in the Attio connector; zero UI imports from `lib/crm/attio/`.
+- Attio API connectivity probe (`artifacts/s3b-attio-probe.sh`) → ✅ HTTP 200 on `/v2/self`, `/objects/companies`, `/objects/companies/attributes`, `/objects/people`, `/objects/deals`; token never echoed.
+
+### Boundary confirmation (Sprint S3-B in particular)
+
+| Boundary | Result |
+|---|---|
+| No Attio writes (no PATCH/PUT/DELETE in connector) | ✅ |
+| No creation of Attio records | ✅ |
+| No mutation of Attio properties | ✅ |
+| No pushing SLATE leads into Attio | ✅ |
+| No background sync | ✅ |
+| No webhooks | ✅ |
+| No OAuth flow | ✅ (server-only access token only) |
+| No multi-CRM support | ✅ (single connector, `provider = "attio"` literal) |
+| No HubSpot / GHL fallback code | ✅ |
+| No email / CRM automation | ✅ |
+| No findings synthesis | ✅ |
+| No `/r` or `/p` minting | ✅ |
+| No Send to Client | ✅ |
+| No public SOW route | ✅ |
+| No Group-B wiring | ✅ |
+| No new package dependencies | ✅ |
+| Token leaks to client bundle | ✅ none |
+| Sapient Digital mutation | ✅ none |
+| Roadmap sequence change | ✅ none — S4 still follows S3-B |

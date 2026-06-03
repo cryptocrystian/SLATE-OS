@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { EngagementProfileHeader } from "@/components/engagements/engagement-profile-header";
 import { EngagementStageTracker } from "@/components/engagements/engagement-stage-tracker";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
+import { EngagementAttioContextCard } from "@/components/engagements/engagement-attio-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { EngagementRisksPanel } from "@/components/engagements/engagement-risks-panel";
 import { EngagementNotesPanel } from "@/components/engagements/engagement-notes-panel";
@@ -23,6 +24,7 @@ import { getReportStatusSummary } from "@/lib/reports/queries";
 import { getProposalStatusSummary } from "@/lib/proposals/queries";
 import { getNotesForEntity } from "@/lib/notes/queries";
 import { getActivityForEngagement } from "@/lib/activity/queries";
+import { getCrmContextForEngagement } from "@/lib/crm/queries";
 import { NotesPanel } from "@/components/notes/notes-panel";
 import { ActivityTimeline } from "@/components/activity/activity-timeline";
 import { isUuid as isEngagementUuid } from "@/lib/engagements/mappers";
@@ -71,6 +73,7 @@ export default async function EngagementDetailPage({
     proposalSummary,
     engagementNotes,
     engagementActivity,
+    crmStatus,
   ] = await Promise.all([
     getIntakeStatusSummary(engagement.id),
     getFindingsStatusSummary(engagement.id),
@@ -84,6 +87,9 @@ export default async function EngagementDetailPage({
     isPersistedEngagement
       ? getActivityForEngagement(engagement.id)
       : Promise.resolve([]),
+    isPersistedEngagement
+      ? getCrmContextForEngagement(engagement.id)
+      : Promise.resolve(null),
   ]);
   const intake = mergeIntakeStatus(engagement, intakeSummary);
   const findings = mergeFindingsStatus(engagement, findingsSummary);
@@ -314,6 +320,9 @@ export default async function EngagementDetailPage({
             lockedNote={recAction.lockedNote}
           />
           <EngagementContextCard engagement={engagement} />
+          {isPersistedEngagement ? (
+            <EngagementAttioContextCard status={crmStatus} />
+          ) : null}
           {isPersistedEngagement ? (
             <NotesPanel
               entityType="engagement"

@@ -196,7 +196,9 @@ Decisions locked:
 
 Zero source code changes. Zero migration runs. Zero Attio connection. Zero engagement mutation.
 
-### Sprint S3-B — Attio Read Context Implementation
+### Sprint S3-B — Attio Read Context Implementation  (LANDED 2026-06-02)
+
+Source-clean + build-clean + boundary-clean. Full evidence in `docs/42` "Sprint S3-B landing note". Operator-side prerequisites cleared before live walkthrough: (1) apply migration `0018_accounts_attio_company_id.sql` to deployed Supabase; (2) create the 9 missing Attio custom properties in the Saipien Labs workspace (Brand, SLATE Account ID, SLATE Engagement ID, Lead Source, Known Pain Points, Buying Timeline on Company; Pipeline Stage + Deal Value on Deal; optional `relationship_owner`); (3) Vercel Production promotion. Env var name corrected to `ATTIO_ACCESS_TOKEN` (Attio's terminology); workspace name corrected to `Saipien Labs` (slug `saipien-labs`).
 
 Scope (locked per `docs/42` § 12; not re-negotiated mid-sprint):
 1. New module `lib/crm/attio/` — read-only client + companies/people/deals fetchers + mappers + types.

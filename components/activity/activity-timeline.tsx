@@ -85,6 +85,10 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   offline_intake_response_voided: "neutral",
   intake_document_created: "info",
   intake_document_voided: "neutral",
+  // Sprint S3-B — Attio CRM read-context link. Info tone because the
+  // link is a configuration step, not a state change in the engagement
+  // deliverable. Read-only — SLATE never writes to Attio.
+  account_linked_to_attio: "info",
 };
 
 const EVENT_LABEL: Record<ActivityEventType, string> = {
@@ -158,6 +162,8 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   offline_intake_response_voided: "Offline response voided",
   intake_document_created: "Intake document attached",
   intake_document_voided: "Intake document voided",
+  // Sprint S3-B — Attio CRM read-context link.
+  account_linked_to_attio: "Account linked to Attio",
 };
 
 export function ActivityTimeline({

@@ -65,7 +65,11 @@ export type ActivityEventType =
   | "offline_intake_response_ready"
   | "offline_intake_response_voided"
   | "intake_document_created"
-  | "intake_document_voided";
+  | "intake_document_voided"
+  // Sprint S3-B — Attio CRM read-context link (docs/42 § 12).
+  // Operator linked a SLATE account to an Attio Company record. No
+  // Attio writeback; SLATE never mutates the CRM.
+  | "account_linked_to_attio";
 
 export type ActivityEntityType =
   | "lead"
@@ -88,7 +92,11 @@ export type ActivityEntityType =
   | "proposal_delivery_snapshot"
   | "proposal_share_token"
   // Sprint I2 — Offline intake document entity (docs/37 § 3.3).
-  | "engagement_intake_document";
+  | "engagement_intake_document"
+  // Sprint S3-B — Account entity (docs/42 § 9.1). Used by the
+  // `account_linked_to_attio` event so the timeline can render an
+  // account-scoped row without conflating it with engagement events.
+  | "account";
 
 export interface ActivityEvent {
   id: string;
