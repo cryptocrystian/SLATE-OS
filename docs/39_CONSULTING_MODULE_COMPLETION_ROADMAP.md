@@ -164,14 +164,22 @@ Scope:
 
 Non-goals: no email send, no automated invite, no offline-intake polish, no synthesis work, no `/r` or `/p` mint.
 
-### Sprint S2 — Meeting Transcript / Notetaker Intake
+### Sprint S2 — Meeting Transcript / Notetaker Intake  (LANDED 2026-06-02)
 
-Scope:
-1. Canon authoring: add `transcript_import` source-type subset to canon (likely `docs/40`), define the file upload + per-segment ingestion shape, define the speaker-identification contract.
-2. Implementation: file upload backend (uses the `engagement_intake_documents.storage_path` field; pulls Sprint I4 forward into this sprint because transcript ingest is the use case), per-segment extraction into `stakeholder_responses`, source attribution by speaker.
-3. UI: "Import transcript" surface on the intake page; per-segment review + assign-to-stakeholder + assign-to-question.
+Scope as implemented (see `docs/41` for full evidence):
+1. New pure-function `segmentTranscript` in `lib/intake/transcript-segmentation.ts` — deterministic split (speaker-turn first, paragraph fallback, sentence-chunk + hard-wrap on oversize). No DB, no AI, no I/O.
+2. New `components/intake/transcript-intake-panel.tsx` — operator surface for paste/`.txt`-drop transcript import with live segmentation preview, per-segment assign-stakeholder + assign-question, save-as-draft per segment.
+3. Page wiring — mounted inside the existing offline-intake `<section>` on `/app/engagements/[id]/intake`, after the `OfflineIntakePanel`.
 
-Non-goals: no third-party notetaker webhook integration (Otter/Fireflies/Granola/Read.ai). Direct file upload + paste only. Webhook integration is a follow-on sprint if quality + adoption justify it.
+What did NOT ship (deliberate):
+- **No new server actions.** Persistence reuses I2's `createEngagementIntakeDocumentAction` (already accepts `source_type='transcript' | 'meeting_notes'`), `createOfflineStakeholderIntakeSessionAction`, `createOfflineStakeholderResponseAction`, `markStakeholderResponseReadyForSynthesisAction`, `voidStakeholderResponseAction`.
+- **No new migration.** Migration 0017 CHECK constraints already permit `transcript` across all three intake tables.
+- **No binary file upload backend.** Paste-first; `.txt` file drop via client-side `FileReader.readAsText`. Binary upload behind `engagement_intake_documents.storage_path` becomes its own sprint if/when operator need is observed (was previously rolled into S2 as "Sprint I4 absorbed"; this sprint shipped without it because paste covered the canonical S2 sample).
+- **No third-party notetaker webhook.** Operator-controlled lane only; Otter / Fireflies / Granola / Fathom / Read.ai integrations are `docs/39` § 7 deferred-expansion lanes.
+
+Boundary: zero new package dependencies, zero new public routes, zero `/r` or `/p` mint, zero Send to Client, zero email / CRM / e-sign, zero Sapient mutation, zero findings synthesis, live-link Mode A path untouched. Walkthrough proved the data path end-to-end via the already-deployed I3 offline-mode UI exercising the exact action chain the new panel calls; full panel-UI walkthrough on deployed staging is gated on the next operator-authorized Vercel Production promotion.
+
+Acceptance: `npm run lint` clean ✅; `NEXT_TELEMETRY_DISABLED=1 npm run build` clean ✅ (intake route 14.2 kB → 18.4 kB First Load JS; all other 28 routes byte-identical); `npm run check:send-to-client-disclaimers` clean ✅; controlled walkthrough on SLATE Pilot Test Client (NOT Sapient Digital) produced one transcript-source session + two transcript-source draft responses + one marked-ready transition + four activity events with fully sanitized metadata.
 
 ### Sprint S3 — CRM Read Context
 

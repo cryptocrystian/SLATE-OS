@@ -8,6 +8,8 @@
 - **Branches at authoring:** `staging` / `persistence/step-0-1-auth-shell` (both at `435b431`)
 - **Source-tree grounding only:** Read-only inspection of `lib/intake/types.ts`, `lib/intake/actions.ts`, `supabase/migrations/0005_stakeholder_intake.sql` to ground the canon in real entity shapes. **No source changes.**
 
+**Reclassification note (2026-06-02, Sprint S2):** Per the Consulting Module Completion Roadmap in `docs/39` § 4, transcripts (`source_type='transcript'`) and meeting-note imports (`source_type='meeting_notes'`) are now classified as **secondary** input — between primary online live-link intake and tertiary operator-typed offline entry. `docs/41_TRANSCRIPT_NOTETAKER_INTAKE_SPRINT.md` implements the transcript path. This file (`docs/37`) continues to govern operator-typed offline modes (`operator_entered`, `email_paste`, `document_upload`) and the shared data-model contract (`engagement_intake_documents`, `client_visible=false` defaults, `response_status` lifecycle, `token_hash` mode gate). The transcript path reuses every contract defined here verbatim.
+
 This doc is the canonical authorization for an operator-staged offline intake workflow that lets the operator collect stakeholder answers outside SLATE and enter or upload them into SLATE without sending stakeholder invitations. It is the post-acceptance fork from `docs/36` § 9 Product Gap Observation 1 ("no operator-staged-response intake path"). The canon DOES NOT modify source code; the implementation sprints (I2-I6) that follow this canon are separately scoped.
 
 ---

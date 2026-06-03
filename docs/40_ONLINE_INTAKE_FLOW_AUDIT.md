@@ -232,6 +232,8 @@ Aligned with `docs/39` § 4 canonical input hierarchy and `docs/35` § 5 rows 1-
 - Recommended override discipline: if the operator overrides with fewer than 3 roles covered, every downstream artifact (findings, opportunities, report, proposal) carries a visible "Synthesis ran on partial coverage — N of 6 required roles. Operator override: <reason>." chip until the gate clears.
 - Override CANNOT be exercised by AI or automation. Only the cookie-bound operator.
 
+**Sprint S2 cross-reference (2026-06-02):** The secondary transcript lane referenced below now has an implementation backing it. See `docs/41_TRANSCRIPT_NOTETAKER_INTAKE_SPRINT.md` for the transcript model, segmentation algorithm, UI, and data-path walkthrough evidence. The wording below is unchanged; transcript-source responses (`source_type='transcript'` with `response_status='ready_for_synthesis'`) count cumulatively at the gate per § 6.5 below.
+
 ### 6.4 Document / transcript substitution rules
 
 - **Documents (uploaded supporting evidence):** A non-voided document COUNTS as cumulative signal — it does not replace any single stakeholder response, but reduces the number of stakeholder responses required to clear the cumulative-signal threshold by a fixed amount. **For S1 wording: 1 substantive document = 1 response equivalent.** Operator can also explicitly sign off "no documents needed for this engagement" — that satisfies the document portion of the gate without requiring an upload.

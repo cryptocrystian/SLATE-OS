@@ -17,6 +17,7 @@ import { PersistedSupportingInputs } from "@/components/intake/persisted-support
 import { StageOfflineStakeholderForm } from "@/components/intake/stage-offline-stakeholder-form";
 import { OfflineIntakePanel } from "@/components/intake/offline-intake-panel";
 import { OfflineIntakeReadinessHint } from "@/components/intake/offline-intake-readiness-hint";
+import { TranscriptIntakePanel } from "@/components/intake/transcript-intake-panel";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { EngagementRisksPanel } from "@/components/engagements/engagement-risks-panel";
@@ -259,6 +260,10 @@ export default async function EngagementIntakePage({
               <OfflineIntakePanel
                 sessions={offlineSessions}
                 documents={offlineDocuments}
+              />
+              <TranscriptIntakePanel
+                engagementId={engagement.id}
+                offlineSessions={offlineSessions}
               />
             </section>
           ) : null}
