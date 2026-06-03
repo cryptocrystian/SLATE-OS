@@ -181,12 +181,34 @@ Boundary: zero new package dependencies, zero new public routes, zero `/r` or `/
 
 Acceptance: `npm run lint` clean ✅; `NEXT_TELEMETRY_DISABLED=1 npm run build` clean ✅ (intake route 14.2 kB → 18.4 kB First Load JS; all other 28 routes byte-identical); `npm run check:send-to-client-disclaimers` clean ✅; controlled walkthrough on SLATE Pilot Test Client (NOT Sapient Digital) produced one transcript-source session + two transcript-source draft responses + one marked-ready transition + four activity events with fully sanitized metadata.
 
-### Sprint S3 — CRM Read Context
+### Sprint S3-A — Attio CRM System-of-Record Canon  (LANDED 2026-06-02)
 
-Scope:
-1. Canon authoring: one connector at a time; pick the highest-leverage CRM for operator's actual book of business.
-2. Implementation: read-only OAuth/API-key connector, account context fetch on engagement open, EngagementContextCard enriched with CRM fields.
-3. Boundary: read-only — NO writeback in this sprint. Writeback is § 7 deferred.
+Split from the original combined Sprint S3 because the CRM selection and adapter-boundary contract benefited from being canonized + operator-reviewable BEFORE implementation began. Full evidence: `docs/42_ATTIO_CRM_SYSTEM_OF_RECORD_CANON.md` (18 numbered sections, ~430 lines).
+
+Decisions locked:
+- **Attio selected** as Saipien's first CRM system-of-record for engagement context. HubSpot comparison included but decision not re-litigated (`docs/42` § 2-3).
+- **SLATE remains system of record** for engagement execution (intake, findings, opportunities, roadmap, report, proposal, SOW). Attio is read-only engagement-level context, never per-stakeholder findings evidence (`docs/42` § 4-6).
+- **One Attio workspace** for all Saipien brands. Brand / Business Unit tagged via Attio property; canonical initial list: Saipien Labs Consulting, Venture Studio, Sapient Digital, Ventrys, Pravado, Aivery, Other (`docs/42` § 7-8).
+- **Object mapping locked:** SLATE Account ↔ Attio Company; SLATE Stakeholder ↔ Attio Person (optional); SLATE Engagement ↔ Attio Deal (optional). `accounts.attio_company_id text null` is the only required schema addition; deterministic-lookup after initial domain-rematch linking (`docs/42` § 9-11).
+- **Provider-neutral adapter boundary** at `lib/crm/types.ts` (internal `CrmContext` shape); Attio-specific mapping confined to `lib/crm/attio/`; no multi-CRM build, no connector marketplace, no productized abstraction. Exit / migration to a future CRM is feasible by swapping the mapper module (`docs/42` § 13-14).
+- **Read-only S3 boundary** explicit; writeback, lead push, two-way sync, customer CRM integrations, CRM automation, email send, and per-brand pipelines are deferred per `docs/42` § 15.
+- **Five open operator decisions** must be answered before Sprint S3-B: workspace name; final Brand property values; whether to create Attio custom fields before S3-B; API key vs OAuth; whether `attio_company_id` migration ships inside S3-B (recommended) or as its own micro-sprint (`docs/42` § 16).
+
+Zero source code changes. Zero migration runs. Zero Attio connection. Zero engagement mutation.
+
+### Sprint S3-B — Attio Read Context Implementation
+
+Scope (locked per `docs/42` § 12; not re-negotiated mid-sprint):
+1. New module `lib/crm/attio/` — read-only client + companies/people/deals fetchers + mappers + types.
+2. Internal contract `lib/crm/types.ts` with provider-neutral `CrmContext` shape; UI imports this only.
+3. Optional migration `0018_accounts_attio_company_id.sql` adding `attio_company_id text null` to `public.accounts` (recommended to include here).
+4. `lib/crm/queries.ts` server-only fetcher returning `CrmContext | null` for an engagement+account pair.
+5. `EngagementContextCard` extended with "Attio context" section (brand chip, owner, last touch, pipeline stage, deal value, known-pain-points preview, "View in Attio" link).
+6. `linkAccountToAttioCompanyAction` server action — cookie-bound auth, workspace-scoped write to the new column. NO Attio writeback.
+7. New activity event `account_linked_to_attio` with sanitized metadata `{attioCompanyId}` only.
+8. Operator settings surface or env var (`ATTIO_API_KEY`) for connector credentials per § 16 decision.
+
+Non-goals: writeback, background sync, webhook subscriptions, lead push, multi-CRM support, customer-facing integration, CRM-triggered automation, Attio note → stakeholder_responses promotion.
 
 Non-goals: writeback, two-way sync, multi-CRM support, deal-stage automation.
 
