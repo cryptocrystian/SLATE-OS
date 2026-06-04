@@ -22,6 +22,7 @@ import {
   getEvidenceCandidatesForEngagement,
   getFindingsForEngagementPersisted,
 } from "@/lib/findings/queries";
+import { buildEvidenceBundleForEngagement } from "@/lib/findings/evidence";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import { isAiConfigured } from "@/lib/ai/provider";
 import type { Finding } from "@/lib/findings/types";
@@ -50,10 +51,12 @@ export default async function EngagementFindingsPage({
 
   let findings: Finding[];
   let candidates: Awaited<ReturnType<typeof getEvidenceCandidatesForEngagement>> = [];
+  let evidenceBundle: Awaited<ReturnType<typeof buildEvidenceBundleForEngagement>> = null;
   if (isPersisted) {
-    [findings, candidates] = await Promise.all([
+    [findings, candidates, evidenceBundle] = await Promise.all([
       getFindingsForEngagementPersisted(engagement.id),
       getEvidenceCandidatesForEngagement(engagement.id),
+      buildEvidenceBundleForEngagement(engagement.id),
     ]);
   } else {
     findings = getMockFindings(engagement.id);
@@ -161,6 +164,33 @@ export default async function EngagementFindingsPage({
                 engagementId={engagement.id}
                 aiConfigured={aiConfigured}
                 hasIntakeEvidence={hasIntakeEvidence}
+                evidenceSummary={
+                  evidenceBundle
+                    ? {
+                        totalReadyEvidence: evidenceBundle.totalReadyEvidence,
+                        byLaneCounts: {
+                          live_link: evidenceBundle.byLane.live_link.length,
+                          transcript: evidenceBundle.byLane.transcript.length,
+                          offline_operator:
+                            evidenceBundle.byLane.offline_operator.length,
+                        },
+                        crmStatus: evidenceBundle.crm.status,
+                        crmBrand: evidenceBundle.crm.brand,
+                        coveredRequiredRoles:
+                          evidenceBundle.roleCoverage.filter(
+                            (r) => r.sessionsWithReadyResponses > 0,
+                          ).length,
+                        missingRequiredRoles:
+                          evidenceBundle.readiness.missingRequiredRoles,
+                        readinessReady: evidenceBundle.readiness.ready,
+                        readinessReasons:
+                          evidenceBundle.readiness.reasons.map((r) => r.message),
+                        warnings: evidenceBundle.warnings.map((w) => w.message),
+                        excludedByTestLabel:
+                          evidenceBundle.sourceCounts.excludedByTestLabel,
+                      }
+                    : null
+                }
               />
               <CreateFindingForm
                 engagementId={engagement.id}

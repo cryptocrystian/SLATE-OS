@@ -122,15 +122,23 @@ const SYSTEM_PROMPT = [
   "You produce concise, evidence-backed observations about an organization's operational and AI readiness based ONLY on structured context the operator has already gathered.",
   "Findings will not be published to the client until a human consultant explicitly approves them.",
   "",
+  "Input lane hierarchy (Sprint S4, per SLATE docs/39 § 4):",
+  "- PRIMARY: `evidenceBundle.byLane.live_link` — stakeholders typed these answers themselves via the public live-link intake route. Treat as high-confidence first-hand signal.",
+  "- SECONDARY: `evidenceBundle.byLane.transcript` — derived from meeting transcripts / notetaker imports. Treat as solid signal when speaker is attributed (`stakeholderName` + `stakeholderTitle`); treat as moderate signal otherwise.",
+  "- SECONDARY ENRICHMENT: `evidenceBundle.crm` — engagement-level CRM context (Attio). Use ONLY for framing/sector context. NEVER claim a CRM field is a stakeholder quote. NEVER turn a `brand` or `leadSource` value into a finding by itself.",
+  "- TERTIARY: `evidenceBundle.byLane.offline_operator` — operator-typed offline notes (`operator_entered`, `email_paste`, `document_upload`). Treat as supporting signal that requires corroboration before promotion to high confidence.",
+  "",
   "Hard rules:",
   "- Return JSON only. No prose, no preamble, no markdown.",
   "- Do not invent stakeholder quotes. Only quote text that appears verbatim in the supplied context.",
   "- Treat input assets as METADATA ONLY. You have not read the underlying file content; never claim to have.",
+  "- Treat CRM context as engagement-level metadata. NEVER attribute a stakeholder-shaped claim to CRM data.",
   "- Avoid duplicating any existing finding's statement or category combination.",
   "- Use professional consultant register. No marketing tone, no superlatives.",
   "- Mark a finding with assumptionFlag=true and supply assumptionNote whenever evidence is thin or absent.",
   "- Every finding must either have at least one sourceRef OR be marked assumptionFlag=true.",
-  "- Source refs strength: 'strong' = multiple corroborating responses; 'adequate' = single clear response; 'thin' = inferred from context; 'missing' = no direct evidence.",
+  "- Source refs strength: 'strong' = multiple corroborating responses across two or more lanes; 'adequate' = single clear response in a primary or secondary lane; 'thin' = inferred from context OR only tertiary-lane signal; 'missing' = no direct evidence.",
+  "- When all evidence for a finding comes from the offline_operator (tertiary) lane only, the finding MUST be assumptionFlag=true with assumptionNote explaining the tertiary-only provenance.",
   `- Output between ${MIN_FINDINGS} and ${MAX_FINDINGS} findings.`,
 ].join("\n");
 
@@ -165,6 +173,11 @@ function buildPromptMessages(context: FindingsSynthesisContext) {
 }
 
 function buildUserPayload(context: FindingsSynthesisContext) {
+  const bundle = context.evidenceBundle;
+  // When a lane-attributed bundle is available, emit it alongside the
+  // legacy intake shape so the model can attribute findings by lane.
+  // The legacy `intake` field is preserved for backward compatibility
+  // with prompt-tuning the model is already familiar with.
   return {
     engagement: context.engagement,
     account: context.account,
@@ -172,6 +185,50 @@ function buildUserPayload(context: FindingsSynthesisContext) {
     intake: context.intake,
     inputAssets: context.inputAssets,
     existingFindings: context.existingFindings,
+    evidenceBundle: bundle
+      ? {
+          totalReadyEvidence: bundle.totalReadyEvidence,
+          sourceCounts: bundle.sourceCounts,
+          byLane: {
+            live_link: bundle.byLane.live_link.map(serializeEvidenceItem),
+            transcript: bundle.byLane.transcript.map(serializeEvidenceItem),
+            offline_operator: bundle.byLane.offline_operator.map(
+              serializeEvidenceItem,
+            ),
+          },
+          roleCoverage: bundle.roleCoverage.map((r) => ({
+            role: r.role,
+            sessionsWithReadyResponses: r.sessionsWithReadyResponses,
+            contributingLanes: r.contributingLanes,
+          })),
+          questionCoverage: bundle.questionCoverage,
+          crm: bundle.crm,
+        }
+      : null,
+  };
+}
+
+function serializeEvidenceItem(item: {
+  responseId: string;
+  sessionId: string;
+  sourceType: string;
+  role: string;
+  stakeholderName: string | null;
+  stakeholderTitle: string | null;
+  questionId: string;
+  questionLabel: string | null;
+  answerText: string;
+}) {
+  return {
+    responseId: item.responseId,
+    sessionId: item.sessionId,
+    sourceType: item.sourceType,
+    role: item.role,
+    stakeholderName: item.stakeholderName,
+    stakeholderTitle: item.stakeholderTitle,
+    questionId: item.questionId,
+    questionLabel: item.questionLabel,
+    answerText: item.answerText,
   };
 }
 

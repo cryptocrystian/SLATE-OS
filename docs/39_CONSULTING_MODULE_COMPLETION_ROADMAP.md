@@ -214,7 +214,9 @@ Non-goals: writeback, background sync, webhook subscriptions, lead push, multi-C
 
 Non-goals: writeback, two-way sync, multi-CRM support, deal-stage automation.
 
-### Sprint S4 — AI Findings Synthesis Integration  *(formerly Sprint I5)*
+### Sprint S4 — AI Findings Synthesis Integration  (LANDED 2026-06-02; formerly Sprint I5)
+
+Source-clean + build-clean. Full evidence in `docs/43_AI_FINDINGS_SYNTHESIS_INTEGRATION.md`. EvidenceBundle aggregator (`lib/findings/evidence.ts`) buckets `ready_for_synthesis` responses by canonical lane (primary live-link / secondary transcript / tertiary offline_operator); applies audit-label exclusion heuristic to keep fixture data out of synthesis; calls `getCrmContextForEngagement` for engagement-level CRM enrichment (Attio, never per-stakeholder). Readiness gate via the S1 helper now ENFORCED in the synthesis action — Generate is blocked when not ready unless the operator supplies an audit-logged override reason (10–500 chars; persisted in activity event metadata). System prompt extended with explicit lane hierarchy + tightened strength rule (`strong` requires multi-lane corroboration; tertiary-only evidence forces `assumptionFlag=true`). UI evidence panel renders lane counts, role coverage ratio, CRM chip, warnings, and gate-blocker reasons. Lint clean + build clean (`/app/engagements/[id]/findings` route 10.8 kB → 12 kB First Load JS). All 8 SLATE Pilot Test Client responses are audit-labelled and correctly excluded by the aggregator (zero reach synthesis), validating the boundary. Live AI call deferred — exercising the AI path requires real non-audit data on any engagement OR an operator-override walkthrough on the audit-fixture; both are follow-on operator steps, not source changes.
 
 Scope:
 1. Consume `response_status = 'ready_for_synthesis'` rows from all three lanes (live-link, transcript, offline).

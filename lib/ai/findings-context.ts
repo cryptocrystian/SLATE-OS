@@ -1,6 +1,10 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  buildEvidenceBundleForEngagement,
+  type EvidenceBundle,
+} from "@/lib/findings/evidence";
 
 /**
  * Server-only synthesis context builder.
@@ -80,6 +84,17 @@ export interface FindingsSynthesisContext {
     confidence: string | null;
     evidenceSummary: string | null;
   }>;
+  /**
+   * Sprint S4 — Lane-attributed evidence bundle per `docs/39` § 4.
+   * Buckets ready_for_synthesis responses by canonical input lane
+   * (primary live-link / secondary transcript / tertiary offline) plus
+   * CRM context summary. The prompt builder uses this to attribute
+   * findings by lane and weight them per the synthesis canon.
+   * `evidenceBundle` is null when the engagement is in mock fixture
+   * mode (uuid check fails) — synthesis still runs from the legacy
+   * `intake` shape in that case, but lane attribution is unavailable.
+   */
+  evidenceBundle: EvidenceBundle | null;
 }
 
 export interface FindingsContextLoadResult {
@@ -167,12 +182,22 @@ export async function buildFindingsSynthesisContext(
   const submissionId = eng.leads?.submission_id ?? null;
 
   // Run the remaining loads in parallel — each is bounded and uses RLS.
-  const [scorecard, intake, inputAssets, existingFindings] = await Promise.all([
-    loadScorecardSnapshot(supabase, submissionId),
-    loadIntakeContext(supabase, engagementId),
-    loadInputAssetMetadata(supabase, engagementId),
-    loadExistingFindings(supabase, engagementId),
-  ]);
+  const [scorecard, intake, inputAssets, existingFindings, evidenceBundle] =
+    await Promise.all([
+      loadScorecardSnapshot(supabase, submissionId),
+      loadIntakeContext(supabase, engagementId),
+      loadInputAssetMetadata(supabase, engagementId),
+      loadExistingFindings(supabase, engagementId),
+      // Sprint S4 — lane-attributed bundle. Pure-fetch; never crashes
+      // the outer build because a null return is supported downstream.
+      buildEvidenceBundleForEngagement(engagementId).catch((err) => {
+        console.error("[ai.findings-context] evidence-bundle-failed", {
+          name: (err as Error)?.name,
+          message: (err as Error)?.message,
+        });
+        return null;
+      }),
+    ]);
 
   return {
     ok: true,
@@ -199,6 +224,7 @@ export async function buildFindingsSynthesisContext(
       intake,
       inputAssets,
       existingFindings,
+      evidenceBundle,
     },
   };
 }

@@ -45,7 +45,12 @@ export type GenerateFindingsError =
   | "ai-response-invalid"
   | "ai-rate-limited"
   | "ai-timeout"
-  | "service-error";
+  | "service-error"
+  // Sprint S4 — Readiness gate.
+  | "intake-readiness-not-met"
+  // Sprint S4 — Operator supplied an override reason that was rejected
+  // (empty, too short, or too long).
+  | "override-reason-invalid";
 
 export type GenerateFindingsResult =
   | {
@@ -54,11 +59,26 @@ export type GenerateFindingsResult =
       skippedDuplicateCount: number;
       provider: string;
       model: string;
+      /** Sprint S4 — true when an operator override was used to bypass
+       *  the readiness gate. Logged for audit. */
+      overrideApplied?: boolean;
     }
-  | { ok: false; error: GenerateFindingsError };
+  | {
+      ok: false;
+      error: GenerateFindingsError;
+      /** Sprint S4 — readiness failure detail when error === "intake-readiness-not-met". */
+      readinessReasons?: string[];
+    };
+
+export interface GenerateDraftFindingsOptions {
+  /** Sprint S4 — when present, bypasses the readiness gate with an
+   *  audit-logged reason. Must be 10–500 chars. */
+  overrideReason?: string;
+}
 
 export async function generateDraftFindingsForEngagement(
   engagementId: string,
+  options: GenerateDraftFindingsOptions = {},
 ): Promise<GenerateFindingsResult> {
   if (!isUuid(engagementId)) {
     return { ok: false, error: "invalid-engagement" };
@@ -107,6 +127,30 @@ export async function generateDraftFindingsForEngagement(
   }
   const context = contextResult.context;
 
+  // Sprint S4 — Readiness gate. Block synthesis when the intake
+  // readiness verdict is not ready, unless the operator supplied an
+  // override reason (audit-logged below).
+  let overrideApplied = false;
+  let sanitizedOverrideReason: string | null = null;
+  const bundle = context.evidenceBundle;
+  if (options.overrideReason !== undefined) {
+    const reason = String(options.overrideReason).trim();
+    if (reason.length < 10 || reason.length > 500) {
+      return { ok: false, error: "override-reason-invalid" };
+    }
+    sanitizedOverrideReason = reason;
+  }
+  if (bundle && !bundle.readiness.ready) {
+    if (!sanitizedOverrideReason) {
+      return {
+        ok: false,
+        error: "intake-readiness-not-met",
+        readinessReasons: bundle.readiness.reasons.map((r) => r.message),
+      };
+    }
+    overrideApplied = true;
+  }
+
   // Open synthesis run row. We log only safe summary metadata.
   const inputSummary = {
     intakeResponses: context.intake.responses.length,
@@ -117,6 +161,19 @@ export async function generateDraftFindingsForEngagement(
     existingFindings: context.existingFindings.length,
     minFindings: FINDINGS_SYNTHESIS_BOUNDS.MIN_FINDINGS,
     maxFindings: FINDINGS_SYNTHESIS_BOUNDS.MAX_FINDINGS,
+    // Sprint S4 — lane-attribution input counts. Safe to log: counts +
+    // bucket sizes, never raw answer text or stakeholder identifiers.
+    evidenceLanes: bundle
+      ? {
+          liveLink: bundle.byLane.live_link.length,
+          transcript: bundle.byLane.transcript.length,
+          offlineOperator: bundle.byLane.offline_operator.length,
+          totalReady: bundle.totalReadyEvidence,
+          crmLinked: bundle.crm.status === "linked",
+          warningCount: bundle.warnings.length,
+        }
+      : null,
+    overrideApplied,
   };
 
   const { data: runRow, error: runInsertError } = await supabase
@@ -293,6 +350,24 @@ export async function generateDraftFindingsForEngagement(
       skippedDuplicateCount: skippedDuplicates,
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
+      // Sprint S4 — lane attribution + readiness override transparency.
+      // Counts only; no raw text, no stakeholder identifiers.
+      evidenceLanes: bundle
+        ? {
+            liveLink: bundle.byLane.live_link.length,
+            transcript: bundle.byLane.transcript.length,
+            offlineOperator: bundle.byLane.offline_operator.length,
+            crmLinked: bundle.crm.status === "linked",
+          }
+        : null,
+      overrideApplied,
+      // Reason text IS persisted in the activity event when an
+      // override fires, per docs/43 audit-trail contract. Length-
+      // capped to 500 by sanitization above; never contains PII per
+      // operator input contract.
+      ...(sanitizedOverrideReason
+        ? { overrideReason: sanitizedOverrideReason }
+        : {}),
     },
   });
 
@@ -302,6 +377,7 @@ export async function generateDraftFindingsForEngagement(
     skippedDuplicateCount: skippedDuplicates,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
+    overrideApplied,
   };
 }
 
