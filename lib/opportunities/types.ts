@@ -65,4 +65,11 @@ export interface Opportunity {
    * `"unknown"` freshness when null.
    */
   updatedAt?: string | null;
+  /**
+   * Sprint S6 — Operator-typed rejection rationale persisted in
+   * `opportunities.reviewer_notes`. Set when the operator confirms a
+   * `Reject` transition with a 10–500 char reason. Null when no
+   * reason was provided or the opportunity is not rejected.
+   */
+  reviewerNote?: string | null;
 }

@@ -118,6 +118,13 @@ const SYSTEM_PROMPT = [
   "- Score each axis 0–100 (integer). Higher complexity = harder to implement. Higher risk = more delivery / adoption / governance risk.",
   "- Do NOT output priority, quadrant, or a recommended-action verb beyond what is requested below — the server derives priority and quadrant from your scores.",
   `- Output between ${MIN_OPPORTUNITIES} and ${MAX_OPPORTUNITIES} opportunities.`,
+  "",
+  "Provenance-aware evidence rule (Sprint S6):",
+  "- Each finding carries a `needsValidation` boolean and an `assumptionFlag` boolean projected from its persisted source-refs by the upstream provenance helper.",
+  "- When an opportunity links ONLY to findings where `needsValidation = true` (or `assumptionFlag = true`), set `evidenceStrength = 'thin'`, raise `riskScore` to reflect delivery uncertainty, and use conservative implementation-shape language (\"investigate\", \"validate\", \"scope\") instead of imperative commitment (\"build\", \"ship\", \"automate\").",
+  "- When an opportunity mixes some `needsValidation = true` source findings with stronger ones, default `evidenceStrength` to `'adequate'` at most; do not assert `'strong'`.",
+  "- Only assert `evidenceStrength = 'strong'` when ALL linked source findings have `needsValidation = false`.",
+  "- The operator UI inherits the needs-validation flag from your linked findings; conservative wording is the right register when that flag will be visible.",
 ].join("\n");
 
 const SCHEMA_INSTRUCTION = [

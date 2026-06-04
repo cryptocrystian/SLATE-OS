@@ -9,6 +9,7 @@ import { OpportunityMatrix } from "./opportunity-matrix";
 import { OpportunityCard } from "./opportunity-card";
 import { OpportunityPriorityChip } from "./opportunity-priority-chip";
 import { OpportunityScoreStrip } from "./opportunity-score-strip";
+import { OpportunityProvenanceChip } from "./opportunity-provenance-chip";
 import { RelatedFindingsPanel } from "./related-findings-panel";
 import {
   CATEGORY_TONE,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/opportunities/helpers";
 import type { Opportunity } from "@/lib/opportunities/types";
 import type { Finding } from "@/lib/findings/types";
+import type { OpportunityProvenanceSummary } from "@/lib/opportunities/provenance";
 
 const CATEGORY_TONE_MAP: Record<string, BadgeTone> = {
   info: "info",
@@ -43,6 +45,13 @@ export interface OpportunitiesWorkspaceProps {
    *  provided, the persisted action bar renders inside the detail panel
    *  in place of the static placeholder. */
   renderActionBar?: (opportunity: Opportunity) => React.ReactNode;
+  /**
+   * Sprint S6 — Map of opportunity-id → provenance summary derived
+   * from source-finding provenance. Built server-side on the
+   * opportunities page and threaded through so the workspace can
+   * surface needs-validation chips without re-fetching findings.
+   */
+  provenanceById?: ReadonlyMap<string, OpportunityProvenanceSummary>;
 }
 
 export function OpportunitiesWorkspace({
@@ -50,6 +59,7 @@ export function OpportunitiesWorkspace({
   opportunities,
   findings,
   renderActionBar,
+  provenanceById,
 }: OpportunitiesWorkspaceProps) {
   const [active, setActive] = React.useState<OpportunityFilterId>("all");
   const [selectedId, setSelectedId] = React.useState<string | null>(
@@ -144,22 +154,36 @@ export function OpportunitiesWorkspace({
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {filtered.map((o) => (
-                <li key={o.id}>
-                  <OpportunityCard
-                    opportunity={o}
-                    selected={o.id === selectedId}
-                    onClick={() => setSelectedId(o.id)}
-                  />
-                </li>
-              ))}
+              {filtered.map((o) => {
+                const summary = provenanceById?.get(o.id) ?? null;
+                return (
+                  <li key={o.id} className="flex flex-col gap-1.5">
+                    <OpportunityCard
+                      opportunity={o}
+                      selected={o.id === selectedId}
+                      onClick={() => setSelectedId(o.id)}
+                    />
+                    {summary?.needsValidation ? (
+                      <div className="px-1">
+                        <OpportunityProvenanceChip
+                          summary={summary}
+                          compact
+                        />
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
 
         <div className="flex flex-col gap-4 lg:col-span-7">
           {selected ? (
-            <OpportunityDetailPanel opportunity={selected} />
+            <OpportunityDetailPanel
+              opportunity={selected}
+              provenance={provenanceById?.get(selected.id) ?? null}
+            />
           ) : (
             <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
               Select an opportunity to review.
@@ -182,8 +206,10 @@ export function OpportunitiesWorkspace({
 
 function OpportunityDetailPanel({
   opportunity,
+  provenance,
 }: {
   opportunity: Opportunity;
+  provenance: OpportunityProvenanceSummary | null;
 }) {
   return (
     <Card variant="base">
@@ -210,6 +236,10 @@ function OpportunityDetailPanel({
         <p className="text-sm leading-relaxed text-text-secondary">
           {opportunity.description}
         </p>
+
+        {provenance ? (
+          <OpportunityProvenanceChip summary={provenance} />
+        ) : null}
 
         <OpportunityScoreStrip opportunity={opportunity} />
 

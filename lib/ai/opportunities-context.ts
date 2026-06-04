@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { summarizeFindingProvenance } from "@/lib/findings/provenance";
+import type { SourceRef } from "@/lib/findings/types";
 
 /**
  * Server-only opportunity synthesis context builder.
@@ -60,6 +62,15 @@ export interface OpportunitySynthesisContext {
     confidence: string | null;
     reviewStatus: string;
     suggestedImpact: string | null;
+    /**
+     * Sprint S6 — Surface the S5 needs-validation verdict on each
+     * source finding so the AI prompt can bias toward conservative
+     * `evidenceStrength` / `assumptionFlag` for opportunities derived
+     * from weak findings.
+     */
+    needsValidation: boolean;
+    needsValidationReason: string | null;
+    assumptionFlag: boolean;
     sourceRefs: Array<{
       sourceType: string | null;
       sourceLabel: string;
@@ -227,7 +238,7 @@ async function loadEligibleFindings(
   const { data: findingRows, error: findingsError } = await supabase
     .from("findings")
     .select(
-      "id, statement, summary, category, confidence, review_status, suggested_impact",
+      "id, statement, summary, category, confidence, review_status, suggested_impact, assumption_flag",
     )
     .eq("engagement_id", engagementId)
     .in("review_status", ELIGIBLE_REVIEW_STATUSES as unknown as string[])
@@ -251,6 +262,7 @@ async function loadEligibleFindings(
       confidence: string | null;
       review_status: string | null;
       suggested_impact: string | null;
+      assumption_flag: boolean | null;
     }>) ?? [];
 
   if (rows.length === 0) return [];
@@ -258,7 +270,9 @@ async function loadEligibleFindings(
   const findingIds = rows.map((r) => r.id);
   const { data: refRows } = await supabase
     .from("finding_source_refs")
-    .select("finding_id, source_type, source_label, source_role, strength")
+    .select(
+      "finding_id, source_type, source_label, source_role, strength, excerpt",
+    )
     .in("finding_id", findingIds)
     .order("created_at", { ascending: true });
   const refs =
@@ -268,38 +282,99 @@ async function loadEligibleFindings(
       source_label: string | null;
       source_role: string | null;
       strength: string | null;
+      excerpt: string | null;
     }>) ?? [];
 
-  const refsByFinding = new Map<
+  // Truncate the prompt-facing refs (limited to MAX_SOURCE_REFS_PER_FINDING).
+  const promptRefsByFinding = new Map<
     string,
     OpportunitySynthesisContext["findings"][number]["sourceRefs"]
   >();
+  // Build a separate provenance-input map across ALL refs (no cap) so
+  // the S5 provenance helper sees the complete picture, not just the
+  // truncated prompt view.
+  const provenanceRefsByFinding = new Map<string, SourceRef[]>();
+
   for (const ref of refs) {
-    const list = refsByFinding.get(ref.finding_id) ?? [];
-    if (list.length >= MAX_SOURCE_REFS_PER_FINDING) continue;
-    list.push({
-      sourceType: ref.source_type ?? null,
-      sourceLabel: clip(ref.source_label ?? "", SOURCE_LABEL_LIMIT) ?? "Source",
-      sourceRole: ref.source_role
-        ? clip(ref.source_role, SOURCE_ROLE_LIMIT)
-        : null,
-      strength: ref.strength ?? null,
+    const promptList = promptRefsByFinding.get(ref.finding_id) ?? [];
+    if (promptList.length < MAX_SOURCE_REFS_PER_FINDING) {
+      promptList.push({
+        sourceType: ref.source_type ?? null,
+        sourceLabel:
+          clip(ref.source_label ?? "", SOURCE_LABEL_LIMIT) ?? "Source",
+        sourceRole: ref.source_role
+          ? clip(ref.source_role, SOURCE_ROLE_LIMIT)
+          : null,
+        strength: ref.strength ?? null,
+      });
+      promptRefsByFinding.set(ref.finding_id, promptList);
+    }
+    const provenanceList = provenanceRefsByFinding.get(ref.finding_id) ?? [];
+    provenanceList.push({
+      id: `${ref.finding_id}:${provenanceList.length}`,
+      type: mapProvenanceType(ref.source_type),
+      source: ref.source_label ?? "",
+      role: ref.source_role ?? undefined,
+      excerpt: ref.excerpt ?? "",
+      strength: mapProvenanceStrength(ref.strength),
     });
-    refsByFinding.set(ref.finding_id, list);
+    provenanceRefsByFinding.set(ref.finding_id, provenanceList);
   }
 
-  return rows.map((row) => ({
-    findingId: row.id,
-    statement: clip(row.statement, STATEMENT_LIMIT) ?? row.statement,
-    summary: row.summary ? clip(row.summary, SUMMARY_LIMIT) : null,
-    category: row.category ?? null,
-    confidence: row.confidence ?? null,
-    reviewStatus: row.review_status ?? "approved",
-    suggestedImpact: row.suggested_impact
-      ? clip(row.suggested_impact, SUGGESTED_IMPACT_LIMIT)
-      : null,
-    sourceRefs: refsByFinding.get(row.id) ?? [],
-  }));
+  return rows.map((row) => {
+    const provenance = summarizeFindingProvenance(
+      provenanceRefsByFinding.get(row.id) ?? [],
+      Boolean(row.assumption_flag),
+    );
+    return {
+      findingId: row.id,
+      statement: clip(row.statement, STATEMENT_LIMIT) ?? row.statement,
+      summary: row.summary ? clip(row.summary, SUMMARY_LIMIT) : null,
+      category: row.category ?? null,
+      confidence: row.confidence ?? null,
+      reviewStatus: row.review_status ?? "approved",
+      suggestedImpact: row.suggested_impact
+        ? clip(row.suggested_impact, SUGGESTED_IMPACT_LIMIT)
+        : null,
+      needsValidation: provenance.needsValidation,
+      needsValidationReason: provenance.needsValidationReason,
+      assumptionFlag: Boolean(row.assumption_flag),
+      sourceRefs: promptRefsByFinding.get(row.id) ?? [],
+    };
+  });
+}
+
+// Defensive DB-enum → S5-provenance-helper mappers. Unknown values
+// degrade to the most conservative bucket rather than crashing.
+function mapProvenanceType(raw: string | null): SourceRef["type"] {
+  switch (raw) {
+    case "stakeholder-response":
+    case "stakeholder_response":
+      return "stakeholder-response";
+    case "uploaded-document":
+    case "uploaded_document":
+    case "document_upload":
+      return "uploaded-document";
+    case "scorecard-answer":
+    case "scorecard_answer":
+      return "scorecard-answer";
+    case "consultant-note":
+    case "consultant_note":
+    default:
+      return "consultant-note";
+  }
+}
+
+function mapProvenanceStrength(raw: string | null): SourceRef["strength"] {
+  switch (raw) {
+    case "strong":
+      return "strong";
+    case "adequate":
+      return "adequate";
+    case "thin":
+    default:
+      return "thin";
+  }
 }
 
 async function loadScorecardSnapshot(

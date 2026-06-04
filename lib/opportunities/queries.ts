@@ -9,7 +9,11 @@ import {
   type OpportunityStatus,
 } from "./mappers";
 import type { Opportunity } from "./types";
-import type { Finding } from "@/lib/findings/types";
+import type { Finding, SourceRef, SourceRefType } from "@/lib/findings/types";
+import {
+  summarizeFindingProvenance,
+  type FindingProvenanceSummary,
+} from "@/lib/findings/provenance";
 
 /**
  * Server-only query layer for persisted opportunities.
@@ -42,6 +46,7 @@ const OPPORTUNITY_SELECT = `
   success_signals,
   status,
   position,
+  reviewer_notes,
   created_at,
   updated_at
 ` as const;
@@ -297,6 +302,124 @@ export async function getMinimalFindingsForEngagement(
     suggestedImpact: row.suggested_impact ?? "",
     sourceRefs: [],
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Sprint S6 — Per-finding provenance map for the opportunities page.
+//
+// Builds a Map<findingId, FindingProvenanceSummary> by joining
+// `findings.assumption_flag` with the persisted `finding_source_refs`
+// rows and running the S5 pure helper on each grouping. The
+// opportunities page consumes this map and projects per-opportunity
+// summaries via `summarizeOpportunityProvenance` without a second
+// fetch.
+//
+// Only loads findings the operator may legitimately act on
+// (everything that is not soft-deleted). Approved-vs-other filtering
+// happens at the projection layer.
+// ---------------------------------------------------------------------------
+
+export async function getFindingProvenanceForEngagement(
+  engagementId: string,
+): Promise<Map<string, FindingProvenanceSummary>> {
+  const out = new Map<string, FindingProvenanceSummary>();
+  if (!isUuid(engagementId)) return out;
+  const supabase = createSupabaseServerClient();
+
+  const { data: findingRows, error: findingsError } = await supabase
+    .from("findings")
+    .select("id, assumption_flag")
+    .eq("engagement_id", engagementId);
+  if (findingsError) {
+    console.error(
+      "[opportunities.queries] finding-provenance-load-failed",
+      {
+        name: findingsError.name,
+        code: findingsError.code,
+        message: findingsError.message,
+      },
+    );
+    return out;
+  }
+  const findings =
+    (findingRows as unknown as Array<{
+      id: string;
+      assumption_flag: boolean | null;
+    }>) ?? [];
+  if (findings.length === 0) return out;
+
+  const findingIds = findings.map((r) => r.id);
+  const { data: refRows } = await supabase
+    .from("finding_source_refs")
+    .select(
+      "finding_id, source_type, source_label, source_role, strength, excerpt",
+    )
+    .in("finding_id", findingIds);
+  const refs =
+    (refRows as unknown as Array<{
+      finding_id: string;
+      source_type: string | null;
+      source_label: string | null;
+      source_role: string | null;
+      strength: string | null;
+      excerpt: string | null;
+    }>) ?? [];
+
+  const refsByFinding = new Map<string, SourceRef[]>();
+  for (const ref of refs) {
+    const list = refsByFinding.get(ref.finding_id) ?? [];
+    list.push({
+      id: `${ref.finding_id}:${list.length}`,
+      type: provenanceRefType(ref.source_type),
+      source: ref.source_label ?? "",
+      role: ref.source_role ?? undefined,
+      excerpt: ref.excerpt ?? "",
+      strength: provenanceRefStrength(ref.strength),
+    });
+    refsByFinding.set(ref.finding_id, list);
+  }
+
+  for (const f of findings) {
+    out.set(
+      f.id,
+      summarizeFindingProvenance(
+        refsByFinding.get(f.id) ?? [],
+        Boolean(f.assumption_flag),
+      ),
+    );
+  }
+  return out;
+}
+
+function provenanceRefType(raw: string | null): SourceRefType {
+  switch (raw) {
+    case "stakeholder-response":
+    case "stakeholder_response":
+      return "stakeholder-response";
+    case "uploaded-document":
+    case "uploaded_document":
+    case "document_upload":
+      return "uploaded-document";
+    case "scorecard-answer":
+    case "scorecard_answer":
+      return "scorecard-answer";
+    case "consultant-note":
+    case "consultant_note":
+    default:
+      return "consultant-note";
+  }
+}
+
+function provenanceRefStrength(raw: string | null): SourceRef["strength"] {
+  switch (raw) {
+    case "strong":
+      return "strong";
+    case "adequate":
+      return "adequate";
+    case "thin":
+    default:
+      return "thin";
+  }
 }
 
 function humanizeCategory(value: string | null): string {

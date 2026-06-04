@@ -12,6 +12,7 @@ import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities
 import { CreateOpportunityForm } from "@/components/opportunities/create-opportunity-form";
 import { GenerateOpportunitiesForm } from "@/components/opportunities/generate-opportunities-form";
 import { OpportunityActionBar } from "@/components/opportunities/opportunity-action-bar";
+import { RoadmapReadinessHint } from "@/components/opportunities/roadmap-readiness-hint";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -19,13 +20,20 @@ import { isAiConfigured } from "@/lib/ai/provider";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
 import {
   getFindingCandidatesForEngagement,
+  getFindingProvenanceForEngagement,
   getMinimalFindingsForEngagement,
   getOpportunitiesForEngagementPersisted,
 } from "@/lib/opportunities/queries";
+import {
+  buildRoadmapReadinessSignal,
+  summarizeOpportunityProvenance,
+  type OpportunityProvenanceSummary,
+} from "@/lib/opportunities/provenance";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import type { Opportunity } from "@/lib/opportunities/types";
 import type { Finding } from "@/lib/findings/types";
+import type { FindingProvenanceSummary } from "@/lib/findings/provenance";
 
 export const dynamic = "force-dynamic";
 
@@ -57,13 +65,16 @@ export default async function EngagementOpportunitiesPage({
   let findingCandidates: Awaited<
     ReturnType<typeof getFindingCandidatesForEngagement>
   > = [];
+  let findingProvenanceById: Map<string, FindingProvenanceSummary> = new Map();
 
   if (isPersisted) {
-    [opportunities, findings, findingCandidates] = await Promise.all([
-      getOpportunitiesForEngagementPersisted(engagement.id),
-      getMinimalFindingsForEngagement(engagement.id),
-      getFindingCandidatesForEngagement(engagement.id),
-    ]);
+    [opportunities, findings, findingCandidates, findingProvenanceById] =
+      await Promise.all([
+        getOpportunitiesForEngagementPersisted(engagement.id),
+        getMinimalFindingsForEngagement(engagement.id),
+        getFindingCandidatesForEngagement(engagement.id),
+        getFindingProvenanceForEngagement(engagement.id),
+      ]);
   } else {
     opportunities = getOpportunitiesForEngagement(engagement.id);
     findings = getFindingsForEngagement(engagement.id);
@@ -72,6 +83,38 @@ export default async function EngagementOpportunitiesPage({
   const approvedFindings = findings.filter(
     (f) => f.reviewStatus === "approved" || f.reviewStatus === "report-ready",
   );
+
+  // Sprint S6 — Build opportunity-id → provenance summary map by
+  // projecting each opportunity's `relatedFindingIds` against the
+  // per-finding provenance map. Pure projection; no DB.
+  const opportunityProvenanceById = new Map<
+    string,
+    OpportunityProvenanceSummary
+  >();
+  if (isPersisted) {
+    for (const o of opportunities) {
+      opportunityProvenanceById.set(
+        o.id,
+        summarizeOpportunityProvenance(
+          o.relatedFindingIds,
+          findingProvenanceById,
+        ),
+      );
+    }
+  }
+
+  // Sprint S6 — S7 roadmap readiness signal, built purely from already-
+  // fetched data. Operator-only hint; does NOT block S7.
+  const roadmapReadinessSignal = isPersisted
+    ? buildRoadmapReadinessSignal(
+        opportunities.map((o) => ({
+          status: o.status ?? null,
+          evidenceStrength: o.evidenceStrength,
+          quadrant: o.quadrant,
+          provenance: opportunityProvenanceById.get(o.id) ?? null,
+        })),
+      )
+    : null;
 
   const total = opportunities.length;
   const quickWins = opportunities.filter((o) => o.quadrant === "quick-win").length;
@@ -202,6 +245,11 @@ export default async function EngagementOpportunitiesPage({
                 engagementId={engagement.id}
                 findingCandidates={findingCandidates}
               />
+              {/* Sprint S6 — S7 roadmap readiness signal. Read-only;
+                  does not block S7 (S7 not yet built). */}
+              {roadmapReadinessSignal ? (
+                <RoadmapReadinessHint signal={roadmapReadinessSignal} />
+              ) : null}
             </>
           ) : null}
 
@@ -259,12 +307,19 @@ export default async function EngagementOpportunitiesPage({
               engagementId={engagement.id}
               opportunities={opportunities}
               findings={findings}
+              provenanceById={
+                isPersisted ? opportunityProvenanceById : undefined
+              }
               renderActionBar={
                 isPersisted
                   ? (opportunity) => (
                       <OpportunityActionBar
                         opportunityId={opportunity.id}
                         status={opportunity.status ?? "draft"}
+                        provenance={
+                          opportunityProvenanceById.get(opportunity.id) ?? null
+                        }
+                        reviewerNote={opportunity.reviewerNote ?? null}
                       />
                     )
                   : undefined

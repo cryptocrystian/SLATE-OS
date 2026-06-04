@@ -73,6 +73,7 @@ export type OpportunityActionResult =
         | "invalid-score"
         | "engagement-not-found"
         | "opportunity-not-found"
+        | "rejection-reason-invalid"
         | "service-error";
     };
 
@@ -334,13 +335,34 @@ export async function updateOpportunityScores(
 // Status changes
 // ---------------------------------------------------------------------------
 
+interface SetStatusOptions {
+  /** Sprint S6 — operator-typed rejection rationale (10–500 chars or
+   *  empty). Only honored when `status === 'rejected'`; ignored
+   *  otherwise. */
+  rejectionReason?: string;
+}
+
 async function setStatus(
   opportunityId: string,
   status: OpportunityStatus,
+  options: SetStatusOptions = {},
 ): Promise<OpportunityActionResult> {
   if (!isUuid(opportunityId)) {
     return { ok: false, error: "invalid-opportunity" };
   }
+  // Validate optional rejection-reason BEFORE auth/RLS round-trip so
+  // length errors short-circuit cheaply.
+  let rejectionReasonClean: string | null = null;
+  if (status === "rejected" && options.rejectionReason !== undefined) {
+    const trimmed = options.rejectionReason.trim();
+    if (trimmed.length > 0) {
+      if (trimmed.length < 10 || trimmed.length > 500) {
+        return { ok: false, error: "rejection-reason-invalid" };
+      }
+      rejectionReasonClean = trimmed;
+    }
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -349,20 +371,45 @@ async function setStatus(
 
   const { data: existing, error: existingError } = await supabase
     .from("opportunities")
-    .select("id, engagement_id")
+    .select(
+      "id, engagement_id, evidence_strength, quadrant, business_impact_score, complexity_score, risk_score, reviewer_notes",
+    )
     .eq("id", opportunityId)
-    .maybeSingle<{ id: string; engagement_id: string }>();
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      evidence_strength: string | null;
+      quadrant: string | null;
+      business_impact_score: number | null;
+      complexity_score: number | null;
+      risk_score: number | null;
+      reviewer_notes: string | null;
+    }>();
   if (existingError || !existing?.id) {
     return { ok: false, error: "opportunity-not-found" };
   }
 
+  // Count linked findings so the activity event can record the
+  // source-finding count without leaking IDs. This is workspace-scoped
+  // RLS-bounded (same as the parent opportunity).
+  const { count: linkCount } = await supabase
+    .from("opportunity_finding_links")
+    .select("id", { count: "exact", head: true })
+    .eq("opportunity_id", existing.id);
+  const sourceFindingCount = typeof linkCount === "number" ? linkCount : 0;
+
+  const update: Record<string, unknown> = {
+    status,
+    reviewed_by: user.id,
+    last_reviewed_at: new Date().toISOString(),
+  };
+  if (status === "rejected" && rejectionReasonClean !== null) {
+    update.reviewer_notes = rejectionReasonClean;
+  }
+
   const { error: updateError } = await supabase
     .from("opportunities")
-    .update({
-      status,
-      reviewed_by: user.id,
-      last_reviewed_at: new Date().toISOString(),
-    })
+    .update(update)
     .eq("id", opportunityId);
   if (updateError) {
     console.error("[opportunities.actions] status-update-failed", {
@@ -378,6 +425,15 @@ async function setStatus(
 
   const eventType = STATUS_EVENT_TYPE[status];
   if (eventType) {
+    const metadata: Record<string, unknown> = {
+      status,
+      priorEvidenceStrength: existing.evidence_strength ?? null,
+      priorQuadrant: existing.quadrant ?? null,
+      sourceFindingCount,
+    };
+    if (status === "rejected" && rejectionReasonClean !== null) {
+      metadata.rejectionReason = rejectionReasonClean;
+    }
     await logActivityEvent({
       eventType,
       entityType: "opportunity",
@@ -385,7 +441,7 @@ async function setStatus(
       engagementId: existing.engagement_id,
       title: STATUS_EVENT_TITLE[status],
       summary: STATUS_EVENT_SUMMARY[status],
-      metadata: { status },
+      metadata,
     });
   }
   return { ok: true };
@@ -425,10 +481,21 @@ export async function deferOpportunity(
   return setStatus(opportunityId, "deferred");
 }
 
+export interface RejectOpportunityOptions {
+  /** Optional operator-typed rejection rationale. When provided, must
+   *  be 10–500 chars after trim; empty/whitespace-only is treated as
+   *  no reason. Persisted in `opportunities.reviewer_notes` AND in the
+   *  `opportunity_rejected` activity event metadata. */
+  reason?: string;
+}
+
 export async function rejectOpportunity(
   opportunityId: string,
+  options: RejectOpportunityOptions = {},
 ): Promise<OpportunityActionResult> {
-  return setStatus(opportunityId, "rejected");
+  return setStatus(opportunityId, "rejected", {
+    rejectionReason: options.reason,
+  });
 }
 
 export async function reopenOpportunity(

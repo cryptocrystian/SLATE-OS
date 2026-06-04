@@ -513,6 +513,7 @@ function translateError(
     | "invalid-score"
     | "engagement-not-found"
     | "opportunity-not-found"
+    | "rejection-reason-invalid"
     | "service-error",
 ): string {
   switch (code) {
@@ -529,6 +530,10 @@ function translateError(
       return "This engagement could not be found. Refresh the page and try again.";
     case "unauthenticated":
       return "Your session expired. Sign in again.";
+    case "rejection-reason-invalid":
+      // Form does not surface this code; included for compile-time
+      // alignment with the broader OpportunityActionResult union.
+      return "Rejection reason must be between 10 and 500 characters, or empty.";
     case "service-error":
     default:
       return "We couldn't save the opportunity. Please try again.";

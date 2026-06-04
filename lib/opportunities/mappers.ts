@@ -43,6 +43,7 @@ export interface DbOpportunityRow {
   success_signals: string[] | null;
   status: string | null;
   position: number | null;
+  reviewer_notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -197,6 +198,10 @@ export function mapOpportunityRow(
     successSignals: row.success_signals ?? [],
     status: tsStatusFor(row.status),
     updatedAt: row.updated_at ?? null,
+    reviewerNote:
+      typeof row.reviewer_notes === "string" && row.reviewer_notes.length > 0
+        ? row.reviewer_notes
+        : null,
   };
 }
 

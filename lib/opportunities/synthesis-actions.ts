@@ -115,8 +115,20 @@ export async function generateDraftOpportunitiesForEngagement(
   }
   const context = contextResult.context;
 
+  // Sprint S6 — sanitized evidence-lane projection. Counts only,
+  // never raw finding text or IDs. Mirrors the S4 activity-metadata
+  // shape for ai_findings_generated.
+  const findingsNeedsValidation = context.findings.filter(
+    (f) => f.needsValidation,
+  ).length;
+  const findingsAssumptionFlagged = context.findings.filter(
+    (f) => f.assumptionFlag,
+  ).length;
+
   const inputSummary = {
     findings: context.findings.length,
+    findingsNeedsValidation,
+    findingsAssumptionFlagged,
     inputAssets: context.inputAssets.length,
     scorecardAnswers: context.scorecard?.answers.length ?? 0,
     existingOpportunities: context.existingOpportunities.length,
@@ -315,6 +327,14 @@ export async function generateDraftOpportunitiesForEngagement(
       runType: "opportunity_draft",
       generatedCount: generated,
       skippedDuplicateCount: skippedDuplicates,
+      // Sprint S6 — sanitized source-evidence summary so an auditor can
+      // see at a glance whether the run leaned on findings that
+      // themselves carried weak provenance.
+      sourceFindings: {
+        total: context.findings.length,
+        needsValidation: findingsNeedsValidation,
+        assumptionFlagged: findingsAssumptionFlagged,
+      },
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },
