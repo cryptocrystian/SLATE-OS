@@ -18,6 +18,7 @@ import type {
   SourceRef,
   SourceRefType,
 } from "./types";
+import { summarizeFindingProvenance } from "./provenance";
 
 /**
  * Authenticated-operator server actions for findings.
@@ -81,7 +82,9 @@ export type FindingActionResult =
         | "invalid-confidence"
         | "engagement-not-found"
         | "finding-not-found"
-        | "service-error";
+        | "service-error"
+        // Sprint S5 — rejection reason validation.
+        | "rejection-reason-invalid";
     };
 
 export type CreateFindingResult =
@@ -214,24 +217,61 @@ export async function createManualFinding(
 // Review actions
 // ---------------------------------------------------------------------------
 
+interface SetReviewStatusOptions {
+  /** Sprint S5 — optional rejection reason for `rejected` transitions.
+   *  Bounded 10–500 chars; sanitized server-side; persisted in
+   *  `findings.reviewer_note` AND surfaced in activity event metadata. */
+  rejectionReason?: string;
+}
+
 async function setReviewStatus(
   findingId: string,
   status: FindingReviewStatus,
+  options: SetReviewStatusOptions = {},
 ): Promise<FindingActionResult> {
   if (!isUuid(findingId)) {
     return { ok: false, error: "invalid-finding" };
   }
+
+  // Sprint S5 — sanitize rejection reason if provided. Bounded length
+  // protects against runaway operator input and keeps activity metadata
+  // small. The reason text IS operator-supplied free text; per the
+  // operator-input contract it must not contain PII.
+  let sanitizedRejectionReason: string | null = null;
+  if (status === "rejected" && options.rejectionReason !== undefined) {
+    const reason = String(options.rejectionReason).trim();
+    if (reason.length > 0) {
+      if (reason.length < 10 || reason.length > 500) {
+        return { ok: false, error: "rejection-reason-invalid" };
+      }
+      sanitizedRejectionReason = reason;
+    }
+  }
+
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: "unauthenticated" };
 
+  // Sprint S5 — load the finding row + its source refs so we can include
+  // sanitized lane counts + dominant-strength signal in the activity
+  // event metadata. The refs are NEVER persisted in metadata as raw
+  // strings; only counts + strengths leave this function.
   const { data: existing, error: existingError } = await supabase
     .from("findings")
-    .select("id, engagement_id")
+    .select(
+      "id, engagement_id, assumption_flag, confidence, ai_drafted, review_status",
+    )
     .eq("id", findingId)
-    .maybeSingle<{ id: string; engagement_id: string }>();
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      assumption_flag: boolean | null;
+      confidence: string | null;
+      ai_drafted: boolean | null;
+      review_status: string | null;
+    }>();
   if (existingError) {
     console.error("[findings.actions] finding-lookup-failed", {
       name: existingError.name,
@@ -242,13 +282,40 @@ async function setReviewStatus(
   }
   if (!existing?.id) return { ok: false, error: "finding-not-found" };
 
+  const { data: refRows } = await supabase
+    .from("finding_source_refs")
+    .select("source_type, strength")
+    .eq("finding_id", findingId);
+  const refList = (refRows as unknown as Array<{
+    source_type: string | null;
+    strength: string | null;
+  }>) ?? [];
+  const provenance = summarizeFindingProvenance(
+    refList.map((r) => ({
+      id: "",
+      type: mapDbSourceType(r.source_type),
+      source: "",
+      excerpt: "",
+      strength: mapDbStrength(r.strength),
+    })),
+    Boolean(existing.assumption_flag),
+  );
+
+  const updatePayload: Record<string, unknown> = {
+    review_status: dbReviewStatusFor(status),
+    reviewed_by: user.id,
+    last_reviewed_at: new Date().toISOString(),
+  };
+  if (status === "rejected" && sanitizedRejectionReason) {
+    // Persist the rejection reason in `reviewer_note` so it shows up on
+    // the finding card alongside the rejected status. Operator can edit
+    // it later via `updateFindingNote` if needed.
+    updatePayload.reviewer_note = sanitizedRejectionReason;
+  }
+
   const { error: updateError } = await supabase
     .from("findings")
-    .update({
-      review_status: dbReviewStatusFor(status),
-      reviewed_by: user.id,
-      last_reviewed_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", findingId);
   if (updateError) {
     console.error("[findings.actions] review-status-update-failed", {
@@ -271,10 +338,52 @@ async function setReviewStatus(
       engagementId: existing.engagement_id,
       title: REVIEW_EVENT_TITLE[status],
       summary: REVIEW_EVENT_SUMMARY[status],
-      metadata: { reviewStatus: status },
+      metadata: {
+        reviewStatus: status,
+        priorStatus: existing.review_status ?? null,
+        confidence: existing.confidence ?? null,
+        aiDrafted: Boolean(existing.ai_drafted),
+        // Sprint S5 — provenance-summary metadata. Counts + strengths
+        // only; ZERO raw evidence text leaves this surface.
+        provenance: {
+          totalRefs: provenance.totalRefs,
+          stakeholderResponseRefs: provenance.stakeholderResponseRefs,
+          uploadedDocumentRefs: provenance.uploadedDocumentRefs,
+          scorecardAnswerRefs: provenance.scorecardAnswerRefs,
+          consultantNoteRefs: provenance.consultantNoteRefs,
+          dominantStrength: provenance.dominantStrength,
+          needsValidation: provenance.needsValidation,
+        },
+        ...(sanitizedRejectionReason
+          ? { rejectionReason: sanitizedRejectionReason }
+          : {}),
+      },
     });
   }
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// DB-type fitters reused locally for activity metadata derivation
+// ---------------------------------------------------------------------------
+
+function mapDbSourceType(raw: string | null): SourceRefType {
+  switch (raw) {
+    case "stakeholder_response":
+      return "stakeholder-response";
+    case "input_asset":
+      return "uploaded-document";
+    case "scorecard_answer":
+      return "scorecard-answer";
+    case "consultant_note":
+    default:
+      return "consultant-note";
+  }
+}
+
+function mapDbStrength(raw: string | null): SourceRef["strength"] {
+  if (raw === "strong" || raw === "adequate" || raw === "thin") return raw;
+  return "thin";
 }
 
 const REVIEW_EVENT_TYPE: Partial<Record<FindingReviewStatus, ActivityEventType>> = {
@@ -307,10 +416,20 @@ export async function approveFinding(
   return setReviewStatus(findingId, "approved");
 }
 
+export interface RejectFindingOptions {
+  /** Sprint S5 — optional operator-supplied rejection reason. Bounded
+   *  10–500 chars. Persisted in `findings.reviewer_note` AND in the
+   *  `finding_rejected` activity event metadata for audit. */
+  reason?: string;
+}
+
 export async function rejectFinding(
   findingId: string,
+  options: RejectFindingOptions = {},
 ): Promise<FindingActionResult> {
-  return setReviewStatus(findingId, "rejected");
+  return setReviewStatus(findingId, "rejected", {
+    rejectionReason: options.reason,
+  });
 }
 
 export async function markFindingReportReady(

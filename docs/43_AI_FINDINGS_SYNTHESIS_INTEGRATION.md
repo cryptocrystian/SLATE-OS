@@ -8,6 +8,7 @@
 - **Branches at execution:** `staging` and `persistence/step-0-1-auth-shell` both at `d4228ad` ("Add Attio read context")
 - **Controlled fixture:** **SLATE Pilot Test Client** (engagement `ed7f1f7d-…`). **No Sapient Digital mutation.** No new fixture created.
 - **Verdict:** ✅ **Implementation complete.** Lane-attributed evidence aggregator, readiness gate, operator-override path, lane-attribution prompt, and findings-page UI all landed. Source-clean + build-clean. Live AI call deferred per task spec — the SLATE Pilot Test Client fixture contains only audit-labelled responses, and the aggregator correctly excludes all 8 of them (preventing accidental synthesis from running on fixture data); the gate then correctly blocks any synthesis attempt. A live AI exercise against real (non-audit) data is a follow-on operator step, not a S4 source change.
+- **Follow-on (2026-06-04 — Sprint S5):** Approval lifecycle polish landed downstream of S4 — see `docs/44_FINDINGS_APPROVAL_POLISH.md`. The S5 polish consumes the same persisted `findings` + `finding_source_refs` rows S4 emits; it adds provenance visibility, a needs-validation flag, optional rejection-reason capture (persisted in `reviewer_note` + activity metadata), and an operator-only Opportunities Readiness Hint. S5 does NOT change the S4 synthesis path, the S4 readiness gate, or the S4 prompt; it is a pure approval-surface enrichment.
 
 ---
 

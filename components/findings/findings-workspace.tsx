@@ -7,6 +7,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  ShieldAlert,
   Sparkles,
   StickyNote,
   X,
@@ -24,6 +25,7 @@ import {
   FINDING_FILTERS,
   type FindingFilterId,
 } from "@/lib/findings/helpers";
+import { summarizeFindingProvenance } from "@/lib/findings/provenance";
 import type { Finding } from "@/lib/findings/types";
 
 const CATEGORY_TONE_MAP: Record<string, BadgeTone> = {
@@ -179,6 +181,10 @@ export function FindingsWorkspace({
                         {f.sourceRefs.length === 1 ? "" : "s"}
                       </span>
                     </div>
+                    {/* Sprint S5 — Needs-validation chip on the card.
+                        Computed inline from the persisted refs + the
+                        finding's assumption flag. */}
+                    <FindingProvenanceChip finding={f} compact />
                   </button>
                 </li>
               );
@@ -236,6 +242,9 @@ function FindingDetail({
         <h2 className="text-lg font-semibold leading-snug tracking-tight text-text-primary sm:text-xl">
           {finding.statement}
         </h2>
+
+        {/* Sprint S5 — Provenance row: per-lane chip + needs-validation badge. */}
+        <FindingProvenanceChip finding={finding} />
 
         <ConfidenceIndicator confidence={finding.confidence} variant="block" />
 
@@ -355,6 +364,112 @@ function FindingDetail({
         )}
       </CardBody>
     </Card>
+  );
+}
+
+/**
+ * Sprint S5 — Per-finding provenance + needs-validation chip row.
+ *
+ * Two render modes:
+ *   - `compact` (used in the card list) — single `Needs validation`
+ *     badge OR a small evidence-strength dot, only rendered when there's
+ *     something operator-actionable to surface.
+ *   - default (used in the detail card) — full chip row with lane counts +
+ *     dominant strength + needs-validation badge + reason tooltip.
+ */
+function FindingProvenanceChip({
+  finding,
+  compact = false,
+}: {
+  finding: Finding;
+  compact?: boolean;
+}) {
+  const provenance = React.useMemo(
+    () =>
+      summarizeFindingProvenance(
+        finding.sourceRefs,
+        Boolean(finding.assumptionFlag),
+      ),
+    [finding.sourceRefs, finding.assumptionFlag],
+  );
+
+  if (compact) {
+    if (provenance.needsValidation) {
+      return (
+        <Badge tone="warning" variant="outline" dot>
+          <ShieldAlert className="mr-1 h-2.5 w-2.5" />
+          Needs validation
+        </Badge>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/30 p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          Provenance
+        </span>
+        {provenance.needsValidation ? (
+          <Badge tone="warning" variant="outline" dot>
+            <ShieldAlert className="mr-1 h-2.5 w-2.5" />
+            Needs validation
+          </Badge>
+        ) : (
+          <Badge tone="success" variant="outline" dot>
+            Evidence-backed
+          </Badge>
+        )}
+        <Badge tone="neutral" variant="outline">
+          Strength: {provenance.dominantStrength}
+        </Badge>
+      </div>
+      <div className="flex flex-wrap gap-1.5 text-[11px]">
+        {provenance.stakeholderResponseRefs > 0 ? (
+          <Badge tone="info" variant="outline">
+            Stakeholder ·{" "}
+            <span className="font-mono tabular-nums">
+              {provenance.stakeholderResponseRefs}
+            </span>
+          </Badge>
+        ) : null}
+        {provenance.uploadedDocumentRefs > 0 ? (
+          <Badge tone="neutral" variant="outline">
+            Document ·{" "}
+            <span className="font-mono tabular-nums">
+              {provenance.uploadedDocumentRefs}
+            </span>
+          </Badge>
+        ) : null}
+        {provenance.scorecardAnswerRefs > 0 ? (
+          <Badge tone="neutral" variant="outline">
+            Scorecard ·{" "}
+            <span className="font-mono tabular-nums">
+              {provenance.scorecardAnswerRefs}
+            </span>
+          </Badge>
+        ) : null}
+        {provenance.consultantNoteRefs > 0 ? (
+          <Badge tone="neutral" variant="outline">
+            Consultant note ·{" "}
+            <span className="font-mono tabular-nums">
+              {provenance.consultantNoteRefs}
+            </span>
+          </Badge>
+        ) : null}
+        {provenance.totalRefs === 0 ? (
+          <Badge tone="warning" variant="outline">
+            No source refs attached
+          </Badge>
+        ) : null}
+      </div>
+      {provenance.needsValidationReason ? (
+        <p className="text-[11px] leading-relaxed text-text-muted">
+          {provenance.needsValidationReason}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

@@ -436,7 +436,10 @@ function translateError(
     | "invalid-confidence"
     | "engagement-not-found"
     | "finding-not-found"
-    | "service-error",
+    | "service-error"
+    // Sprint S5 — added to FindingActionResult; createManualFinding
+    // does not return it but the shared union now includes it.
+    | "rejection-reason-invalid",
 ): string {
   switch (code) {
     case "missing-fields":
@@ -450,6 +453,8 @@ function translateError(
       return "This engagement could not be found. Refresh the page and try again.";
     case "unauthenticated":
       return "Your session expired. Sign in again.";
+    case "rejection-reason-invalid":
+      return "Rejection reason must be between 10 and 500 characters, or empty.";
     case "service-error":
     default:
       return "We couldn't save the finding. Please try again.";

@@ -23,6 +23,11 @@ import {
   getFindingsForEngagementPersisted,
 } from "@/lib/findings/queries";
 import { buildEvidenceBundleForEngagement } from "@/lib/findings/evidence";
+import {
+  buildOpportunitiesReadinessSignal,
+  summarizeFindingProvenance,
+} from "@/lib/findings/provenance";
+import { OpportunitiesReadinessHint } from "@/components/findings/opportunities-readiness-hint";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import { isAiConfigured } from "@/lib/ai/provider";
 import type { Finding } from "@/lib/findings/types";
@@ -195,6 +200,19 @@ export default async function EngagementFindingsPage({
               <CreateFindingForm
                 engagementId={engagement.id}
                 candidates={candidates}
+              />
+              {/* Sprint S5 — Opportunities readiness signal. Read-only
+                  hint; does not block S6 (S6 not yet built). */}
+              <OpportunitiesReadinessHint
+                signal={buildOpportunitiesReadinessSignal(
+                  findings.map((f) => ({
+                    reviewStatus: f.reviewStatus,
+                    provenance: summarizeFindingProvenance(
+                      f.sourceRefs,
+                      Boolean(f.assumptionFlag),
+                    ),
+                  })),
+                )}
               />
             </>
           ) : null}
