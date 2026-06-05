@@ -575,3 +575,20 @@ Still pending after Part 1:
 - ❌ Migration 0018 + Attio properties (NOT required for Part 2 per task-spec authorization "Migration 0018 and Attio properties are optional for this walkthrough unless already ready").
 
 The S6 source contract is unchanged. The deployment-layer contract is now live-verified.
+
+---
+
+## 17. Follow-on — S4–S6 Walkthrough · Part 2 (2026-06-04)
+
+⚠ **S6 opportunity drafting live verification BLOCKED by an upstream findings-page render bug.** See `docs/46_S4_S6_CONTROLLED_WALKTHROUGH.md` Part 2.
+
+What Part 2 confirmed about S6:
+- ✅ **The opportunities page renders cleanly on deployed Production with persisted findings present.** Even though 5 `needs_review` findings now exist on the SLATE Pilot Test Client fixture, the `/app/engagements/[id]/opportunities` page returns HTTP 200 with the full S6 UI (Identified / Quick Wins / Strategic Builds / Defer · Avoid / Avg Impact / Strong Evidence stat tiles; `Generate draft opportunities` form with `No approved findings yet` warning; `Open findings workspace` CTA). This **isolates the upstream bug to the findings-page render path** and confirms the S6 surfaces (workspace, action bar, provenance chip, RoadmapReadinessHint, manual create form) are all present and live on deployed Production.
+- ✅ **`getFindingProvenanceForEngagement` and `getMinimalFindingsForEngagement`** (the queries the opportunities page uses to compute S6 provenance signals) read the new 5 findings without erroring. This proves S6's data-layer contract works against real-data shapes.
+- ❌ **S6 live drafting itself was not exercised** because the operator cannot approve any findings through the broken findings page, so the `hasApprovedFindings: false` warning correctly disables the `Generate draft opportunities` button.
+
+Pending after Part 2:
+- ❌ Findings page Server Component render bug must be fixed first (blocker-fix sprint).
+- ❌ Once approved findings exist, `Generate draft opportunities` can be exercised live (1 OpenAI call) and the S6 selection/defer/reject lifecycle can be validated against real drafted opportunities.
+
+The S6 source contract is unchanged. The S6 deployed surface is live-verified to render cleanly with persisted findings present. Live opportunity drafting resumes once the blocker-fix sprint closes the findings-page issue.

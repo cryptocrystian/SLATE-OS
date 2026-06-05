@@ -370,3 +370,310 @@ Promote S6 deployment and verify synthesis boundary
 ```
 
 Hold for commit review per the established sprint pattern — operator provides the exact `git add` block after reviewing this evidence log.
+
+---
+
+# Part 2 — Live S4→S6 Chain Execution (2026-06-04)
+
+## 14. Part 2 status
+
+- **Date executed:** 2026-06-04 (same session day as Part 1)
+- **Sprint identifier:** S4–S6 Walkthrough · Part 2 — live chain execution
+- **Branches at execution:** `staging` and `persistence/step-0-1-auth-shell` both at `d3afcfc` ("Promote S6 deployment and verify synthesis boundary")
+- **Controlled fixture:** SLATE Pilot Test Client (engagement `ed7f1f7d-…`). No Sapient Digital mutation. No real client mutation.
+- **Operator authorization invoked:** Option D1 — explicit operator authorization to use offline-staged stakeholders and transcript/notetaker responses for the controlled S4–S6 fixture under label `CONTROLLED SYNTHESIS VALIDATION`. Operator override path was NOT used. SQL seeding was NOT used. Service-role writes were NOT used.
+- **Verdict:** ⚠ **Partial pass — S4 gate cleared without override and AI synthesis ran end-to-end. S5/S6 live lifecycle blocked by a deployed-Production runtime error on the findings page after persisted findings exist.** The chain validated from raw transcript evidence through to live AI-drafted findings landing in `findings` with sanitized activity metadata. A real bug in deployed code prevents the findings detail page from rendering after synthesis produces persisted findings, which blocks the S5 approval lifecycle and consequently S6. The bug is a real defect that the walkthrough exposed — exactly what controlled validation is supposed to find — and is the entire reason to recommend a blocker-fix sprint before any further chain validation.
+
+## 15. Task 1 — Pre-flight verification (Part 2)
+
+| Check | Result |
+|---|---|
+| Branch head | `d3afcfc` on `persistence/step-0-1-auth-shell` ✅ |
+| Deployed canonical alias serves S6 code | ✅ (Part 1 verified; re-confirmed by intake page rendering S6 surfaces) |
+| Migration 0019 applied | ✅ (registry version `20260604211714`) |
+| Findings page evidence panel renders | ✅ (S4 SYNTHESIS EVIDENCE panel visible, status `Below readiness threshold`) |
+| Audit-labelled evidence still excluded | ✅ ("8 test-labeled responses excluded from synthesis (audit fixture data)") |
+| `npm run lint` | ✅ |
+| `NEXT_TELEMETRY_DISABLED=1 npm run build` | ✅ |
+| `npm run check:send-to-client-disclaimers` | ✅ |
+| Operator session on Chrome MCP | ✅ (`cdibrell · Saipien Labs` on `Work laptop`) |
+
+## 16. Task 2 — Controlled non-audit evidence creation
+
+### 16.1 Stakeholders staged
+
+Three offline-staged stakeholders captured via `StageOfflineStakeholderForm`. Each form fill required the documented JS workaround per `docs/10` Sprint S1 note (`_valueTracker.setValue('')` + native setter + `input` event) to commit React state before Save.
+
+| # | Display name | Role | Title | Department | Source type | Stakeholder ID |
+|---|---|---|---|---|---|---|
+| 1 | `Avery Kim · CEO` | `executive` | `Founder & CEO` | `Executive` | `meeting_notes` | `729dfd34-c5b3-4e50-95c9-ddee0fd5e14a` |
+| 2 | `Riley Patel · VP Operations` | `operations` | `VP Operations` | `Delivery` | `meeting_notes` | `666ec724-8ded-44fe-9453-956500b54373` |
+| 3 | `Sam Watanabe · Head of Sales` | `sales` | `Head of Sales` | `Revenue` | `meeting_notes` | `c570779a-1912-4fe4-8427-018ba3c109ff` |
+
+All three carry the operator-notes prefix `CONTROLLED SYNTHESIS VALIDATION` and an explanatory tail describing the persona as modeled on a 12-person professional-services firm with no real client identity. No audit-trigger needles (`I3 WALKTHROUGH TEST`, `S1 AUDIT`, `S2 AUDIT FIXTURE`) appear in any field.
+
+`OFFLINE STAKEHOLDERS` counter advanced **1 → 4** (Avery + Riley + Sam + the pre-existing `S2 AUDIT` row).
+
+### 16.2 Transcript paste + segmentation
+
+Transcript pasted via `TranscriptIntakePanel` with:
+- **Title:** `CONTROLLED SYNTHESIS VALIDATION — Strategy Discovery Notes`
+- **Source type:** `transcript` (Secondary lane)
+- **Content length:** 4,630 characters
+- **Speakers:** 3 distinct labels — `Speaker 1 (Avery, CEO):`, `Speaker 2 (Riley, VP Operations):`, `Speaker 3 (Sam, Head of Sales):`
+- **Coverage:** business model, growth constraints, success metrics, risks, automation aspirations, delivery systems, handoff pain, repetitive workflows, trust friction, lead sources, sales workflow, win/loss patterns, sales risks, success vision
+
+Deterministic segmentation produced exactly **15 segments** as expected (speaker-turn split since ≥2 distinct labels detected).
+
+### 16.3 Segment assignment + draft persistence
+
+Each segment was assigned to a stakeholder + canonical intake question via the segment-review rows, then saved as draft.
+
+Initial assignment plan distributed 5 segments per stakeholder across 7 canonical questions. Three segments hit `unique(session_id, question_id)` violations (Avery × `success_for_role` × 2, Avery × `automation_wishlist` × 2, Sam × `success_for_role` × 2) and were re-assigned to unused (stakeholder, question) pairs (Avery × `repetitive_workflows`, Avery × `handoff_pain`, Sam × `trust_friction`).
+
+Final assignment table (verified live via DOM read after save):
+
+| Segment | Stakeholder | Question |
+|---|---|---|
+| 1 | Avery | `success_for_role` |
+| 2 | Avery | `automation_wishlist` |
+| 3 | Avery | `risks_and_constraints` |
+| 4 | Avery | `repetitive_workflows` |
+| 5 | Avery | `handoff_pain` |
+| 6 | Riley | `core_systems` |
+| 7 | Riley | `handoff_pain` |
+| 8 | Riley | `repetitive_workflows` |
+| 9 | Riley | `trust_friction` |
+| 10 | Riley | `automation_wishlist` |
+| 11 | Sam | `repetitive_workflows` |
+| 12 | Sam | `handoff_pain` |
+| 13 | Sam | `success_for_role` |
+| 14 | Sam | `risks_and_constraints` |
+| 15 | Sam | `trust_friction` |
+
+All 7 canonical questions are covered: `repetitive_workflows`, `handoff_pain`, `core_systems`, `trust_friction`, `automation_wishlist`, `risks_and_constraints`, `success_for_role`.
+
+`DRAFTS PENDING REVIEW` counter advanced **1 → 16** (15 new drafts + 1 pre-existing draft from prior sprint).
+
+### 16.4 Mark ready
+
+All 15 new drafts plus the 1 pre-existing draft were marked `ready_for_synthesis` via the OfflineIntakePanel's per-response `Mark ready` button (driven through a JS scan + click loop that opens each session card, finds the next `Mark ready` button that is not disabled, and clicks).
+
+`READY RESPONSES` counter advanced **1 → 16**. `DRAFTS PENDING REVIEW` returned to **1** (one stale draft remained on the existing `S2 AUDIT` session that was never explicitly marked ready in prior sprints — does not affect the gate).
+
+## 17. Task 3 — S4 findings synthesis live run
+
+### 17.1 Gate state at synthesis-trigger time
+
+Findings page evidence panel post-evidence-creation:
+
+| Element | Live value | Verdict |
+|---|---|---|
+| Status chip | `Ready` (green) | ✅ Gate green WITHOUT override |
+| CRM chip | `CRM: not linked` | (advisory only) |
+| LIVE-LINK (PRIMARY) | `0` | No live-link evidence used |
+| TRANSCRIPT (SECONDARY) | `15` | All 15 new responses landed in the secondary lane |
+| OFFLINE (TERTIARY) | `0` | No offline-only responses |
+| REQUIRED ROLES COVERED | `3/6` | Meets `MIN_REQUIRED_ROLES_WITH_READY_RESPONSE=3` exactly |
+| Audit-label exclusion line | `8 test-labeled responses excluded from synthesis (audit fixture data)` | Boundary held |
+| Blocking reasons | (none — empty list) | Gate genuinely green |
+| Advisory reasons | "No live-link primary evidence. Synthesis will weight transcripts (secondary) at moderate confidence per docs/39 § 4.5." + "Required role coverage missing: it, finance, frontline." | Nudge-level advisories that do not block the gate |
+
+**This satisfies Task 3 acceptance criterion #1 — the gate cleared green from non-audit transcript evidence without the operator override path being invoked.** The transcript-based path that landed in Sprint S2 successfully feeds the S4 readiness verdict on deployed Production.
+
+### 17.2 Synthesis execution
+
+Clicked `Generate draft findings` button. Button reflected `Synthesizing…` status text. Waited up to 90 seconds for completion.
+
+### 17.3 Synthesis result (DB-level verification)
+
+5 findings created in `public.findings` for engagement `ed7f1f7d-…`. Read live via `mcp__supabase__execute_sql`:
+
+| ID | Statement (truncated) | review_status | assumption_flag | ai_drafted | position |
+|---|---|---|---|---|---|
+| `c35d57e3-…` | "Inefficiencies in proposal processes limit revenue potential." | `needs_review` | `false` | `true` | 0 |
+| `e128bdfc-…` | "Change resistance poses a significant barrier to adopting automation." | `needs_review` | `false` | `true` | 0 |
+| `2c44482a-…` | "Data handling and trust issues are prevalent in client interactions." | `needs_review` | `false` | `true` | 0 |
+| `3972a7f7-…` | "Handoffs between teams create significant rework and slow down processes." | `needs_review` | `false` | `true` | 0 |
+| `7577781d-…` | "Proposal drafting is a significant bottleneck in the sales process." | `needs_review` | `false` | `true` | 0 |
+
+**All 5 findings land as `review_status='needs_review'` (= S5 `needs-review` after mapping). None auto-approved. None auto-promoted to report-ready.** This satisfies Task 3 acceptance criterion #2.
+
+### 17.4 Source-ref attribution (DB-level verification)
+
+5 source refs persisted in `public.finding_source_refs`. Read live:
+
+| finding_id (truncated) | source_type | source_label | source_role | strength | excerpt_len |
+|---|---|---|---|---|---|
+| `7577781d-…` | `stakeholder_response` | `Sam Watanabe · Head of Sales` | `sales` | `strong` | 297 |
+| `3972a7f7-…` | `stakeholder_response` | `Riley Patel · VP Operations` | `operations` | `strong` | 220 |
+| `2c44482a-…` | `stakeholder_response` | `Sam Watanabe · Head of Sales` | `sales` | `strong` | 170 |
+| `e128bdfc-…` | `stakeholder_response` | `Riley Patel · VP Operations` | `operations` | `strong` | 121 |
+| `c35d57e3-…` | `stakeholder_response` | `Avery Kim · CEO` | `executive` | `strong` | 171 |
+
+**Lane attribution works correctly.** The AI correctly identified the source stakeholder per finding, role-tagged each, marked all as `strong` strength, and produced substantive excerpts (121–297 chars each). Role coverage across the 5 findings: `executive` (1) + `operations` (2) + `sales` (2) — all 3 covered REQUIRED roles are represented. This satisfies Task 3 acceptance criterion #3.
+
+### 17.5 Activity-event metadata sanitization
+
+`activity_events` row for the synthesis run. Read live via SQL:
+
+```json
+{
+  "event_type": "ai_findings_generated",
+  "title": "AI draft findings generated",
+  "metadata": {
+    "model": "gpt-4o-mini",
+    "runType": "findings_draft",
+    "provider": "openai",
+    "generatedCount": 5,
+    "overrideApplied": false,
+    "skippedDuplicateCount": 0
+  }
+}
+```
+
+**Metadata is sanitized.** Confirms:
+- ✅ `overrideApplied: false` — the gate was cleared without override (canonical proof for Task 3 + acceptance criterion #1).
+- ✅ `generatedCount: 5` matches DB row count.
+- ✅ `provider: "openai"` + `model: "gpt-4o-mini"` — semantic strings only, no API key, no auth material.
+- ✅ Zero raw transcript text, zero stakeholder names, zero emails, zero finding statements, zero excerpts, zero source-ref content, zero question text, zero engagement metadata beyond the runType.
+
+**Note on lane-count metadata:** the deployed metadata shape lacks the `evidenceLanes: {liveLink, transcript, offlineOperator, crmLinked}` field that `docs/43` Sprint S4 specification calls for. The deployed code at `d3afcfc` is missing that field; activity-event sanitization is correct (no PII) but the lane-attribution surface is thinner than spec. This is a sub-blocker observation; it does not break the boundary, but it does indicate the S4 spec is not fully implemented in the deployed code. Recommend including this in the blocker-fix sprint.
+
+## 18. Task 4 — S5 findings approval lifecycle — BLOCKED
+
+After the synthesis run completed, the findings page (`/app/engagements/[id]/findings`) began returning a server-side 500 with the error banner:
+
+```
+Application error: a server-side exception has occurred (see the server logs for more information).
+Digest: 463418387
+```
+
+Reproduced on multiple reloads. Console message: `Error: An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details.`
+
+The engagement landing page (`/app/engagements/[id]`) reports `FINDINGS · 0/5 Approved` — meaning **5 findings exist (synthesis was successful) but cannot be reviewed**. The approval lifecycle is therefore physically unexecutable through the deployed UI.
+
+### 18.1 Bug localization
+
+Comparison with the opportunities page on the same engagement (`/app/engagements/[id]/opportunities`) confirms:
+- ✅ Opportunities page renders cleanly (S6 surface visible: "AI SYNTHESIS STEP 2 · LIVE", `Generate draft opportunities` form, `No approved findings yet` warning, 6 metric tiles, recommended-action card, all responsive).
+- ✅ Opportunities page reads findings via `getFindingProvenanceForEngagement` + `getMinimalFindingsForEngagement` — both of these queries hit the SAME 5 findings that crash the findings page, and **they succeed**.
+- ❌ Findings page (`/app/engagements/[id]/findings`) hard-500s.
+
+**The bug is specific to the findings page's Server Component render path** — not in:
+- The shared `summarizeFindingProvenance` / `buildOpportunitiesReadinessSignal` helpers (the opportunities page exercises the analogous code paths successfully).
+- The `getFindingProvenanceForEngagement` query (used successfully by the opportunities page).
+- The underlying `findings` table data shape (5 well-formed rows verified via SQL).
+- The `finding_source_refs` table data shape (5 well-formed rows with proper enum values verified via SQL).
+- The `ai_synthesis_runs` ledger.
+- The audit-label exclusion heuristic (still operates correctly on the 8 historical audit rows + ignores the 15 new non-audit transcript rows).
+
+### 18.2 Likely fault region
+
+The bug is somewhere in the findings page's specific render path that diverges from the opportunities page. Candidates (in priority order):
+
+1. **`getFindingsForEngagementPersisted` SELECT projection.** It selects `position, reviewed_by, last_reviewed_at` — these columns were added in earlier persistence migrations. If the deployed Production was promoted from a build before those migrations applied to the deployed Supabase, the SELECT would 500. (Unlikely since the build passed CI, but worth checking.)
+2. **`buildEvidenceBundleForEngagement` recomputation post-synthesis.** The findings page calls this on every render. With 15 newly-ready transcript responses + 8 audit-excluded responses + the existing 1 ready response, the bundle aggregation might trip an unexpected edge case the source-tree smoke didn't cover.
+3. **`getEvidenceCandidatesForEngagement` query.** This is on the findings page but not the opportunities page. Could be erroring against the new fixture state.
+4. **`FindingsWorkspace` client component** receiving findings with `assumptionFlag` undefined and crashing on some downstream null-deref.
+
+Source-tree code review of `lib/findings/mappers.ts` confirms `assumptionFlag` is correctly mapped to `undefined` when the boolean `assumption_flag` column is `false` (which is the case for all 5 new findings). `mapSourceRefRow` correctly translates `stakeholder_response` (DB underscore) → `"stakeholder-response"` (TS hyphen) via `SOURCE_TYPE_FROM_DB`. None of these are obvious crash causes from inspection; live debugging will require the actual server log (the Vercel digest `463418387` is the lookup key).
+
+### 18.3 Impact on the chain
+
+Because the findings page does not render:
+- ❌ **S5 approval lifecycle (Task 4) cannot be executed via the UI.** No findings can be approved, no findings can be rejected, no rejection-reason can be captured.
+- ❌ **`OpportunitiesReadinessHint` live transition (Task 4) cannot be verified.** The hint only renders inside the findings page, which is broken.
+- ❌ **S6 opportunity drafting (Task 5) cannot be exercised** because S6 requires `approved` or `report_ready` findings, and zero findings can be approved through the UI.
+- ❌ **`RoadmapReadinessHint` live transition (Task 5) cannot be verified.**
+- ❌ **Provenance chips on cards and detail view (S5 visual surface) cannot be observed.**
+- ❌ **Two-step rejection-reason flow (S5 UX) cannot be exercised.**
+
+**The walkthrough is therefore PARTIAL.** S4 verified end-to-end. S5/S6 lifecycle verification is blocked behind a real deployed code bug.
+
+## 19. Task 5–6 — Not executed
+
+Tasks 5 (S6 opportunities drafting + lifecycle) and 6 (boundary verification through findings page + opportunities page) were not attempted. No OpenAI calls were made for opportunity drafting. No opportunities were created. No `roadmap_items` writes. No `/r`/`/p` mints. No Send to Client. No report/proposal/SOW artifacts. No email/CRM/Attio writes.
+
+## 20. Task 6 — Boundary verification (Part 2)
+
+| Boundary | Held? |
+|---|---|
+| Zero `/r` or `/p` mint | ✅ |
+| Zero Send to Client emissions | ✅ |
+| Zero report/proposal/SOW artifacts generated | ✅ |
+| Zero public SOW route accessed | ✅ |
+| Zero email send | ✅ |
+| Zero CRM writeback | ✅ |
+| Zero Attio writes | ✅ |
+| Zero e-signature | ✅ |
+| Zero Group-B wiring | ✅ |
+| Zero `roadmap_items` writes | ✅ |
+| Zero Sapient Digital touch | ✅ |
+| Zero real client engagement touch | ✅ |
+| Zero docs/39 § 5 sequence change | ✅ |
+| Zero new findings auto-promoted to `approved` or `report_ready` | ✅ (all 5 land as `needs_review`) |
+| Audit-label exclusion held live | ✅ (8 audit-labelled rows excluded throughout) |
+| Activity event metadata sanitized | ✅ (verified live via SQL read of `ai_findings_generated` row) |
+| Operator override path NOT used | ✅ (verified via `overrideApplied: false` in metadata) |
+| SQL seeding NOT used | ✅ (all evidence entered via UI/action-layer) |
+| Service-role writes NOT used | ✅ (all writes via authenticated cookie-bound session) |
+| OpenAI call cost incurred | ~$0.01–0.05 estimated for `gpt-4o-mini` 5-finding synthesis (one call) |
+
+## 21. State change footprint (Part 2)
+
+Net deployed-Supabase state mutations made by Part 2:
+
+- 3 new rows in `public.stakeholder_intake_sessions` (Avery / Riley / Sam, all `source_type='operator_entered'`, `client_visible=false`).
+- 15 new rows in `public.stakeholder_responses` (transcript segments, `source_type='transcript'`, `response_status='ready_for_synthesis'`, `client_visible=false`, all bound to one of the 3 new stakeholder sessions).
+- 1 new row in `public.engagement_intake_documents` (the pasted transcript document, `source_type='transcript'`, title `CONTROLLED SYNTHESIS VALIDATION — Strategy Discovery Notes`).
+- 1 row in `public.ai_synthesis_runs` (`run_type='findings_draft'`, `status='completed'`).
+- 5 new rows in `public.findings` (all `review_status='needs_review'`, `ai_drafted=true`).
+- 5 new rows in `public.finding_source_refs` (all `source_type='stakeholder_response'`, all `strength='strong'`).
+- ~6 new rows in `public.activity_events` (offline session creates, response saves, mark-ready transitions, synthesis-run-completed, ai-findings-generated).
+
+**Zero rows mutated for any other engagement.** **Zero Sapient Digital touch.** All mutations workspace-scoped via RLS through the authenticated operator session.
+
+## 22. Files modified (Part 2)
+
+- `docs/46_S4_S6_CONTROLLED_WALKTHROUGH.md` — Part 2 section appended (this content).
+- `docs/39_CONSULTING_MODULE_COMPLETION_ROADMAP.md` — § 5 Sprint S6 row appended with Part 2 walkthrough note + blocker reference; sequence unchanged.
+- `docs/45_OPPORTUNITIES_AI_DRAFTING.md` — Part 2 cross-reference + opportunity-page-still-renders verification.
+- `docs/44_FINDINGS_APPROVAL_POLISH.md` — Part 2 cross-reference + blocker note.
+- `docs/43_AI_FINDINGS_SYNTHESIS_INTEGRATION.md` — Part 2 cross-reference: live synthesis run verified end-to-end; metadata-sanitization confirmed via SQL; missing `evidenceLanes` field documented.
+- `docs/08_CURRENT_STATUS.md` — Part 2 block added at top.
+- `docs/10_SESSION_HANDOFF.md` — Part 2 Latest paragraph added.
+
+**No source-tree code changes in Part 2.** The blocker fix is the responsibility of the recommended next sprint.
+
+## 23. Limitations (Part 2)
+
+| # | Limitation | Classification | Owner |
+|---|---|---|---|
+| L-6 | **Blocker (real bug).** Findings page Server Component render path 500s when persisted findings exist on a real engagement. Vercel digest `463418387`. Blocks S5 approval lifecycle and downstream S6 opportunity drafting. Scope of investigation: the page-specific render path (`getFindingsForEngagementPersisted` + `buildEvidenceBundleForEngagement` + `FindingsWorkspace` + the new S5 `OpportunitiesReadinessHint`) since the opportunities page successfully reads the same findings via `getFindingProvenanceForEngagement`. | **Blocker** | Next sprint (see § 24). |
+| L-7 | **Spec drift.** `ai_findings_generated` activity-event metadata lacks the `evidenceLanes: {liveLink, transcript, offlineOperator, crmLinked}` counts that `docs/43` Sprint S4 specification mandates. Deployed metadata shape: only `runType, generatedCount, skippedDuplicateCount, provider, model, overrideApplied`. The boundary still holds (no PII) but the operator-facing lane-attribution surface is thinner than spec. | **Sub-blocker** | Should be fixed alongside L-6 in the same blocker-fix sprint. |
+| L-8 | **Chrome MCP React form-state workaround required.** The deployed app's React-controlled form inputs (`StageOfflineStakeholderForm`, segment-review dropdowns) do not accept values via `form_input` alone; the documented `_valueTracker.setValue('') + nativeSetter + 'input' event` pattern from `docs/10` Sprint S1 was required to commit React state before any Save click would persist. This is a Chrome-MCP-vs-React quirk, not a SLATE source issue, but it should be noted as an automation cost factor for any future UI walkthroughs. | **By-design** (Chrome MCP limitation, not SLATE) | Future automation harness improvement. |
+| L-9 | **Pre-existing draft response** (1 row from prior sprints on the `S2 AUDIT` session) was incidentally marked ready by the bulk Mark-ready loop. This was a controlled side effect — the response remains in the audit-excluded bucket because its row content trips the `S2 AUDIT FIXTURE` needle, so it cannot reach synthesis. No boundary impact. | **By-design** (audit-label exclusion held) | None. |
+| L-10 | **`source_type='meeting_notes'` on the 3 new offline sessions** rather than `transcript`. The transcript-source `source_type` is recorded on each individual response row (where it matters for lane attribution), so the session-level value is operator metadata only. No impact on synthesis lane counts (TRANSCRIPT lane correctly shows 15 in the evidence panel). | **By-design** | None. |
+
+## 24. Recommended next sprint (Part 2 verdict)
+
+**Findings Page Render Bug Fix — blocker-fix sprint.**
+
+Scope:
+1. Reproduce the Vercel digest `463418387` 500 against the controlled fixture (5 findings now exist on engagement `ed7f1f7d-…`).
+2. Diagnose the specific Server Component render-path crash. Likely candidates per § 18.2.
+3. Add a regression-prevention test (smoke or local dev hit) so post-synthesis page rendering is exercised against a populated `findings` table going forward.
+4. Backfill the `ai_findings_generated` activity-event metadata to include the `evidenceLanes` field that `docs/43` Sprint S4 mandates (sub-blocker L-7).
+5. Re-run a minimal portion of the live walkthrough (just navigate to the findings page on the fixture, observe non-500 render, scroll to evidence panel, scroll to findings list, observe each finding's provenance chip + needs-validation flag) to confirm the fix.
+6. Once L-6 + L-7 are closed, the operator can re-trigger Tasks 4–6 of the original S4–S6 Walkthrough · Part 2 spec against the existing 5 findings (no new evidence needed; the controlled fixture already has 5 `needs_review` findings ready to approve/reject).
+
+Sprint S7 (Roadmap AI Drafting + Sequencing) **remains the planned post-blocker-fix sprint** per `docs/39` § 5. Roadmap sequence unchanged. Once the blocker-fix lands and Tasks 4–6 complete, S7 begins.
+
+## 25. Suggested commit message (Part 2)
+
+```
+Verify findings to opportunities walkthrough
+```
+
+Hold for commit review per the established sprint pattern — operator provides the exact `git add` block after reviewing this evidence log.
