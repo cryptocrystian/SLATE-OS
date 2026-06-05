@@ -11,7 +11,6 @@ import {
   FindingsWorkspace,
   ManualFindingPlaceholder,
 } from "@/components/findings/findings-workspace";
-import { FindingReviewActionBar } from "@/components/findings/review-action-bar";
 import { CreateFindingForm } from "@/components/findings/create-finding-form";
 import { GenerateFindingsForm } from "@/components/findings/generate-findings-form";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
@@ -232,11 +231,7 @@ export default async function EngagementFindingsPage({
           ) : (
             <FindingsWorkspace
               findings={findings}
-              renderActionBar={
-                isPersisted
-                  ? (finding) => <FindingReviewActionBar finding={finding} />
-                  : undefined
-              }
+              actionMode={isPersisted ? "review" : undefined}
             />
           )}
 

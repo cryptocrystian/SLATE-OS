@@ -11,7 +11,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities-workspace";
 import { CreateOpportunityForm } from "@/components/opportunities/create-opportunity-form";
 import { GenerateOpportunitiesForm } from "@/components/opportunities/generate-opportunities-form";
-import { OpportunityActionBar } from "@/components/opportunities/opportunity-action-bar";
 import { RoadmapReadinessHint } from "@/components/opportunities/roadmap-readiness-hint";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
@@ -310,20 +309,7 @@ export default async function EngagementOpportunitiesPage({
               provenanceById={
                 isPersisted ? opportunityProvenanceById : undefined
               }
-              renderActionBar={
-                isPersisted
-                  ? (opportunity) => (
-                      <OpportunityActionBar
-                        opportunityId={opportunity.id}
-                        status={opportunity.status ?? "draft"}
-                        provenance={
-                          opportunityProvenanceById.get(opportunity.id) ?? null
-                        }
-                        reviewerNote={opportunity.reviewerNote ?? null}
-                      />
-                    )
-                  : undefined
-              }
+              actionMode={isPersisted ? "triage" : undefined}
             />
           )}
 

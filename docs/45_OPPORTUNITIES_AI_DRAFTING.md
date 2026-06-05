@@ -592,3 +592,32 @@ Pending after Part 2:
 - ❌ Once approved findings exist, `Generate draft opportunities` can be exercised live (1 OpenAI call) and the S6 selection/defer/reject lifecycle can be validated against real drafted opportunities.
 
 The S6 source contract is unchanged. The S6 deployed surface is live-verified to render cleanly with persisted findings present. Live opportunity drafting resumes once the blocker-fix sprint closes the findings-page issue.
+
+---
+
+## 18. Follow-on — Findings Page Render Bug Fix sprint (2026-06-04)
+
+✅ **S6 opportunity drafting + selection lifecycle VERIFIED LIVE on deployed Production.** See `docs/47_FINDINGS_PAGE_RENDER_BUG_FIX.md` § 6 + § 7.
+
+The blocker-fix sprint closed the L-6 findings-page render 500 and, while it was at it, preemptively fixed the same function-prop-across-SSR-boundary bug in `OpportunitiesWorkspace` (would have manifested the moment any opportunity persisted on a real engagement — i.e. as soon as Sprint S6 went live with real data). Fix shape:
+
+- `renderActionBar?: (opportunity) => React.ReactNode` → `actionMode?: "triage"`
+- `OpportunitiesWorkspace` now imports `OpportunityActionBar` directly and mounts it inline when `actionMode === "triage"`, threading the per-opportunity provenance summary from `provenanceById` and the `reviewerNote` from the opportunity object itself.
+
+After fix promotion, with 5 approved findings on the controlled fixture, the S6 chain executed end-to-end:
+
+| Stage | Result |
+|---|---|
+| `Generate draft opportunities` (deployed UI) | OpenAI `gpt-4o-mini` returned **4 opportunities** (2 Quick Win + 1 Strategic Build + 1 Low Priority) |
+| Server-derived quadrant placement | Verified live (Address Change Resistance / Quick Win at impact 70 + complexity 40; Streamline Proposal Drafting / Strategic Build at impact 80 + complexity 60; etc.) |
+| Source-finding linkage | 1 finding per opportunity (verified via `sourceFindingCount: 1` on every lifecycle event metadata payload) |
+| Evidence strength | All 4 opportunities recorded `strong` (verified via `priorEvidenceStrength` on event metadata) |
+| `Mark selected × 3` | All 3 transitions persisted; DB confirms `status='selected'` × 3 |
+| `Defer × 1` (Low Priority) | Transition persisted; DB confirms `status='deferred'` × 1 |
+| `RoadmapReadinessHint` transition | `Not yet` → `Ready for roadmap drafting` at the exact moment `selected` reached `minSelectedForS7=3`. Boundary case verified: deferred excluded from `selected` count. |
+| `roadmap_items` row count | **0** (zero roadmap generation — S7 has not started; the BOUNDARY held) |
+| Activity-event metadata sanitization | `ai_opportunities_generated` + 3 × `opportunity_selected` + 1 × `opportunity_deferred` — all 5 events SQL-audited live, all carry safe semantic fields only (`model, runType, provider, generatedCount, skippedDuplicateCount` on the generation event; `status, priorQuadrant, priorEvidenceStrength, sourceFindingCount` on the lifecycle events). Zero raw text, zero PII, zero source-finding UUIDs. |
+
+**Sub-spec drift recorded:** `ai_opportunities_generated` metadata still lacks the `sourceFindings: {total, needsValidation, assumptionFlagged}` field that this canon (§ 9) mandates. Boundary holds (no PII). Fold into the next docs/45-touching sprint alongside the analogous `evidenceLanes` drift in `docs/43`.
+
+The S6 chain is now fully verified on deployed Production end-to-end. Sprint S7 — Roadmap AI Drafting + Sequencing — can begin immediately against the hot controlled fixture (3 selected opportunities, all `strong` evidence, all with `sourceFindingCount=1` traceable back to approved findings). Roadmap sequence unchanged.

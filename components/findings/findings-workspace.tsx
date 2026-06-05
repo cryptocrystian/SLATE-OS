@@ -26,6 +26,7 @@ import {
   type FindingFilterId,
 } from "@/lib/findings/helpers";
 import { summarizeFindingProvenance } from "@/lib/findings/provenance";
+import { FindingReviewActionBar } from "./review-action-bar";
 import type { Finding } from "@/lib/findings/types";
 
 const CATEGORY_TONE_MAP: Record<string, BadgeTone> = {
@@ -39,15 +40,21 @@ const CATEGORY_TONE_MAP: Record<string, BadgeTone> = {
 
 export interface FindingsWorkspaceProps {
   findings: Finding[];
-  /** Optional override for the per-finding action bar. When provided,
-   *  the persisted finding actions render here instead of the static
-   *  mock affordance. */
-  renderActionBar?: (finding: Finding) => React.ReactNode;
+  /**
+   * Selects which per-finding action bar to mount inside the detail
+   * panel. Boolean-shaped instead of a render-prop function so it can
+   * cross the Server-Component → Client-Component serialization
+   * boundary in Next.js 14 (functions cannot, render-prop crashed live
+   * synthesis runs with digest `463418387` once findings landed).
+   * `"review"` mounts the persisted `FindingReviewActionBar`;
+   * `undefined` mounts no action bar (mock-data path).
+   */
+  actionMode?: "review";
 }
 
 export function FindingsWorkspace({
   findings,
-  renderActionBar,
+  actionMode,
 }: FindingsWorkspaceProps) {
   const [active, setActive] = React.useState<FindingFilterId>(
     findings.some((f) => f.reviewStatus === "needs-review")
@@ -196,7 +203,7 @@ export function FindingsWorkspace({
       {/* Detail panel */}
       <div className="flex flex-col gap-4 lg:col-span-5">
         {selected ? (
-          <FindingDetail finding={selected} renderActionBar={renderActionBar} />
+          <FindingDetail finding={selected} actionMode={actionMode} />
         ) : (
           <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
             Select a finding to review.
@@ -214,10 +221,10 @@ export function FindingsWorkspace({
 
 function FindingDetail({
   finding,
-  renderActionBar,
+  actionMode,
 }: {
   finding: Finding;
-  renderActionBar?: (finding: Finding) => React.ReactNode;
+  actionMode?: "review";
 }) {
   return (
     <Card variant="base">
@@ -309,9 +316,9 @@ function FindingDetail({
           </div>
         ) : null}
 
-        {renderActionBar ? (
+        {actionMode === "review" ? (
           <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-            {renderActionBar(finding)}
+            <FindingReviewActionBar finding={finding} />
           </div>
         ) : (
           <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">

@@ -10,6 +10,7 @@ import { OpportunityCard } from "./opportunity-card";
 import { OpportunityPriorityChip } from "./opportunity-priority-chip";
 import { OpportunityScoreStrip } from "./opportunity-score-strip";
 import { OpportunityProvenanceChip } from "./opportunity-provenance-chip";
+import { OpportunityActionBar } from "./opportunity-action-bar";
 import { RelatedFindingsPanel } from "./related-findings-panel";
 import {
   CATEGORY_TONE,
@@ -41,10 +42,18 @@ export interface OpportunitiesWorkspaceProps {
   engagementId: string;
   opportunities: Opportunity[];
   findings: Finding[];
-  /** Optional render-prop for the per-opportunity action bar. When
-   *  provided, the persisted action bar renders inside the detail panel
-   *  in place of the static placeholder. */
-  renderActionBar?: (opportunity: Opportunity) => React.ReactNode;
+  /**
+   * Selects which per-opportunity action bar to mount inside the detail
+   * panel. Boolean-shaped instead of a render-prop function so it can
+   * cross the Server-Component → Client-Component serialization
+   * boundary in Next.js 14 (functions cannot; the function form crashed
+   * the findings page with digest `463418387` once findings landed and
+   * the same shape would crash this page the moment any opportunity is
+   * persisted — see `docs/47_FINDINGS_PAGE_RENDER_BUG_FIX.md`).
+   * `"triage"` mounts the persisted `OpportunityActionBar` per card;
+   * `undefined` mounts no action bar (mock-data path).
+   */
+  actionMode?: "triage";
   /**
    * Sprint S6 — Map of opportunity-id → provenance summary derived
    * from source-finding provenance. Built server-side on the
@@ -58,7 +67,7 @@ export function OpportunitiesWorkspace({
   engagementId,
   opportunities,
   findings,
-  renderActionBar,
+  actionMode,
   provenanceById,
 }: OpportunitiesWorkspaceProps) {
   const [active, setActive] = React.useState<OpportunityFilterId>("all");
@@ -189,8 +198,15 @@ export function OpportunitiesWorkspace({
               Select an opportunity to review.
             </p>
           )}
-          {selected && renderActionBar ? (
-            <div>{renderActionBar(selected)}</div>
+          {selected && actionMode === "triage" ? (
+            <div>
+              <OpportunityActionBar
+                opportunityId={selected.id}
+                status={selected.status ?? "draft"}
+                provenance={provenanceById?.get(selected.id) ?? null}
+                reviewerNote={selected.reviewerNote ?? null}
+              />
+            </div>
           ) : null}
           {selected ? (
             <RelatedFindingsPanel

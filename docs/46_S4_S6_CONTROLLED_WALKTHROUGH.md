@@ -677,3 +677,17 @@ Verify findings to opportunities walkthrough
 ```
 
 Hold for commit review per the established sprint pattern — operator provides the exact `git add` block after reviewing this evidence log.
+
+---
+
+## 26. Closure — Blocker-fix sprint + Walkthrough resumption (2026-06-04)
+
+✅ **Walkthrough Part 2 closed.** The L-6 blocker (Vercel digest `463418387` findings-page render 500) was diagnosed and fixed in a follow-on blocker-fix sprint — see `docs/47_FINDINGS_PAGE_RENDER_BUG_FIX.md`. After the fix landed on deployed Production, Tasks 4–6 of the original Part 2 spec executed against the existing 5 preserved `needs_review` findings:
+
+- **S5 approval lifecycle:** 5/5 findings approved (rejection deliberately skipped per task-spec — with exactly 5 findings, rejecting would drop S6 readiness below the recommended `minApprovedForS6=5` threshold).
+- **S6 opportunity drafting:** AI synthesis produced 4 opportunities (2 Quick Win + 1 Strategic Build + 1 Low Priority).
+- **S6 selection lifecycle:** 3 selected + 1 deferred. `RoadmapReadinessHint` transitioned from `Not yet` → `Ready for roadmap drafting`. The BOUNDARY case verifies live: deferred opportunities do NOT count toward `selected` (selected=3 exact, not 4).
+- **Boundary held:** `roadmap_items` row count remains 0; no `/r` or `/p` mint; no Send to Client; no email/CRM/Attio; no Group-B; no Sapient touch. Activity metadata sanitized live for all 6 new event types (`finding_review_status_changed × 5`, `ai_opportunities_generated × 1`, `opportunity_selected × 3`, `opportunity_deferred × 1`) — all SQL-verified.
+- **All 14 Part 2 acceptance criteria met.**
+
+The controlled fixture is now hot for Sprint S7. Roadmap sequence unchanged.
