@@ -191,9 +191,16 @@ async function setSectionStatus(
 
   const { data: existing, error: existingError } = await supabase
     .from("report_sections")
-    .select("id, engagement_id, report_id")
+    .select("id, engagement_id, report_id, status, section_type, ai_drafted")
     .eq("id", sectionId)
-    .maybeSingle<{ id: string; engagement_id: string; report_id: string }>();
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      report_id: string;
+      status: string | null;
+      section_type: string | null;
+      ai_drafted: boolean | null;
+    }>();
   if (existingError || !existing?.id) {
     return { ok: false, error: "section-not-found" };
   }
@@ -224,6 +231,11 @@ async function setSectionStatus(
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
 
+  // Sprint S8 — sanitized status-transition metadata. Captures the
+  // prior status, the canonical section_type slug, and AI-draft state
+  // so the activity timeline can show meaningful audit context without
+  // leaking any section body, reviewer note, or upstream UUID.
+  const linkCounts = await countSectionLinks(supabase, existing.id);
   await logActivityEvent({
     eventType: "report_section_status_changed",
     entityType: "report_section",
@@ -231,10 +243,49 @@ async function setSectionStatus(
     engagementId: existing.engagement_id,
     title: `Report section moved to ${status}`,
     summary: "An operator updated a report section's review state.",
-    metadata: { sectionStatus: status },
+    metadata: {
+      sectionStatus: status,
+      priorStatus: existing.status ?? "not_started",
+      sectionType: existing.section_type ?? "unknown",
+      hasAiDraft: Boolean(existing.ai_drafted),
+      linkedFindingCount: linkCounts.findings,
+      linkedOpportunityCount: linkCounts.opportunities,
+      linkedRoadmapItemCount: linkCounts.roadmapItems,
+    },
   });
 
   return { ok: true };
+}
+
+/**
+ * Sprint S8 — count link rows by kind. Used to enrich
+ * `report_section_status_changed` activity metadata with the section's
+ * source coverage at the moment the status changed. Read-only; never
+ * touches the section row itself. Failures degrade to zero counts.
+ */
+async function countSectionLinks(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  sectionId: string,
+): Promise<{ findings: number; opportunities: number; roadmapItems: number }> {
+  const [f, o, r] = await Promise.all([
+    supabase
+      .from("report_section_finding_links")
+      .select("id", { count: "exact", head: true })
+      .eq("report_section_id", sectionId),
+    supabase
+      .from("report_section_opportunity_links")
+      .select("id", { count: "exact", head: true })
+      .eq("report_section_id", sectionId),
+    supabase
+      .from("report_section_roadmap_links")
+      .select("id", { count: "exact", head: true })
+      .eq("report_section_id", sectionId),
+  ]);
+  return {
+    findings: f.count ?? 0,
+    opportunities: o.count ?? 0,
+    roadmapItems: r.count ?? 0,
+  };
 }
 
 export async function approveReportSection(

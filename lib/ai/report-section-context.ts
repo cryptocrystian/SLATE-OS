@@ -11,10 +11,18 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  *   - Only consultant-reviewed findings (approved + report-ready) are
  *     loaded as evidence. Needs-review/draft/rejected findings never
  *     reach the model.
- *   - Only scored / selected opportunities are surfaced — drafts and
- *     rejected opportunities are filtered out.
- *   - Roadmap items are passed through unchanged (already the
- *     curated operator output).
+ *   - Only operator-selected opportunities are surfaced — drafts,
+ *     scored-but-not-selected, deferred, and rejected opportunities
+ *     are filtered out. Sprint S8 tightened this from
+ *     `["scored", "selected"]` to `["selected"]` only so pre-approval
+ *     opportunity drafts never feed report-section synthesis. The
+ *     `scored` stage is an internal operator review state; only
+ *     `selected` opportunities are operator-blessed for downstream
+ *     consumption. See `docs/49_REPORT_SECTION_AI_DRAFTING.md` § 3.
+ *   - Only `ready` roadmap items are surfaced — planned drafts,
+ *     deferred/rejected items, and completed items never feed report
+ *     synthesis. Sprint S8 added this allowlist; the prior loader
+ *     accepted every roadmap row regardless of status.
  *   - Stakeholder PII is never embedded: only intake-session aggregates
  *     (status / role / response-quality / completion percent / a brief
  *     summary blurb already authored by the mapper) reach the model.
@@ -153,7 +161,17 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ELIGIBLE_FINDING_STATUSES = ["approved", "report_ready"];
-const ELIGIBLE_OPPORTUNITY_STATUSES = ["scored", "selected"];
+// Sprint S8 — tightened from `["scored", "selected"]` to `["selected"]`
+// only. `scored` is an internal pre-approval state; only operator-blessed
+// `selected` opportunities are eligible inputs for report-section
+// synthesis. Same correctness pattern as the S7 fix to roadmap-context.
+// See docs/49 § 3.
+const ELIGIBLE_OPPORTUNITY_STATUSES = ["selected"];
+// Sprint S8 — only `ready` roadmap items feed report-section synthesis.
+// Planned (draft), deferred, rejected, blocked, and completed items are
+// excluded. The `ready` state is the operator-approved roadmap output of
+// S7; nothing else is operator-blessed for downstream consumption.
+const ELIGIBLE_ROADMAP_STATUSES = ["ready"];
 
 // ---------------------------------------------------------------------------
 // Public builder
@@ -450,6 +468,10 @@ async function loadRoadmap(
       "id, title, phase, priority, objective, key_actions, dependencies, success_criteria, risks, opportunity_id, position, created_at",
     )
     .eq("engagement_id", engagementId)
+    // Sprint S8 — only operator-approved (`ready`) roadmap items feed
+    // report-section synthesis. Planned/deferred/rejected/blocked/
+    // completed items are excluded from AI input.
+    .in("status", ELIGIBLE_ROADMAP_STATUSES)
     .order("phase", { ascending: true })
     .order("position", { ascending: true })
     .order("created_at", { ascending: true })

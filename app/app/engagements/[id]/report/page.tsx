@@ -14,6 +14,9 @@ import { InitializeReportForm } from "@/components/reports/initialize-report-for
 import { ReportExhibitSlots } from "@/components/reports/report-exhibit-slots";
 import { GeneratePdfCandidateButton } from "@/components/reports/generate-pdf-candidate-button";
 import { ReportPdfCandidatesPanel } from "@/components/reports/report-pdf-candidates-panel";
+import { ProposalReadinessHint } from "@/components/reports/proposal-readiness-hint";
+import { GenerateAllReportSectionsButton } from "@/components/reports/generate-all-report-sections-button";
+import { buildProposalReadinessSignal } from "@/lib/reports/readiness";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -219,6 +222,16 @@ export default async function EngagementReportPage({
       .length >=
       Math.ceil(sections.length * 0.5);
 
+  // Sprint S8 — Proposal-readiness signal feeding the operator-facing
+  // hint card below the workspace. Pure-function projection over the
+  // already-loaded sections; no extra DB call. The signal is advisory;
+  // the actual S9 gate lives in the proposal sprint.
+  const proposalReadinessSignal = report
+    ? buildProposalReadinessSignal(sections)
+    : null;
+
+  const aiAvailable = isAiConfigured();
+
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
       <PageHeader
@@ -246,6 +259,18 @@ export default async function EngagementReportPage({
                   Open Proposal Builder
                 </Button>
               </Link>
+            ) : null}
+            {/* Sprint S8 — bulk AI drafting button. Mounted only for
+                persisted engagements with the AI provider configured.
+                Each draft is operator-reviewable; nothing is
+                auto-approved. The per-section AI control on
+                `ReportSectionActionBar` remains available for
+                targeted drafts and re-drafts. */}
+            {isPersisted && report ? (
+              <GenerateAllReportSectionsButton
+                engagementId={engagement.id}
+                aiAvailable={aiAvailable}
+              />
             ) : null}
             {/* Sprint 3 — internal preview PDF path. Distinct from the
                 locked client-facing Export Report below; opens an
@@ -400,9 +425,16 @@ export default async function EngagementReportPage({
               // boundary at runtime. The action bar is now imported and
               // rendered inside the (client) workspace.
               showActionBar={isPersisted}
-              aiAvailable={isAiConfigured()}
+              aiAvailable={aiAvailable}
             />
           )}
+
+          {/* Sprint S8 — operator-facing proposal-readiness signal.
+              Advisory only; the actual S9 gate lives in the proposal
+              sprint. Mounted only when a persisted report exists. */}
+          {isPersisted && proposalReadinessSignal ? (
+            <ProposalReadinessHint signal={proposalReadinessSignal} />
+          ) : null}
 
           {exhibitSlotResults && report ? (
             <ReportExhibitSlots

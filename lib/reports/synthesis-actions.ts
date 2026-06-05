@@ -68,6 +68,12 @@ export type GenerateReportSectionResult =
       sectionId: string;
       provider: string;
       model: string;
+      /** Sprint S8 — source link counts persisted into the three
+       *  `report_section_*_links` tables. Returned for the operator
+       *  notice UI; never includes raw UUIDs. */
+      sourceFindingCount: number;
+      sourceOpportunityCount: number;
+      sourceRoadmapItemCount: number;
     }
   | { ok: false; error: GenerateReportSectionError };
 
@@ -209,8 +215,8 @@ export async function generateReportSectionDraftAction(args: {
   }
 
   // Persist the draft via a partial-field update so `exhibit_slot`,
-  // link rows, reviewer note, and every other column are preserved.
-  // Status is demoted to `needs_review` per docs/17.
+  // reviewer note, and every other column are preserved. Status is
+  // demoted to `needs_review` per docs/17.
   const now = new Date().toISOString();
   const evidenceNotesField = composeEvidenceNotes(synthesisResult.candidate);
   const { error: updateError } = await supabase
@@ -236,6 +242,19 @@ export async function generateReportSectionDraftAction(args: {
     return { ok: false, error: "service-error" };
   }
 
+  // Sprint S8 — persist structural source provenance. The validator
+  // already coerced the model's grounded ID arrays against the upstream
+  // allowlist; here we write the link rows. Unique-violation (23505)
+  // is benign — the section was already linked to that artifact.
+  const linkCounts = await persistGroundedLinks(supabase, {
+    workspaceId: engagementRow.workspace_id,
+    engagementId: engagementRow.id,
+    sectionId,
+    findingIds: synthesisResult.candidate.groundedFindingIds,
+    opportunityIds: synthesisResult.candidate.groundedOpportunityIds,
+    roadmapItemIds: synthesisResult.candidate.groundedRoadmapItemIds,
+  });
+
   // Bump report + engagement timestamps.
   await supabase
     .from("reports")
@@ -253,6 +272,10 @@ export async function generateReportSectionDraftAction(args: {
     exhibitSlot: context.section.exhibitSlot,
     evidenceNotesCount: synthesisResult.candidate.evidenceNotes.length,
     assumptionsCount: synthesisResult.candidate.assumptionsAndLimits.length,
+    // Sprint S8 — source counts (no UUIDs)
+    sourceFindingCount: linkCounts.findings,
+    sourceOpportunityCount: linkCounts.opportunities,
+    sourceRoadmapItemCount: linkCounts.roadmapItems,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
   };
@@ -282,6 +305,10 @@ export async function generateReportSectionDraftAction(args: {
       runType: "report_section_draft",
       sectionType: context.section.sectionType,
       exhibitSlot: context.section.exhibitSlot,
+      // Sprint S8 — sanitized source-count metadata (no UUIDs, no raw text).
+      sourceFindingCount: linkCounts.findings,
+      sourceOpportunityCount: linkCounts.opportunities,
+      sourceRoadmapItemCount: linkCounts.roadmapItems,
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },
@@ -294,6 +321,229 @@ export async function generateReportSectionDraftAction(args: {
     sectionId,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
+    sourceFindingCount: linkCounts.findings,
+    sourceOpportunityCount: linkCounts.opportunities,
+    sourceRoadmapItemCount: linkCounts.roadmapItems,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sprint S8 — bulk drafting orchestrator
+// ---------------------------------------------------------------------------
+
+export type GenerateAllReportSectionsError =
+  | "unauthenticated"
+  | "invalid-engagement"
+  | "engagement-not-found"
+  | "report-not-found"
+  | "ai-not-configured"
+  | "service-error";
+
+export interface GenerateAllReportSectionsResult {
+  ok: true;
+  total: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  /** Count of sections skipped because they were already operator-blessed
+   *  (status `approved` or `final`). Both are explicit operator outputs;
+   *  the bulk button only drafts sections that haven't been blessed. */
+  skippedBlessed: number;
+  /**
+   * Per-attempt outcomes — sanitized. Each entry carries only the
+   * section type and `ok|error_code`; never the section body or
+   * provider response.
+   */
+  results: Array<{
+    sectionType: string;
+    ok: boolean;
+    errorCode?: string;
+  }>;
+}
+
+export type GenerateAllReportSectionsFailure = {
+  ok: false;
+  error: GenerateAllReportSectionsError;
+};
+
+/**
+ * Sprint S8 — bulk drafter.
+ *
+ * Iterates every non-final report section sequentially, calling the
+ * per-section `generateReportSectionDraftAction` for each. Sequential
+ * (not parallel) because:
+ *
+ *   - The OpenAI rate-limit budget is the same whether we fan out or
+ *     not; sequential drafting is the conservative posture and matches
+ *     the per-section UI affordance.
+ *   - Each section's `ai_synthesis_runs` row is the atomic unit of
+ *     audit; we want each run independently visible.
+ *   - The activity timeline reads more naturally when section events
+ *     appear in canonical order.
+ *
+ * Sections in `final` or `approved` status are skipped — both are
+ * operator-blessed states. To re-draft a blessed section, the operator
+ * uses the per-section "Generate AI draft" button on
+ * `ReportSectionActionBar`, which is an explicit per-section intent.
+ * The bulk button is for "remaining" sections, never for replacing
+ * what the operator has already approved.
+ *
+ * Returns a counts summary even when individual sections fail. The
+ * orchestrator never aborts the loop on a single-section failure: it
+ * records the failure and continues so the operator gets as much
+ * coverage as the upstream evidence allows.
+ */
+export async function generateAllReportSectionDraftsAction(args: {
+  engagementId: string;
+}): Promise<
+  GenerateAllReportSectionsResult | GenerateAllReportSectionsFailure
+> {
+  const { engagementId } = args;
+  if (!isUuid(engagementId)) {
+    return { ok: false, error: "invalid-engagement" };
+  }
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+  if (!isAiConfigured()) {
+    return { ok: false, error: "ai-not-configured" };
+  }
+
+  const { data: engagementRow, error: engagementError } = await supabase
+    .from("engagements")
+    .select("id, workspace_id")
+    .eq("id", engagementId)
+    .maybeSingle<{ id: string; workspace_id: string }>();
+  if (engagementError) {
+    console.error("[reports.synthesis.bulk] engagement-lookup-failed", {
+      name: engagementError.name,
+      code: engagementError.code,
+      message: engagementError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!engagementRow?.id) {
+    return { ok: false, error: "engagement-not-found" };
+  }
+
+  const { data: reportRow, error: reportError } = await supabase
+    .from("reports")
+    .select("id")
+    .eq("engagement_id", engagementRow.id)
+    .maybeSingle<{ id: string }>();
+  if (reportError) {
+    console.error("[reports.synthesis.bulk] report-lookup-failed", {
+      name: reportError.name,
+      code: reportError.code,
+      message: reportError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!reportRow?.id) {
+    return { ok: false, error: "report-not-found" };
+  }
+
+  const { data: sectionsData, error: sectionsError } = await supabase
+    .from("report_sections")
+    .select("id, section_type, status, position, created_at")
+    .eq("report_id", reportRow.id)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (sectionsError) {
+    console.error("[reports.synthesis.bulk] sections-lookup-failed", {
+      name: sectionsError.name,
+      code: sectionsError.code,
+      message: sectionsError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  const sectionRows =
+    (sectionsData as unknown as Array<{
+      id: string;
+      section_type: string;
+      status: string | null;
+    }>) ?? [];
+
+  const total = sectionRows.length;
+  // Sprint S8 — exclude both `final` (locked) and `approved` (operator
+  // blessed) sections from bulk drafting. Both states are explicit
+  // operator outputs; the bulk button is for "remaining" sections only.
+  const draftable = sectionRows.filter(
+    (s) => s.status !== "final" && s.status !== "approved",
+  );
+  const skippedBlessed = total - draftable.length;
+
+  let succeeded = 0;
+  let failed = 0;
+  const results: GenerateAllReportSectionsResult["results"] = [];
+
+  for (const section of draftable) {
+    const r = await generateReportSectionDraftAction({
+      engagementId,
+      sectionId: section.id,
+    });
+    if (r.ok) {
+      succeeded += 1;
+      results.push({ sectionType: section.section_type, ok: true });
+    } else {
+      failed += 1;
+      results.push({
+        sectionType: section.section_type,
+        ok: false,
+        errorCode: r.error,
+      });
+    }
+  }
+
+  // Sanitized bulk-summary activity event. Never includes section body,
+  // provider response, or upstream UUIDs — only section types + counts.
+  const sectionTypes = Array.from(
+    new Set(results.filter((r) => r.ok).map((r) => r.sectionType)),
+  ).sort();
+  const errorCodeCounts = results
+    .filter((r) => !r.ok && r.errorCode)
+    .reduce<Record<string, number>>((acc, r) => {
+      const code = r.errorCode!;
+      acc[code] = (acc[code] ?? 0) + 1;
+      return acc;
+    }, {});
+
+  await logActivityEvent({
+    eventType: "ai_report_sections_drafted",
+    entityType: "report",
+    entityId: reportRow.id,
+    engagementId: engagementRow.id,
+    title:
+      failed === 0
+        ? "AI bulk report drafting completed"
+        : "AI bulk report drafting completed with partial failures",
+    summary:
+      `Sections attempted: ${draftable.length}. Succeeded: ${succeeded}. Failed: ${failed}. ` +
+      `Skipped (operator-blessed): ${skippedBlessed}.`,
+    metadata: {
+      runType: "report_sections_bulk_draft",
+      total,
+      attempted: draftable.length,
+      succeeded,
+      failed,
+      skippedBlessed,
+      sectionTypes,
+      errorCodeCounts,
+    },
+  });
+
+  revalidatePaths(engagementRow.id);
+
+  return {
+    ok: true,
+    total,
+    attempted: draftable.length,
+    succeeded,
+    failed,
+    skippedBlessed,
+    results,
   };
 }
 
@@ -316,6 +566,132 @@ async function markRunFailed(
       completed_at: new Date().toISOString(),
     })
     .eq("id", runId);
+}
+
+/**
+ * Sprint S8 — write the three flavors of report-section provenance link
+ * rows for the IDs the model grounded its draft in. Unique-violation
+ * (23505) is benign — the section already had that link. The total
+ * count returned is the link rows actually inserted *or already
+ * present* — i.e. the section's current source coverage in the link
+ * tables for each kind. We re-query after insert to capture both the
+ * newly inserted rows and any pre-existing links from a prior
+ * operator action.
+ */
+async function persistGroundedLinks(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  args: {
+    workspaceId: string;
+    engagementId: string;
+    sectionId: string;
+    findingIds: string[];
+    opportunityIds: string[];
+    roadmapItemIds: string[];
+  },
+): Promise<{ findings: number; opportunities: number; roadmapItems: number }> {
+  await insertLinkRows(supabase, "report_section_finding_links", "finding_id", {
+    workspaceId: args.workspaceId,
+    engagementId: args.engagementId,
+    sectionId: args.sectionId,
+    refIds: args.findingIds,
+  });
+  await insertLinkRows(
+    supabase,
+    "report_section_opportunity_links",
+    "opportunity_id",
+    {
+      workspaceId: args.workspaceId,
+      engagementId: args.engagementId,
+      sectionId: args.sectionId,
+      refIds: args.opportunityIds,
+    },
+  );
+  await insertLinkRows(
+    supabase,
+    "report_section_roadmap_links",
+    "roadmap_item_id",
+    {
+      workspaceId: args.workspaceId,
+      engagementId: args.engagementId,
+      sectionId: args.sectionId,
+      refIds: args.roadmapItemIds,
+    },
+  );
+
+  // Re-count current link coverage so the activity metadata reflects
+  // the section's total source provenance (newly-inserted + pre-existing
+  // operator-added links).
+  const [findingsCount, opportunitiesCount, roadmapItemsCount] =
+    await Promise.all([
+      countLinks(supabase, "report_section_finding_links", args.sectionId),
+      countLinks(supabase, "report_section_opportunity_links", args.sectionId),
+      countLinks(supabase, "report_section_roadmap_links", args.sectionId),
+    ]);
+  return {
+    findings: findingsCount,
+    opportunities: opportunitiesCount,
+    roadmapItems: roadmapItemsCount,
+  };
+}
+
+async function insertLinkRows(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  table:
+    | "report_section_finding_links"
+    | "report_section_opportunity_links"
+    | "report_section_roadmap_links",
+  refColumn: "finding_id" | "opportunity_id" | "roadmap_item_id",
+  args: {
+    workspaceId: string;
+    engagementId: string;
+    sectionId: string;
+    refIds: string[];
+  },
+) {
+  if (args.refIds.length === 0) return;
+  for (const refId of args.refIds) {
+    const insertRow: Record<string, unknown> = {
+      workspace_id: args.workspaceId,
+      engagement_id: args.engagementId,
+      report_section_id: args.sectionId,
+    };
+    insertRow[refColumn] = refId;
+    const { error } = await supabase.from(table).insert(insertRow);
+    // 23505 = unique_violation — link already exists, benign.
+    if (error && error.code !== "23505") {
+      console.error("[reports.synthesis] link-insert-failed", {
+        table,
+        refColumn,
+        name: error.name,
+        code: error.code,
+        message: error.message,
+      });
+    }
+  }
+}
+
+async function countLinks(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  table:
+    | "report_section_finding_links"
+    | "report_section_opportunity_links"
+    | "report_section_roadmap_links",
+  sectionId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("report_section_id", sectionId);
+  if (error) {
+    console.error("[reports.synthesis] link-count-failed", {
+      table,
+      name: error.name,
+      code: error.code,
+      message: error.message,
+    });
+    return 0;
+  }
+  return count ?? 0;
 }
 
 function composeEvidenceNotes(

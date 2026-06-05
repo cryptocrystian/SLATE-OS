@@ -57,6 +57,23 @@ export interface ReportSectionDraftCandidate {
    * the operator sees the model's caveats in the same field.
    */
   assumptionsAndLimits: string[];
+  /**
+   * Sprint S8 — structural source provenance. The model returns the
+   * IDs of upstream findings / opportunities / roadmap items it
+   * actually grounded the draft in. The validator drops any ID that is
+   * not present in the supplied context (the upstream allowlist is the
+   * authoritative source — the model cannot invent provenance). The
+   * action then writes these into the three
+   * `report_section_*_links` tables so the source trail is queryable
+   * and surfaces in the operator UI provenance panel.
+   *
+   * These arrays are deduped and capped at MAX_GROUNDED_IDS each. An
+   * empty array is valid (e.g. the appendix section may legitimately
+   * have no per-finding link).
+   */
+  groundedFindingIds: string[];
+  groundedOpportunityIds: string[];
+  groundedRoadmapItemIds: string[];
 }
 
 export interface ReportSectionSynthesisOk {
@@ -97,6 +114,12 @@ const DRAFT_PREVIEW_LIMIT = 2400;
 const NOTE_LIMIT = 320;
 const MAX_EVIDENCE_NOTES = 8;
 const MAX_ASSUMPTIONS = 5;
+// Sprint S8 — structural provenance caps.
+const MAX_GROUNDED_FINDINGS = 12;
+const MAX_GROUNDED_OPPORTUNITIES = 12;
+const MAX_GROUNDED_ROADMAP_ITEMS = 12;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
 // Banned-claim scanner — per docs/14 / docs/15 / docs/17.
@@ -163,7 +186,7 @@ export async function synthesizeReportSectionDraft(
     return { ok: false, error: "ai-response-invalid", message: "non-json" };
   }
 
-  const candidate = validateCandidate(parsed, context.section.title);
+  const candidate = validateCandidate(parsed, context);
   if (!candidate) {
     return {
       ok: false,
@@ -211,6 +234,11 @@ const SYSTEM_PROMPT = [
   "- Use a consultant register: plain-language, decision-grade, no superlatives, no marketing tone.",
   "- Be honest about gaps. If the section lacks evidence, write a short note saying so rather than padding.",
   "- The `recommendedStatus` field MUST be `needs_review`. You do not approve your own draft.",
+  "- Sprint S8 — STRUCTURAL PROVENANCE. In addition to grounding the prose, you MUST return three ID arrays naming the upstream artifacts the draft is grounded in:",
+  "    - `groundedFindingIds`: UUIDs from the supplied `findings[].findingId` array — the findings actually referenced.",
+  "    - `groundedOpportunityIds`: UUIDs from the supplied `opportunities[].opportunityId` array — the opportunities actually referenced.",
+  "    - `groundedRoadmapItemIds`: UUIDs from the supplied `roadmap[].roadmapItemId` array — the roadmap items actually referenced.",
+  "  Only use IDs that appear in the supplied context arrays. Do NOT invent IDs. Empty arrays are valid when a section legitimately has no upstream link (e.g. the appendix). The operator UI uses these to render the section's source-trail panel.",
 ].join("\n");
 
 const SCHEMA_INSTRUCTION = [
@@ -222,6 +250,9 @@ const SCHEMA_INSTRUCTION = [
   '  "draftPreview": 1-6 paragraph operator-facing draft (<= 2400 chars). No markdown, no HTML.',
   '  "evidenceNotes": array of up to 8 short bullet strings, each referencing a finding / opportunity / roadmap item / intake aggregate by name or id,',
   '  "assumptionsAndLimits": array of up to 5 short bullet strings calling out missing data, gated claims, and required validation steps,',
+  '  "groundedFindingIds": array of UUIDs (<= 12) drawn ONLY from the supplied findings[].findingId array,',
+  '  "groundedOpportunityIds": array of UUIDs (<= 12) drawn ONLY from the supplied opportunities[].opportunityId array,',
+  '  "groundedRoadmapItemIds": array of UUIDs (<= 12) drawn ONLY from the supplied roadmap[].roadmapItemId array,',
   '  "recommendedStatus": "needs_review"',
   "}",
 ].join("\n");
@@ -267,7 +298,7 @@ function safeParseJson(raw: string): unknown {
 
 function validateCandidate(
   parsed: unknown,
-  fallbackTitle: string,
+  context: ReportSectionSynthesisContext,
 ): ReportSectionDraftCandidate | null {
   // Accept both `{section: ...}` and a bare draft object.
   const obj = extractSectionObject(parsed);
@@ -275,7 +306,7 @@ function validateCandidate(
 
   const sectionTitle =
     clipString(obj.sectionTitle, TITLE_LIMIT) ??
-    clipString(fallbackTitle, TITLE_LIMIT);
+    clipString(context.section.title, TITLE_LIMIT);
   const summary = clipString(obj.summary, SUMMARY_LIMIT);
   const draftPreview = clipString(obj.draftPreview, DRAFT_PREVIEW_LIMIT);
   if (!sectionTitle || !summary || !draftPreview) return null;
@@ -296,13 +327,73 @@ function validateCandidate(
     MAX_ASSUMPTIONS,
   );
 
+  // Sprint S8 — structural provenance. Only accept IDs that appear in
+  // the context arrays. The upstream allowlist is authoritative; the
+  // model cannot invent provenance.
+  const findingAllow = new Set(context.findings.map((f) => f.findingId));
+  const opportunityAllow = new Set(
+    context.opportunities.map((o) => o.opportunityId),
+  );
+  const roadmapAllow = new Set(context.roadmap.map((r) => r.roadmapItemId));
+  const groundedFindingIds = filterUuidList(
+    obj.groundedFindingIds,
+    findingAllow,
+    MAX_GROUNDED_FINDINGS,
+  );
+  const groundedOpportunityIds = filterUuidList(
+    obj.groundedOpportunityIds,
+    opportunityAllow,
+    MAX_GROUNDED_OPPORTUNITIES,
+  );
+  const groundedRoadmapItemIds = filterUuidList(
+    obj.groundedRoadmapItemIds,
+    roadmapAllow,
+    MAX_GROUNDED_ROADMAP_ITEMS,
+  );
+
   return {
     sectionTitle,
     summary,
     draftPreview,
     evidenceNotes,
     assumptionsAndLimits,
+    groundedFindingIds,
+    groundedOpportunityIds,
+    groundedRoadmapItemIds,
   };
+}
+
+/**
+ * Sprint S8 — defensive grounded-ID validator.
+ *
+ *   - Drops anything that isn't a syntactically valid UUID.
+ *   - Drops anything that isn't in the supplied allowlist (the
+ *     authoritative upstream context).
+ *   - Dedupes (Set semantics).
+ *   - Caps at `max` entries.
+ *
+ * The empty-input case returns `[]` — legitimate for sections with no
+ * direct upstream link (e.g. the appendix).
+ */
+function filterUuidList(
+  value: unknown,
+  allow: ReadonlySet<string>,
+  max: number,
+): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of value) {
+    if (out.length >= max) break;
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!UUID_RE.test(trimmed)) continue;
+    if (!allow.has(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
 }
 
 function extractSectionObject(parsed: unknown): Record<string, unknown> | null {

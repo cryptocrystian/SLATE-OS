@@ -28,6 +28,10 @@ export type ActivityEventType =
   | "ai_findings_generated"
   | "ai_opportunities_generated"
   | "ai_report_section_drafted"
+  // Sprint S8 — operator-triggered bulk drafting orchestrator
+  // (`generateAllReportSectionDraftsAction`). One event per bulk run;
+  // metadata carries safe counts only — no UUIDs, no section bodies.
+  | "ai_report_sections_drafted"
   | "ai_proposal_option_drafted"
   | "ai_roadmap_items_drafted"
   | "ai_synthesis_failed"

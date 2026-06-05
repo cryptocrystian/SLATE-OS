@@ -701,3 +701,15 @@ The 3 `selected` opportunities preserved at the end of Part 2 (Address Change Re
 S7 produced 3 roadmap items (2 Quick Win + 1 Strategic Build, 2 in first-30) which were then approved through the deployed UI. `ReportReadinessHint.readyForS8` flipped green. See `docs/48_ROADMAP_AI_DRAFTING.md` for the full S7 evidence log.
 
 The S4 → S5 → S6 → S7 chain is now end-to-end live-verified on deployed Production.
+
+---
+
+## 28. Sprint S8 consumed the preserved S7 output (2026-06-05)
+
+The 3 `selected` opportunities and the 3 `ready` roadmap items produced by Sprint S7 became the upstream input to Sprint S8's AI report-section drafting. The 1 `deferred` opportunity (Improve Data Handling Clarity / Low Priority) continues to be correctly excluded by the S8 input filter (`ELIGIBLE_OPPORTUNITY_STATUSES = ["selected"]` only).
+
+S8 added the analogous filter at the roadmap layer: `ELIGIBLE_ROADMAP_STATUSES = ["ready"]` only. With this fixture's `total_roadmap=3` all being `ready`, all 3 reach S8 input; in fixtures with mixed roadmap statuses, only `ready` items will pass.
+
+The fixture's existing approved `executive_summary` section (1 row, `ai_drafted=true`) is preserved by the new `GenerateAllReportSectionsButton` orchestrator — the bulk drafter skips both `approved` and `final` sections so operator-blessed state is never silently overwritten.
+
+The S4 → S5 → S6 → S7 → S8 chain is now end-to-end structurally verified on deployed Supabase. The live S8 AI bulk-drafting walkthrough is the operator's first post-commit action. See `docs/49_REPORT_SECTION_AI_DRAFTING.md` for the full S8 evidence log.

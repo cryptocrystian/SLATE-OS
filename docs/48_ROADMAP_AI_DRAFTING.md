@@ -470,3 +470,24 @@ Add roadmap AI drafting
 ```
 
 Hold for commit review per the established sprint pattern — operator provides the exact `git add` block after reviewing this evidence log.
+
+---
+
+## 16. Follow-on — Sprint S8 Report Section AI Drafting (2026-06-05)
+
+✅ **S7 → S8 chain integrity now enforced + structurally verified.** See `docs/49_REPORT_SECTION_AI_DRAFTING.md`.
+
+S8 tightened two upstream filters in `lib/ai/report-section-context.ts`:
+
+- `ELIGIBLE_OPPORTUNITY_STATUSES` from `["scored", "selected"]` → `["selected"]` only (same closure pattern S7 applied to roadmap-context).
+- New `ELIGIBLE_ROADMAP_STATUSES = ["ready"]` filter on the roadmap loader — previously every roadmap row reached the model regardless of status.
+
+Deployed-Supabase preflight on the fixture (`ed7f1f7d-…`):
+
+- 3 `selected` opportunities → all 3 are eligible S8 inputs ✅
+- 1 `deferred` opportunity → correctly excluded ✅
+- 0 `scored`/`draft` opportunities (no leak risk on this fixture)
+- 3 `ready` roadmap items → all 3 are eligible S8 inputs ✅
+- 0 `planned`/`deferred`/`rejected` roadmap items (no leak risk on this fixture)
+
+The S7 → S8 chain integrity is structurally verified at the deployed-Supabase boundary. The S6 source contract is unchanged. The live AI bulk-drafting walkthrough is the operator's first post-commit action per docs/49 § 9.3.
