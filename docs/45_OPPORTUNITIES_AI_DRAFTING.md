@@ -559,3 +559,19 @@ Add opportunities AI drafting
 ```
 
 Hold for commit review per the established sprint pattern — operator provides the exact `git add` block after reviewing this evidence log.
+
+---
+
+## 16. Follow-on — S4–S6 Walkthrough · Part 1 (2026-06-04)
+
+The operator-pending prerequisites listed in § 13 L-2 and § 14 are partially cleared by the validation sprint immediately following Sprint S6 — see `docs/46_S4_S6_CONTROLLED_WALKTHROUGH.md`:
+
+- ✅ Migration `0019_opportunity_reviewer_notes.sql` applied to deployed Supabase `hhglrcvsmwaheikdvijw` via the authorized `apply_migration` path (registry version `20260604211714`).
+- ✅ Vercel Production promoted from staging head `12d6fbd`; canonical alias `https://slate-os-staging.vercel.app` now serves S6 code. The opportunities page on deployed Production is now expected to render the `RoadmapReadinessHint` and `OpportunityProvenanceChip` surfaces (verification deferred to Part 2 because no opportunities exist on the fixture today).
+
+Still pending after Part 1:
+- ❌ Real findings approved on the target engagement (Part 2 scope).
+- ❌ ≥3 opportunities selected so `RoadmapReadinessHint.readyForS7` flips green (Part 2 scope).
+- ❌ Migration 0018 + Attio properties (NOT required for Part 2 per task-spec authorization "Migration 0018 and Attio properties are optional for this walkthrough unless already ready").
+
+The S6 source contract is unchanged. The deployment-layer contract is now live-verified.
