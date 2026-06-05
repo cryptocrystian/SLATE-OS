@@ -2,16 +2,40 @@ import * as React from "react";
 import { Link2, ShieldAlert, Target, User2 } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { OpportunityPriorityChip } from "@/components/opportunities/opportunity-priority-chip";
+import { RoadmapProvenanceChip } from "./roadmap-provenance-chip";
+import { RoadmapActionBar } from "./roadmap-action-bar";
 import type { RoadmapItem } from "@/lib/roadmap/types";
+import type { RoadmapItemProvenanceSummary } from "@/lib/roadmap/provenance";
 
 export interface RoadmapCardProps {
   item: RoadmapItem;
   /** Map from opportunity id → short title, used to surface the linked
    *  opportunity name on the chip. */
   opportunityTitles?: Record<string, string>;
+  /**
+   * Sprint S7 — Per-item provenance summary derived from the linked
+   * source opportunity. When provided and non-clean, the compact
+   * needs-validation chip renders on the card.
+   */
+  provenance?: RoadmapItemProvenanceSummary | null;
+  /**
+   * Sprint S7 — When `"review"`, mounts `RoadmapActionBar` inline at
+   * the foot of the card so the operator can approve / defer / reject
+   * the roadmap item without leaving the phase column.
+   *
+   * Boolean-shaped instead of a render-prop function so it can cross
+   * the Server-Component → Client-Component serialization boundary
+   * (per docs/47).
+   */
+  actionMode?: "review";
 }
 
-export function RoadmapCard({ item, opportunityTitles }: RoadmapCardProps) {
+export function RoadmapCard({
+  item,
+  opportunityTitles,
+  provenance,
+  actionMode,
+}: RoadmapCardProps) {
   const linkedTitle =
     item.linkedOpportunityId && opportunityTitles
       ? opportunityTitles[item.linkedOpportunityId]
@@ -83,6 +107,23 @@ export function RoadmapCard({ item, opportunityTitles }: RoadmapCardProps) {
                 <span>{item.readinessNote}</span>
               </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {/* Sprint S7 — Needs-validation chip on the card (compact mode). */}
+        {provenance ? (
+          <RoadmapProvenanceChip summary={provenance} compact />
+        ) : null}
+
+        {/* Sprint S7 — Operator approval lifecycle bar. */}
+        {actionMode === "review" && item.status ? (
+          <div className="border-t border-border-subtle pt-3">
+            <RoadmapActionBar
+              roadmapItemId={item.id}
+              status={item.status}
+              provenance={provenance ?? null}
+              reviewerNote={item.reviewerNote ?? null}
+            />
           </div>
         ) : null}
       </CardBody>

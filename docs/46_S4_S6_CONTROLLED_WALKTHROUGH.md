@@ -691,3 +691,13 @@ Hold for commit review per the established sprint pattern — operator provides 
 - **All 14 Part 2 acceptance criteria met.**
 
 The controlled fixture is now hot for Sprint S7. Roadmap sequence unchanged.
+
+---
+
+## 27. Sprint S7 consumed the preserved selected opportunities (2026-06-04)
+
+The 3 `selected` opportunities preserved at the end of Part 2 (Address Change Resistance in Automation / Quick Win, Enhance Onboarding Documentation / Quick Win, Streamline Proposal Drafting Process / Strategic Build) were consumed by Sprint S7's AI roadmap drafting run. The 1 `deferred` opportunity (Improve Data Handling Clarity / Low Priority) was correctly excluded by the tightened S7 input filter.
+
+S7 produced 3 roadmap items (2 Quick Win + 1 Strategic Build, 2 in first-30) which were then approved through the deployed UI. `ReportReadinessHint.readyForS8` flipped green. See `docs/48_ROADMAP_AI_DRAFTING.md` for the full S7 evidence log.
+
+The S4 → S5 → S6 → S7 chain is now end-to-end live-verified on deployed Production.

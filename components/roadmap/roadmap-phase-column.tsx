@@ -5,17 +5,28 @@ import { Badge } from "@/components/ui/badge";
 import { RoadmapCard } from "./roadmap-card";
 import { PHASE_DESCRIPTION, PHASE_LABEL } from "@/lib/roadmap/helpers";
 import type { RoadmapItem, RoadmapPhase } from "@/lib/roadmap/types";
+import type { RoadmapItemProvenanceSummary } from "@/lib/roadmap/provenance";
 
 export interface RoadmapPhaseColumnProps {
   phase: RoadmapPhase;
   items: RoadmapItem[];
   opportunityTitles?: Record<string, string>;
+  /**
+   * Sprint S7 — Map of roadmap-item-id → provenance summary, threaded
+   * through from the page. Items without an entry render no provenance
+   * chip.
+   */
+  provenanceById?: ReadonlyMap<string, RoadmapItemProvenanceSummary>;
+  /** Sprint S7 — Boolean-shaped action-bar mode (see RoadmapCard). */
+  actionMode?: "review";
 }
 
 export function RoadmapPhaseColumn({
   phase,
   items,
   opportunityTitles,
+  provenanceById,
+  actionMode,
 }: RoadmapPhaseColumnProps) {
   return (
     <section
@@ -55,6 +66,8 @@ export function RoadmapPhaseColumn({
               <RoadmapCard
                 item={item}
                 opportunityTitles={opportunityTitles}
+                provenance={provenanceById?.get(item.id) ?? null}
+                actionMode={actionMode}
               />
             </li>
           ))}

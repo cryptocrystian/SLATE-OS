@@ -52,6 +52,7 @@ export type RoadmapActionResult =
         | "invalid-status"
         | "engagement-not-found"
         | "roadmap-item-not-found"
+        | "rejection-reason-invalid"
         | "service-error";
     };
 
@@ -147,13 +148,34 @@ export async function createRoadmapItem(
   return { ok: true, itemId: inserted.id };
 }
 
+export interface SetRoadmapItemStatusOptions {
+  /** Sprint S7 — operator-typed rejection rationale (10–500 chars or
+   *  empty). Only honored when `status === 'rejected'`; ignored
+   *  otherwise. */
+  rejectionReason?: string;
+}
+
 export async function setRoadmapItemStatus(
   itemId: string,
   status: RoadmapStatus,
+  options: SetRoadmapItemStatusOptions = {},
 ): Promise<RoadmapActionResult> {
   if (!isUuid(itemId)) return { ok: false, error: "invalid-roadmap-item" };
   if (!ROADMAP_STATUSES.includes(status)) {
     return { ok: false, error: "invalid-status" };
+  }
+
+  // Validate optional rejection-reason BEFORE auth/RLS round-trip so
+  // length errors short-circuit cheaply.
+  let rejectionReasonClean: string | null = null;
+  if (status === "rejected" && options.rejectionReason !== undefined) {
+    const trimmed = options.rejectionReason.trim();
+    if (trimmed.length > 0) {
+      if (trimmed.length < 10 || trimmed.length > 500) {
+        return { ok: false, error: "rejection-reason-invalid" };
+      }
+      rejectionReasonClean = trimmed;
+    }
   }
 
   const supabase = createSupabaseServerClient();
@@ -164,16 +186,27 @@ export async function setRoadmapItemStatus(
 
   const { data: existing, error: existingError } = await supabase
     .from("roadmap_items")
-    .select("id, engagement_id")
+    .select("id, engagement_id, phase, priority, opportunity_id")
     .eq("id", itemId)
-    .maybeSingle<{ id: string; engagement_id: string }>();
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      phase: string | null;
+      priority: string | null;
+      opportunity_id: string | null;
+    }>();
   if (existingError || !existing?.id) {
     return { ok: false, error: "roadmap-item-not-found" };
   }
 
+  const update: Record<string, unknown> = { status };
+  if (status === "rejected" && rejectionReasonClean !== null) {
+    update.reviewer_notes = rejectionReasonClean;
+  }
+
   const { error: updateError } = await supabase
     .from("roadmap_items")
-    .update({ status })
+    .update(update)
     .eq("id", itemId);
   if (updateError) {
     console.error("[roadmap.actions] status-update-failed", {
@@ -187,6 +220,16 @@ export async function setRoadmapItemStatus(
   await bumpEngagement(supabase, existing.engagement_id);
   revalidatePaths(existing.engagement_id);
 
+  const metadata: Record<string, unknown> = {
+    status,
+    priorPhase: existing.phase ?? null,
+    priorPriority: existing.priority ?? null,
+    hasSourceOpportunity: Boolean(existing.opportunity_id),
+  };
+  if (status === "rejected" && rejectionReasonClean !== null) {
+    metadata.rejectionReason = rejectionReasonClean;
+  }
+
   await logActivityEvent({
     eventType: "roadmap_item_status_changed",
     entityType: "roadmap_item",
@@ -194,10 +237,27 @@ export async function setRoadmapItemStatus(
     engagementId: existing.engagement_id,
     title: `Roadmap item moved to ${status}`,
     summary: "An operator changed a roadmap item's status.",
-    metadata: { status },
+    metadata,
   });
 
   return { ok: true };
+}
+
+export interface RejectRoadmapItemOptions {
+  /** Optional operator-typed rejection rationale. When provided, must
+   *  be 10–500 chars after trim; empty/whitespace-only is treated as
+   *  no reason. Persisted in `roadmap_items.reviewer_notes` AND in
+   *  the `roadmap_item_status_changed` activity event metadata. */
+  reason?: string;
+}
+
+export async function rejectRoadmapItem(
+  itemId: string,
+  options: RejectRoadmapItemOptions = {},
+): Promise<RoadmapActionResult> {
+  return setRoadmapItemStatus(itemId, "rejected", {
+    rejectionReason: options.reason,
+  });
 }
 
 export async function removeRoadmapItem(

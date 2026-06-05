@@ -27,6 +27,7 @@ const ROADMAP_SELECT = `
   risks,
   owner_placeholder,
   readiness_note,
+  reviewer_notes,
   position,
   status,
   created_at,

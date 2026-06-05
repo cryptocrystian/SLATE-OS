@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { RoadmapPhaseColumn } from "@/components/roadmap/roadmap-phase-column";
 import { CreateRoadmapItemForm } from "@/components/roadmap/create-roadmap-item-form";
 import { GenerateRoadmapDraftButton } from "@/components/roadmap/generate-roadmap-draft-button";
+import { ReportReadinessHint } from "@/components/roadmap/report-readiness-hint";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -21,8 +22,18 @@ import {
   getOpportunityCandidatesForEngagement,
   getRoadmapForEngagementPersisted,
 } from "@/lib/roadmap/queries";
-import { getOpportunitiesForEngagementPersisted } from "@/lib/opportunities/queries";
+import {
+  getOpportunitiesForEngagementPersisted,
+  getFindingProvenanceForEngagement,
+} from "@/lib/opportunities/queries";
 import { PHASE_ORDER } from "@/lib/roadmap/helpers";
+import {
+  buildReportReadinessSignal,
+  summarizeRoadmapItemProvenance,
+  type RoadmapItemProvenanceSummary,
+} from "@/lib/roadmap/provenance";
+import { summarizeOpportunityProvenance } from "@/lib/opportunities/provenance";
+import type { OpportunityProvenanceSummary } from "@/lib/opportunities/provenance";
 import { recommendedActionRoute } from "@/lib/engagements/recommended-action";
 import { isAiConfigured } from "@/lib/ai/provider";
 import type { RoadmapItem } from "@/lib/roadmap/types";
@@ -67,6 +78,54 @@ export default async function EngagementRoadmapPage({
   } else {
     items = getRoadmapForEngagement(engagement.id);
     opportunities = getOpportunitiesForEngagement(engagement.id);
+  }
+
+  // Sprint S7 — Build roadmap-item provenance map by projecting each
+  // item's linked opportunity through `summarizeOpportunityProvenance`
+  // → `summarizeRoadmapItemProvenance`. Also compute the S8 report
+  // readiness signal. Both run server-side; the hint card is a server
+  // component so the threading is straightforward.
+  const roadmapProvenanceById = new Map<string, RoadmapItemProvenanceSummary>();
+  let reportReadinessSignal: ReturnType<
+    typeof buildReportReadinessSignal
+  > | null = null;
+  if (isPersisted) {
+    const findingProvenanceById = await getFindingProvenanceForEngagement(
+      engagement.id,
+    );
+    const opportunityProvenanceById = new Map<
+      string,
+      OpportunityProvenanceSummary
+    >();
+    const opportunityStatusById = new Map<string, string | null | undefined>();
+    for (const o of opportunities) {
+      opportunityProvenanceById.set(
+        o.id,
+        summarizeOpportunityProvenance(
+          o.relatedFindingIds,
+          findingProvenanceById,
+        ),
+      );
+      opportunityStatusById.set(o.id, o.status ?? null);
+    }
+    for (const it of items) {
+      roadmapProvenanceById.set(
+        it.id,
+        summarizeRoadmapItemProvenance(
+          it.linkedOpportunityId,
+          opportunityProvenanceById,
+          opportunityStatusById,
+        ),
+      );
+    }
+    reportReadinessSignal = buildReportReadinessSignal(
+      items.map((it) => ({
+        status: it.status ?? null,
+        phase: it.phase ?? null,
+        priority: it.priority ?? null,
+        provenance: roadmapProvenanceById.get(it.id) ?? null,
+      })),
+    );
   }
 
   const counts = {
@@ -195,6 +254,12 @@ export default async function EngagementRoadmapPage({
             <GenerateRoadmapDraftButton engagementId={engagement.id} />
           ) : null}
 
+          {/* Sprint S7 — S8 report readiness signal. Operator-only;
+              does NOT block S8 (S8 not yet built). */}
+          {reportReadinessSignal ? (
+            <ReportReadinessHint signal={reportReadinessSignal} />
+          ) : null}
+
           {counts.total === 0 ? (
             isPersisted ? (
               <Card variant="base">
@@ -252,6 +317,10 @@ export default async function EngagementRoadmapPage({
                   phase={phase}
                   items={items.filter((i) => i.phase === phase)}
                   opportunityTitles={opportunityTitles}
+                  provenanceById={
+                    isPersisted ? roadmapProvenanceById : undefined
+                  }
+                  actionMode={isPersisted ? "review" : undefined}
                 />
               ))}
             </div>

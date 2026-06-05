@@ -24,6 +24,7 @@ export interface DbRoadmapItemRow {
   risks: string[] | null;
   owner_placeholder: string | null;
   readiness_note: string | null;
+  reviewer_notes: string | null;
   position: number | null;
   status: string | null;
   created_at: string;
@@ -67,6 +68,7 @@ export type RoadmapStatus =
   | "ready"
   | "blocked"
   | "deferred"
+  | "rejected"
   | "completed";
 
 export const ROADMAP_STATUSES: RoadmapStatus[] = [
@@ -74,6 +76,7 @@ export const ROADMAP_STATUSES: RoadmapStatus[] = [
   "ready",
   "blocked",
   "deferred",
+  "rejected",
   "completed",
 ];
 
@@ -126,6 +129,11 @@ export function mapRoadmapItemRow(row: DbRoadmapItemRow): RoadmapItem {
     ownerPlaceholder: row.owner_placeholder ?? undefined,
     readinessNote: row.readiness_note ?? undefined,
     updatedAt: row.updated_at ?? null,
+    reviewerNote:
+      typeof row.reviewer_notes === "string" && row.reviewer_notes.length > 0
+        ? row.reviewer_notes
+        : null,
+    status: tsStatusFor(row.status),
   };
 }
 

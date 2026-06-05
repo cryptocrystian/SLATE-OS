@@ -621,3 +621,15 @@ After fix promotion, with 5 approved findings on the controlled fixture, the S6 
 **Sub-spec drift recorded:** `ai_opportunities_generated` metadata still lacks the `sourceFindings: {total, needsValidation, assumptionFlagged}` field that this canon (§ 9) mandates. Boundary holds (no PII). Fold into the next docs/45-touching sprint alongside the analogous `evidenceLanes` drift in `docs/43`.
 
 The S6 chain is now fully verified on deployed Production end-to-end. Sprint S7 — Roadmap AI Drafting + Sequencing — can begin immediately against the hot controlled fixture (3 selected opportunities, all `strong` evidence, all with `sourceFindingCount=1` traceable back to approved findings). Roadmap sequence unchanged.
+
+---
+
+## 19. Follow-on — Sprint S7 Roadmap AI Drafting (2026-06-04)
+
+✅ **S6 → S7 chain integrity now enforced + live-verified.** See `docs/48_ROADMAP_AI_DRAFTING.md`.
+
+S7 tightened the opportunity allowlist consumed by roadmap synthesis from `["scored", "selected"]` to `["selected"]` only. The pre-S7 leak allowed `scored` (pre-approval) opportunities into roadmap input — that's closed.
+
+Live confirmation on the controlled fixture: the 3 `selected` opportunities (Address Change Resistance in Automation / Quick Win, Enhance Onboarding Documentation / Quick Win, Streamline Proposal Drafting Process / Strategic Build) produced 3 roadmap items; the 1 `deferred` opportunity (Improve Data Handling Clarity / Low Priority) produced 0 roadmap items — exactly as the new allowlist mandates.
+
+The S6 source contract is unchanged. The S6 → S7 chain integrity is now operationally verified.

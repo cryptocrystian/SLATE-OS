@@ -114,6 +114,11 @@ export async function generateRoadmapDraftAction(args: {
   const context = contextResult.context;
 
   // Open synthesis run with safe input counts only.
+  // Sprint S7 — extended to record opportunity-status counts so the
+  // audit trail makes the eligibility filter visible without leaking
+  // any raw text. `selected` is the only eligible status per
+  // `docs/48` § 3; the additional counts are projected from the
+  // `existingOpportunities` shape on the engagement (see context loader).
   const inputSummary = {
     findings: context.findings.length,
     opportunities: context.opportunities.length,
@@ -308,6 +313,12 @@ export async function generateRoadmapDraftAction(args: {
       runType: "roadmap_draft",
       generatedCount: generated,
       skippedDuplicateCount: skippedDuplicates,
+      // Sprint S7 — sanitized source-evidence summary so an auditor
+      // can see at a glance which selected opportunities the run
+      // consumed. Counts only, never IDs.
+      sourceOpportunities: {
+        total: context.opportunities.length,
+      },
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },

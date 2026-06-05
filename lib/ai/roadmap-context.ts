@@ -141,7 +141,14 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ELIGIBLE_FINDING_STATUSES = ["approved", "report_ready"];
-const ELIGIBLE_OPPORTUNITY_STATUSES = ["scored", "selected"];
+// Sprint S7 — Tightened from `["scored", "selected"]` to `["selected"]`
+// only. Per `docs/48` § 3 and the S7 task spec, only operator-selected
+// opportunities (= explicitly approved for roadmap drafting) feed S7
+// input. `scored` opportunities that the operator has not yet promoted
+// to `selected` are draft-equivalent and must not leak into roadmap
+// synthesis. `rejected` and `deferred` opportunities continue to be
+// excluded by the same allowlist.
+const ELIGIBLE_OPPORTUNITY_STATUSES = ["selected"];
 const ELIGIBLE_REPORT_SECTION_STATUSES = new Set([
   "drafted",
   "needs_review",
