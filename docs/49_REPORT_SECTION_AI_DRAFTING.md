@@ -415,3 +415,23 @@ Add report section AI drafting
 ```
 
 (Per task spec.)
+
+---
+
+## 16. Follow-on — Post-deploy walkthrough PASS (2026-06-05)
+
+✅ **S8 live-verified end-to-end on deployed Production.** See `docs/50_S8_REPORT_DRAFTING_WALKTHROUGH.md` for the full evidence log.
+
+The deferred live walkthrough from § 9.3 ran successfully on Vercel Production build `slate-os-staging-fxd4ji6bj-…`:
+
+- Bulk drafter triggered: **11/11 succeeded, 0 failed, 1 skipped (pre-existing approved `executive_summary` preserved verbatim)**.
+- **100% provenance allowlist enforcement** across 96 link rows: 48 finding links all `approved`, 24 opportunity links all `selected`, 24 roadmap links all `ready`. The 1 deferred opportunity produced **zero** section links.
+- **Banned-language scan: 0 hits across all 11 drafts** (the one false positive — "signed contract" in `workflow_friction` — paraphrases the client's own sales-cycle pain, not SLATE producing signature language).
+- Operator approved the 4 remaining required sections (opportunity_portfolio, priority_recommendations, roadmap, recommended_next_step) through the deployed UI.
+- **`ProposalReadinessHint` transitioned `Not yet` → `Ready for proposal drafting`** at the exact moment the 5th required section was approved.
+- Activity metadata sanitized live for all 16 new events: zero raw text, zero PII, zero upstream UUIDs.
+- Boundary held: zero proposal/SOW/share-token/upstream mutations during the entire walkthrough window.
+
+Two non-blocker sub-spec drifts documented as L-25 (MCP synthetic-click → React handler limitation; not a source bug) and L-26 (bulk activity event's `sectionTypes` array missing one entry; counts internally consistent).
+
+**S9 prerequisites met. Recommendation unchanged from § 14: Sprint S9 — Proposal AI Drafting + Scope Edits + Recommended Option.**
