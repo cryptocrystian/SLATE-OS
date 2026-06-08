@@ -447,3 +447,25 @@ Add proposal AI drafting
 ```
 
 (Per task spec.)
+
+---
+
+## 17. Follow-on — Post-deploy walkthrough PASS WITH ONE CONTRACT GAP (2026-06-08)
+
+⚠ **S9 live-verified end-to-end on deployed Production through all functional layers.** See `docs/52_S9_PROPOSAL_DRAFTING_WALKTHROUGH.md` for the full evidence log.
+
+The deferred live walkthrough from § 10.3 ran successfully on Vercel Production build `slate-os-staging-lyogvylju-…` through:
+
+- Bulk drafter triggered: **3/3 succeeded, 0 failed**.
+- **100% provenance allowlist enforcement** across 14 link rows: 7 opportunity links all `selected`, 7 roadmap links all `ready`. The 1 deferred opportunity produced **zero** option links.
+- **Banned-language scan: 0 hits across all 3 drafts** (financial / commercial-finality / pricing / HTML / signature / payment-terms patterns).
+- **Operator-set commercial levers preserved verbatim** across all 3 options: pricing placeholders unchanged, recommendation flag unchanged (`ai_workflow_system` still the only recommended), option types unchanged, positions unchanged.
+- Operator generated a fresh proposal candidate snapshot through the deployed UI.
+- **Commercial guard PASSED live**: 45-pattern scan, 0 violations.
+- Operator approved the snapshot through the deployed UI — `approval_state='approved'`, not voided.
+- Activity metadata sanitized live for all 6 new events: zero raw text, zero PII, zero upstream UUIDs.
+- Boundary held: zero `/p`/`/r` mint, zero share tokens, zero SOW drafts, zero upstream mutations during the entire walkthrough window. Only 4 distinct event types observed — all S9 scope.
+
+**One contract gap surfaced — L-31:** `buildSowReadinessSignal.proposalApproved` requires `proposals.status === 'approved'` but the deployed UI has no mount for the `approveProposal` server action. The hint stays on "Not yet" even after snapshot-approval. The smallest fix is a 4-line change to soften the contract so snapshot-approval is sufficient (matches the canonical `sow-draft-eligibility.ts` evaluator). Recommended next sprint: a small **S9-Fix** sprint to apply this before S10, OR proceed directly to S10 (the SOW Draft generation gate does not depend on the readiness hint flip).
+
+**S9 drafting fundamentals are working.** Recommendation: small fix sprint then S10. See docs/52 § 11 for the full L-31 disclosure + § 13 for the recommendation.
