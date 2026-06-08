@@ -9,12 +9,24 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
  * Mirrors the boundary in `report-section-context.ts`:
  *
  *   - Only consultant-reviewed findings (approved + report-ready)
- *     and scored/selected opportunities reach the model.
- *   - Roadmap items are passed through as-is.
- *   - Report-section drafts surface only `summary` + `draftPreview`
- *     + status — never `final`-only assumptions. Sections with
- *     `status='final'` are surfaced read-only so the proposal stays
- *     consistent with operator-approved report copy.
+ *     reach the model. Needs-review/draft/rejected findings are
+ *     filtered out.
+ *   - Only operator-selected opportunities are surfaced. Sprint S9
+ *     tightened this from `["scored", "selected"]` to `["selected"]`
+ *     only — `scored` (pre-approval) opportunities no longer leak
+ *     into proposal-option synthesis input. Same correctness shape
+ *     as the S7/S8 tightenings to roadmap-context and
+ *     report-section-context.
+ *   - Only `ready` roadmap items reach the model. Sprint S9 added
+ *     this allowlist; the prior loader passed every roadmap row
+ *     through regardless of status.
+ *   - Only `approved` or `final` report sections reach the model.
+ *     Sprint S9 tightened the allowlist from
+ *     `["drafted", "needs_review", "approved", "final"]` so the
+ *     proposal-option AI draft stays consistent with the
+ *     operator-blessed report copy and never grounds on
+ *     pre-approval section text. Per the S9 spec — "approved report
+ *     sections only" — this matches the canonical S8 → S9 contract.
  *   - Stakeholder PII never reaches the model.
  *   - Uploaded files remain metadata-only.
  *   - Internal Saipien Fit Score is omitted.
@@ -173,13 +185,22 @@ const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ELIGIBLE_FINDING_STATUSES = ["approved", "report_ready"];
-const ELIGIBLE_OPPORTUNITY_STATUSES = ["scored", "selected"];
-// Report sections in any of these statuses are useful context. Sections
-// in `not_started` (no content yet) are filtered out so we don't leak
-// empty rows into the prompt.
+// Sprint S9 — tightened from `["scored", "selected"]` to `["selected"]`
+// only. `scored` is an internal pre-approval state. Same correctness
+// shape as the S7 fix to roadmap-context.ts and the S8 fix to
+// report-section-context.ts. See docs/51 § 3.
+const ELIGIBLE_OPPORTUNITY_STATUSES = ["selected"];
+// Sprint S9 — only `ready` roadmap items feed proposal-option
+// synthesis. Planned (draft), deferred, rejected, blocked, and
+// completed items are excluded.
+const ELIGIBLE_ROADMAP_STATUSES = ["ready"];
+// Sprint S9 — tightened from
+// `["drafted", "needs_review", "approved", "final"]` to
+// `["approved", "final"]` only. Per the S8 → S9 contract
+// (docs/49 § 7, docs/51 § 3), proposal options are grounded ONLY
+// on operator-blessed report copy. Pre-approval section text never
+// reaches the proposal-option prompt.
 const ELIGIBLE_REPORT_SECTION_STATUSES = new Set([
-  "drafted",
-  "needs_review",
   "approved",
   "final",
 ]);
@@ -510,6 +531,10 @@ async function loadRoadmap(
       "id, title, phase, priority, objective, key_actions, dependencies, success_criteria, risks, opportunity_id, position, created_at",
     )
     .eq("engagement_id", engagementId)
+    // Sprint S9 — only operator-approved (`ready`) roadmap items feed
+    // proposal-option synthesis. Planned/deferred/rejected/blocked/
+    // completed items are excluded from AI input.
+    .in("status", ELIGIBLE_ROADMAP_STATUSES)
     .order("phase", { ascending: true })
     .order("position", { ascending: true })
     .order("created_at", { ascending: true })

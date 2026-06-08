@@ -15,6 +15,14 @@ import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { ProposalStatusChip } from "@/components/proposals/proposal-status-chip";
 import { ImplementationCreditPanel } from "@/components/proposals/implementation-credit-panel";
 import { InitializeProposalForm } from "@/components/proposals/initialize-proposal-form";
+import { SowReadinessHint } from "@/components/proposals/sow-readiness-hint";
+import { GenerateAllProposalOptionsButton } from "@/components/proposals/generate-all-proposal-options-button";
+import { getLatestProposalDeliverySnapshotForProposal } from "@/lib/proposals/delivery-snapshot-queries";
+import {
+  buildSowReadinessSignal,
+  isCommercialGuardPassed,
+} from "@/lib/proposals/readiness";
+import { buildProposalReadinessSignal } from "@/lib/reports/readiness";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -79,6 +87,39 @@ export default async function EngagementProposalPage({
     report = getReportForEngagement(engagement.id);
   }
 
+  // Sprint S9 — fetch the most-recent proposal candidate snapshot so
+  // the SowReadinessHint can render the approval-state +
+  // commercial-guard verdict. Snapshot pipeline is persisted-only.
+  const latestSnapshot =
+    isPersisted && proposal
+      ? await getLatestProposalDeliverySnapshotForProposal(proposal.id)
+      : null;
+  const aiAvailable = isAiConfigured();
+
+  // Sprint S9 — derive S10 readiness signal from already-loaded data.
+  // The S8 readiness signal (`buildProposalReadinessSignal`) gives us
+  // the "S8 chain intact" advisory; we re-use it instead of duplicating
+  // the required-sections logic.
+  const reportSignal =
+    isPersisted && report
+      ? buildProposalReadinessSignal(report.sections)
+      : null;
+  const sowReadinessSignal =
+    isPersisted && proposal
+      ? buildSowReadinessSignal({
+          proposal,
+          options: proposal.options,
+          hasApprovedSnapshot:
+            (latestSnapshot?.approvalState ?? null) === "approved" &&
+            !latestSnapshot?.voidedAt,
+          commercialGuardPassed: isCommercialGuardPassed(
+            latestSnapshot?.commercialGuardResult ?? null,
+          ),
+          hasRequiredReportSectionsApproved:
+            reportSignal?.hasAllRequiredApproved ?? undefined,
+        })
+      : null;
+
   const reportHref = `/app/engagements/${engagement.id}/report`;
   const recAction = recommendedActionRoute(
     engagement,
@@ -118,6 +159,19 @@ export default async function EngagementProposalPage({
                 Back to Report
               </Button>
             </Link>
+            {/* Sprint S9 — bulk AI drafting button. Mounted only for
+                persisted engagements with a proposal + the AI provider
+                configured. Each draft preserves pricing /
+                recommendation / option type / position; the operator
+                must review before any client-facing action. The
+                per-option AI control on `ProposalOptionActionBar`
+                remains available for targeted drafts and re-drafts. */}
+            {proposal && isPersisted ? (
+              <GenerateAllProposalOptionsButton
+                engagementId={engagement.id}
+                aiAvailable={aiAvailable}
+              />
+            ) : null}
             {proposal && isPersisted ? (
               // Sprint P5 unlock — `Prepare Client Review` no longer
               // locked for persisted UUID engagements once the public
@@ -257,9 +311,17 @@ export default async function EngagementProposalPage({
               // (client) workspace.
               engagementId={isPersisted ? engagement.id : undefined}
               isPersisted={isPersisted}
-              aiAvailable={isAiConfigured()}
+              aiAvailable={aiAvailable}
             />
           )}
+
+          {/* Sprint S9 — operator-facing S10 (Internal SOW Draft)
+              readiness signal. Advisory only; the actual S10 gate
+              lives in `sow-draft-eligibility.ts`. Mounted only when
+              a persisted proposal exists. */}
+          {isPersisted && sowReadinessSignal ? (
+            <SowReadinessHint signal={sowReadinessSignal} />
+          ) : null}
 
           {proposal && isPersisted ? (
             <ProposalCandidatesPanel

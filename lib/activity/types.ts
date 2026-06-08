@@ -33,6 +33,10 @@ export type ActivityEventType =
   // metadata carries safe counts only — no UUIDs, no section bodies.
   | "ai_report_sections_drafted"
   | "ai_proposal_option_drafted"
+  // Sprint S9 — operator-triggered bulk proposal-option drafting
+  // (`generateAllProposalOptionDraftsAction`). One event per bulk run;
+  // metadata carries safe counts only — no UUIDs, no option bodies.
+  | "ai_proposal_options_drafted"
   | "ai_roadmap_items_drafted"
   | "ai_synthesis_failed"
   | "report_pdf_candidate_generated"

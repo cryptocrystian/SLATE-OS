@@ -435,3 +435,20 @@ The deferred live walkthrough from § 9.3 ran successfully on Vercel Production 
 Two non-blocker sub-spec drifts documented as L-25 (MCP synthetic-click → React handler limitation; not a source bug) and L-26 (bulk activity event's `sectionTypes` array missing one entry; counts internally consistent).
 
 **S9 prerequisites met. Recommendation unchanged from § 14: Sprint S9 — Proposal AI Drafting + Scope Edits + Recommended Option.**
+
+---
+
+## 17. Follow-on — Sprint S9 Proposal AI Drafting (2026-06-05)
+
+✅ **S8 → S9 chain integrity now enforced + structurally verified.** See `docs/51_PROPOSAL_AI_DRAFTING.md`.
+
+S9 tightened the report-section allowlist consumed by proposal-option synthesis from `["drafted","needs_review","approved","final"]` to `["approved","final"]` only. The pre-S9 leak allowed pre-approval section text to feed proposal drafting — that's closed.
+
+Deployed-Supabase preflight on the fixture (`ed7f1f7d-…`):
+
+- 12 report sections in the engagement
+- 5 approved sections (the S8 walkthrough output)
+- **Pre-S9 eligible: 12 sections** (the leak — every drafted/needs-review/approved/final section would have reached the prompt)
+- **Post-S9 eligible: 5 sections** (only the operator-blessed ones) ✅
+
+The S8 source contract is unchanged. The S8 → S9 chain integrity is now structurally enforced at the deployed-Supabase boundary.

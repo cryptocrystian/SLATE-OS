@@ -61,6 +61,11 @@ export type GenerateProposalOptionResult =
       optionId: string;
       provider: string;
       model: string;
+      /** Sprint S9 — current link-row coverage after grounded
+       *  persistence (includes newly inserted + pre-existing operator
+       *  links). Counts only. */
+      sourceOpportunityCount: number;
+      sourceRoadmapItemCount: number;
     }
   | { ok: false; error: GenerateProposalOptionError };
 
@@ -200,8 +205,7 @@ export async function generateProposalOptionDraftAction(args: {
   //   position
   //   proposal_id / engagement_id / workspace_id
   // …so operator-set commercial levers and structural fields are
-  // preserved verbatim. Link rows live in their own tables and are
-  // also untouched.
+  // preserved verbatim.
   const now = new Date().toISOString();
   const candidate = synthesisResult.candidate;
   const { error: updateError } = await supabase
@@ -227,6 +231,18 @@ export async function generateProposalOptionDraftAction(args: {
     return { ok: false, error: "service-error" };
   }
 
+  // Sprint S9 — persist structural source provenance. The validator
+  // already coerced the model's grounded ID arrays against the upstream
+  // allowlist; here we write the link rows. Unique-violation (23505)
+  // is benign — the option was already linked to that artifact.
+  const linkCounts = await persistGroundedLinks(supabase, {
+    workspaceId: engagementRow.workspace_id,
+    engagementId: engagementRow.id,
+    optionId,
+    opportunityIds: candidate.groundedOpportunityIds,
+    roadmapItemIds: candidate.groundedRoadmapItemIds,
+  });
+
   // Bump proposal `last_reviewed_at` is intentionally NOT set —
   // an AI draft is not a review event. Only operator review actions
   // (Approve / Needs review / Reopen) touch `reviewed_by` /
@@ -245,6 +261,11 @@ export async function generateProposalOptionDraftAction(args: {
     assumptionsCount: candidate.assumptions.length,
     dependenciesCount: candidate.dependencies.length,
     risksCount: candidate.risks.length,
+    // Sprint S9 — source counts (no UUIDs)
+    sourceReportSectionCount: context.reportSections.length,
+    sourceFindingCount: context.findings.length,
+    sourceOpportunityCount: linkCounts.opportunities,
+    sourceRoadmapItemCount: linkCounts.roadmapItems,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
   };
@@ -273,6 +294,11 @@ export async function generateProposalOptionDraftAction(args: {
     metadata: {
       runType: "proposal_option_draft",
       optionType: context.option.optionType,
+      // Sprint S9 — sanitized source-count metadata (no UUIDs, no raw text).
+      sourceReportSectionCount: context.reportSections.length,
+      sourceFindingCount: context.findings.length,
+      sourceOpportunityCount: linkCounts.opportunities,
+      sourceRoadmapItemCount: linkCounts.roadmapItems,
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },
@@ -285,7 +311,325 @@ export async function generateProposalOptionDraftAction(args: {
     optionId,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
+    sourceOpportunityCount: linkCounts.opportunities,
+    sourceRoadmapItemCount: linkCounts.roadmapItems,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Sprint S9 — bulk drafting orchestrator
+// ---------------------------------------------------------------------------
+
+export type GenerateAllProposalOptionsError =
+  | "unauthenticated"
+  | "invalid-engagement"
+  | "engagement-not-found"
+  | "proposal-not-found"
+  | "ai-not-configured"
+  | "service-error";
+
+export interface GenerateAllProposalOptionsResult {
+  ok: true;
+  total: number;
+  attempted: number;
+  succeeded: number;
+  failed: number;
+  /**
+   * Per-attempt outcomes — sanitized. Each entry carries only the
+   * option type and `ok|error_code`; never the option body or
+   * provider response.
+   */
+  results: Array<{
+    optionType: string;
+    ok: boolean;
+    errorCode?: string;
+  }>;
+}
+
+export type GenerateAllProposalOptionsFailure = {
+  ok: false;
+  error: GenerateAllProposalOptionsError;
+};
+
+/**
+ * Sprint S9 — bulk drafter for proposal options.
+ *
+ * Iterates every option on the engagement's proposal sequentially,
+ * calling the per-option `generateProposalOptionDraftAction` for each.
+ * Sequential (not parallel) for the same reasons as S8's bulk drafter:
+ *
+ *   - OpenAI rate-limit budget consumed identically.
+ *   - Each `ai_synthesis_runs` row stays atomic and independently audit-visible.
+ *   - Activity timeline reads naturally in canonical order.
+ *
+ * Unlike the S8 bulk drafter, this one does NOT skip any options
+ * regardless of their current content state. Proposal options have no
+ * "approved/final" lifecycle equivalent — operator review happens at the
+ * proposal level via `approveProposal`, not per option. The operator's
+ * intent in clicking "Draft all proposal options" is to refresh all
+ * three canonical SOW shapes from the upstream evidence.
+ *
+ * Returns a counts summary even when individual options fail. The
+ * orchestrator never aborts the loop on a single-option failure: it
+ * records the failure and continues.
+ */
+export async function generateAllProposalOptionDraftsAction(args: {
+  engagementId: string;
+}): Promise<
+  GenerateAllProposalOptionsResult | GenerateAllProposalOptionsFailure
+> {
+  const { engagementId } = args;
+  if (!isUuid(engagementId)) {
+    return { ok: false, error: "invalid-engagement" };
+  }
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+  if (!isAiConfigured()) {
+    return { ok: false, error: "ai-not-configured" };
+  }
+
+  const { data: engagementRow, error: engagementError } = await supabase
+    .from("engagements")
+    .select("id, workspace_id")
+    .eq("id", engagementId)
+    .maybeSingle<{ id: string; workspace_id: string }>();
+  if (engagementError) {
+    console.error("[proposals.synthesis.bulk] engagement-lookup-failed", {
+      name: engagementError.name,
+      code: engagementError.code,
+      message: engagementError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!engagementRow?.id) {
+    return { ok: false, error: "engagement-not-found" };
+  }
+
+  const { data: proposalRow, error: proposalError } = await supabase
+    .from("proposals")
+    .select("id")
+    .eq("engagement_id", engagementRow.id)
+    .maybeSingle<{ id: string }>();
+  if (proposalError) {
+    console.error("[proposals.synthesis.bulk] proposal-lookup-failed", {
+      name: proposalError.name,
+      code: proposalError.code,
+      message: proposalError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!proposalRow?.id) {
+    return { ok: false, error: "proposal-not-found" };
+  }
+
+  const { data: optionsData, error: optionsError } = await supabase
+    .from("proposal_options")
+    .select("id, option_type, position, created_at")
+    .eq("proposal_id", proposalRow.id)
+    .order("position", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (optionsError) {
+    console.error("[proposals.synthesis.bulk] options-lookup-failed", {
+      name: optionsError.name,
+      code: optionsError.code,
+      message: optionsError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  const optionRows =
+    (optionsData as unknown as Array<{
+      id: string;
+      option_type: string;
+    }>) ?? [];
+
+  const total = optionRows.length;
+  let succeeded = 0;
+  let failed = 0;
+  const results: GenerateAllProposalOptionsResult["results"] = [];
+
+  for (const option of optionRows) {
+    const r = await generateProposalOptionDraftAction({
+      engagementId,
+      optionId: option.id,
+    });
+    if (r.ok) {
+      succeeded += 1;
+      results.push({ optionType: option.option_type, ok: true });
+    } else {
+      failed += 1;
+      results.push({
+        optionType: option.option_type,
+        ok: false,
+        errorCode: r.error,
+      });
+    }
+  }
+
+  // Sanitized bulk-summary activity event. Never includes option body,
+  // provider response, or upstream UUIDs — only option types + counts.
+  const optionTypes = Array.from(
+    new Set(results.filter((r) => r.ok).map((r) => r.optionType)),
+  ).sort();
+  const errorCodeCounts = results
+    .filter((r) => !r.ok && r.errorCode)
+    .reduce<Record<string, number>>((acc, r) => {
+      const code = r.errorCode!;
+      acc[code] = (acc[code] ?? 0) + 1;
+      return acc;
+    }, {});
+
+  await logActivityEvent({
+    eventType: "ai_proposal_options_drafted",
+    entityType: "proposal",
+    entityId: proposalRow.id,
+    engagementId: engagementRow.id,
+    title:
+      failed === 0
+        ? "AI bulk proposal drafting completed"
+        : "AI bulk proposal drafting completed with partial failures",
+    summary:
+      `Options attempted: ${total}. Succeeded: ${succeeded}. Failed: ${failed}.`,
+    metadata: {
+      runType: "proposal_options_bulk_draft",
+      total,
+      attempted: total,
+      succeeded,
+      failed,
+      optionTypes,
+      errorCodeCounts,
+    },
+  });
+
+  revalidatePaths(engagementRow.id);
+
+  return {
+    ok: true,
+    total,
+    attempted: total,
+    succeeded,
+    failed,
+    results,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sprint S9 — link-row persistence helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Sprint S9 — write the two flavors of proposal-option provenance link
+ * rows for the IDs the model grounded its draft in. Unique-violation
+ * (23505) is benign — the option already had that link. The total
+ * count returned is the link rows currently present for each kind —
+ * we re-query after insert to capture both newly inserted rows and any
+ * pre-existing operator-added links.
+ */
+async function persistGroundedLinks(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  args: {
+    workspaceId: string;
+    engagementId: string;
+    optionId: string;
+    opportunityIds: string[];
+    roadmapItemIds: string[];
+  },
+): Promise<{ opportunities: number; roadmapItems: number }> {
+  await insertOptionLinkRows(
+    supabase,
+    "proposal_option_opportunity_links",
+    "opportunity_id",
+    {
+      workspaceId: args.workspaceId,
+      engagementId: args.engagementId,
+      optionId: args.optionId,
+      refIds: args.opportunityIds,
+    },
+  );
+  await insertOptionLinkRows(
+    supabase,
+    "proposal_option_roadmap_links",
+    "roadmap_item_id",
+    {
+      workspaceId: args.workspaceId,
+      engagementId: args.engagementId,
+      optionId: args.optionId,
+      refIds: args.roadmapItemIds,
+    },
+  );
+
+  const [opportunitiesCount, roadmapItemsCount] = await Promise.all([
+    countOptionLinks(
+      supabase,
+      "proposal_option_opportunity_links",
+      args.optionId,
+    ),
+    countOptionLinks(supabase, "proposal_option_roadmap_links", args.optionId),
+  ]);
+  return {
+    opportunities: opportunitiesCount,
+    roadmapItems: roadmapItemsCount,
+  };
+}
+
+async function insertOptionLinkRows(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  table:
+    | "proposal_option_opportunity_links"
+    | "proposal_option_roadmap_links",
+  refColumn: "opportunity_id" | "roadmap_item_id",
+  args: {
+    workspaceId: string;
+    engagementId: string;
+    optionId: string;
+    refIds: string[];
+  },
+) {
+  if (args.refIds.length === 0) return;
+  for (const refId of args.refIds) {
+    const insertRow: Record<string, unknown> = {
+      workspace_id: args.workspaceId,
+      engagement_id: args.engagementId,
+      proposal_option_id: args.optionId,
+    };
+    insertRow[refColumn] = refId;
+    const { error } = await supabase.from(table).insert(insertRow);
+    // 23505 = unique_violation — link already exists, benign.
+    if (error && error.code !== "23505") {
+      console.error("[proposals.synthesis] link-insert-failed", {
+        table,
+        refColumn,
+        name: error.name,
+        code: error.code,
+        message: error.message,
+      });
+    }
+  }
+}
+
+async function countOptionLinks(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  table:
+    | "proposal_option_opportunity_links"
+    | "proposal_option_roadmap_links",
+  optionId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("proposal_option_id", optionId);
+  if (error) {
+    console.error("[proposals.synthesis] link-count-failed", {
+      table,
+      name: error.name,
+      code: error.code,
+      message: error.message,
+    });
+    return 0;
+  }
+  return count ?? 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -216,3 +216,13 @@ Verify report section drafting walkthrough
 ```
 
 (Per task spec.)
+
+---
+
+## 14. Follow-on — Sprint S9 consumed the approved report sections (2026-06-05)
+
+The 5 approved report sections produced by this walkthrough (Executive Summary, Opportunity Portfolio, Priority Recommendations, 30/60/90 Roadmap, Recommended Next Step — plus 6 needs_review sections) became the upstream input to Sprint S9's AI proposal-option drafting.
+
+S9 tightened the report-section allowlist at the proposal-option AI input layer: `ELIGIBLE_REPORT_SECTION_STATUSES` from `["drafted","needs_review","approved","final"]` → `["approved","final"]` only. With this fixture's 5 approved sections, all 5 reach S9 input; the 7 needs_review/drafted/not_started sections (none in those states currently — 7 are needs_review) do NOT reach S9 input.
+
+The S4 → S5 → S6 → S7 → S8 → S9 chain is now end-to-end structurally verified on deployed Supabase. The live S9 AI bulk proposal-drafting walkthrough is the operator's first post-commit action. See `docs/51_PROPOSAL_AI_DRAFTING.md` for the full S9 evidence log.

@@ -55,6 +55,29 @@ export interface ProposalOptionDraftCandidate {
   dependencies: string[];
   /** Persisted into `risks[]`. */
   risks: string[];
+  /**
+   * Sprint S9 — structural source provenance. The model returns the
+   * IDs of upstream opportunities and roadmap items it actually
+   * grounded the draft in. The validator drops any ID that is not
+   * present in the supplied context (the upstream allowlist is the
+   * authoritative source — the model cannot invent provenance). The
+   * action then writes these into the two
+   * `proposal_option_*_links` tables so the source trail is
+   * queryable and surfaces in operator UI.
+   *
+   * These arrays are deduped and capped at MAX_GROUNDED_IDS each. An
+   * empty array is valid (e.g. an option may legitimately span only
+   * a subset of the upstream evidence).
+   *
+   * NOTE — there is intentionally no `groundedReportSectionIds` field
+   * because the existing proposal schema (migration 0008) has no
+   * `proposal_option_report_section_links` table. Report-section
+   * provenance is carried in synthesis-context counts + activity
+   * metadata only. Future migration can add a structural link table
+   * if/when downstream sprints need it.
+   */
+  groundedOpportunityIds: string[];
+  groundedRoadmapItemIds: string[];
 }
 
 export interface ProposalOptionSynthesisOk {
@@ -98,6 +121,11 @@ const MAX_DELIVERABLES = 8;
 const MAX_ASSUMPTIONS = 8;
 const MAX_DEPENDENCIES = 6;
 const MAX_RISKS = 6;
+// Sprint S9 — structural provenance caps.
+const MAX_GROUNDED_OPPORTUNITIES = 12;
+const MAX_GROUNDED_ROADMAP_ITEMS = 12;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
 // Banned-claim scanner — financial + commercial-finality patterns.
@@ -166,7 +194,7 @@ export async function synthesizeProposalOptionDraft(
     return { ok: false, error: "ai-response-invalid", message: "non-json" };
   }
 
-  const candidate = validateCandidate(parsed, context.option.title);
+  const candidate = validateCandidate(parsed, context);
   if (!candidate) {
     return {
       ok: false,
@@ -214,6 +242,10 @@ const SYSTEM_PROMPT = [
   "- Use a consultant register: plain-language, decision-grade, no superlatives, no marketing tone.",
   "- Reference linked findings / opportunities / roadmap items by title (not id) so the draft reads naturally for a human reviewer.",
   "- Be honest about gaps. If the option's evidence base is thin, write a short note in `assumptions` saying so rather than padding.",
+  "- Sprint S9 — STRUCTURAL PROVENANCE. In addition to grounding the prose, you MUST return two ID arrays naming the upstream artifacts the draft is grounded in:",
+  "    - `groundedOpportunityIds`: UUIDs from the supplied `opportunities[].opportunityId` array — the opportunities actually included in this option's scope.",
+  "    - `groundedRoadmapItemIds`: UUIDs from the supplied `roadmap[].roadmapItemId` array — the roadmap items this option will deliver against.",
+  "  Only use IDs that appear in the supplied context arrays. Do NOT invent IDs. Empty arrays are valid (e.g. a Quick-Win Build option may span only one opportunity). The operator UI uses these to render the option's source-trail panel.",
 ].join("\n");
 
 const SCHEMA_INSTRUCTION = [
@@ -227,7 +259,9 @@ const SCHEMA_INSTRUCTION = [
   '  "deliverables": array of up to 8 short workstream / deliverable strings,',
   '  "assumptions": array of up to 8 short strings calling out gaps, gated claims, and validation steps,',
   '  "dependencies": array of up to 6 short strings,',
-  '  "risks": array of up to 6 short strings',
+  '  "risks": array of up to 6 short strings,',
+  '  "groundedOpportunityIds": array of UUIDs (<= 12) drawn ONLY from the supplied opportunities[].opportunityId array,',
+  '  "groundedRoadmapItemIds": array of UUIDs (<= 12) drawn ONLY from the supplied roadmap[].roadmapItemId array',
   "}",
 ].join("\n");
 
@@ -273,14 +307,14 @@ function safeParseJson(raw: string): unknown {
 
 function validateCandidate(
   parsed: unknown,
-  fallbackTitle: string,
+  context: ProposalOptionSynthesisContext,
 ): ProposalOptionDraftCandidate | null {
   const obj = extractOptionObject(parsed);
   if (!obj) return null;
 
   const optionTitle =
     clipString(obj.optionTitle, TITLE_LIMIT) ??
-    clipString(fallbackTitle, TITLE_LIMIT);
+    clipString(context.option.title, TITLE_LIMIT);
   const bestFitScenario = clipString(obj.bestFitScenario, BEST_FIT_LIMIT);
   const scopeNarrative = clipString(obj.scopeNarrative, SCOPE_NARRATIVE_LIMIT);
   const timeline = clipString(obj.timeline, TIMELINE_LIMIT);
@@ -314,6 +348,24 @@ function validateCandidate(
   );
   const risks = clipStringArray(obj.risks, ARRAY_ITEM_LIMIT, MAX_RISKS);
 
+  // Sprint S9 — structural provenance. Only accept IDs that appear in
+  // the context arrays. The upstream allowlist is authoritative; the
+  // model cannot invent provenance.
+  const opportunityAllow = new Set(
+    context.opportunities.map((o) => o.opportunityId),
+  );
+  const roadmapAllow = new Set(context.roadmap.map((r) => r.roadmapItemId));
+  const groundedOpportunityIds = filterUuidList(
+    obj.groundedOpportunityIds,
+    opportunityAllow,
+    MAX_GROUNDED_OPPORTUNITIES,
+  );
+  const groundedRoadmapItemIds = filterUuidList(
+    obj.groundedRoadmapItemIds,
+    roadmapAllow,
+    MAX_GROUNDED_ROADMAP_ITEMS,
+  );
+
   return {
     optionTitle,
     bestFitScenario,
@@ -323,7 +375,42 @@ function validateCandidate(
     assumptions,
     dependencies,
     risks,
+    groundedOpportunityIds,
+    groundedRoadmapItemIds,
   };
+}
+
+/**
+ * Sprint S9 — defensive grounded-ID validator.
+ *
+ *   - Drops anything that isn't a syntactically valid UUID.
+ *   - Drops anything that isn't in the supplied allowlist (the
+ *     authoritative upstream context).
+ *   - Dedupes (Set semantics).
+ *   - Caps at `max` entries.
+ *
+ * The empty-input case returns `[]` — legitimate for options that
+ * legitimately span no upstream link.
+ */
+function filterUuidList(
+  value: unknown,
+  allow: ReadonlySet<string>,
+  max: number,
+): string[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of value) {
+    if (out.length >= max) break;
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!UUID_RE.test(trimmed)) continue;
+    if (!allow.has(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
+  }
+  return out;
 }
 
 function extractOptionObject(parsed: unknown): Record<string, unknown> | null {
