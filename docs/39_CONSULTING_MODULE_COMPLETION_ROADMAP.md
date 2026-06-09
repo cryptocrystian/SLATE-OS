@@ -93,7 +93,7 @@ These capabilities are **scaffolded but not yet operationally complete**. They c
 | **Report section AI drafting integration** | Hook + scaffold exist; not exercised against real findings + opportunities + roadmap. | Yes — Sprint S8 |
 | **Proposal AI drafting + scope edits + recommended-option selection** | Hook + scaffold exist; not exercised against real report. | Yes — Sprint S9 |
 | **Internal SOW Draft validated against real proposal scope** | Generation works; not yet exercised against a real client proposal scope. | Yes — Sprint S10 |
-| **Pre-delivery Audit — code-side enforcement** | `docs/35` § 5 readiness gate currently canon-only (operator checklist); code does not block `/r` or `/p` mint when gate is unmet. | Yes — Sprint S11 |
+| **Pre-delivery Audit — code-side enforcement** | ✅ **Done (S11).** `docs/35` § 5 15-row readiness gate is now centralized server-side code: `evaluatePreDeliveryAudit` (`lib/engagement-readiness/pre-delivery-audit.ts`) refuses `/r` and `/p` mint before any token / snapshot side-effect when the upstream chain is incomplete. See `docs/55`. | — |
 | **Controlled `/r` + `/p` mint for Sapient Digital with FIRST CLIENT pilot audience labels** | Pilot pattern proven on `SLATE Pilot Test Client`; not yet executed on Sapient Digital. | Yes — Sprint S12 |
 | **Sapient Digital Mark sent on both lanes** | Pattern proven on pilot; not yet executed on Sapient Digital. | Yes — Sprint S13 |
 | **Document binary upload backend** (Sprint I4 candidate) | `engagement_intake_documents.storage_path` exists; no upload UI or storage backend wiring. | **Backlog** — not on critical path unless transcripts/binary attachments block Sprint S4 synthesis |
@@ -285,15 +285,23 @@ Scope:
 
 Non-goals: public SOW route, SOW share tokens, SOW template library — all deferred (§ 7).
 
-### Sprint S11 — Pre-Delivery Audit Code-Side Enforcement
+### Sprint S11 — Pre-Delivery Audit Code-Side Enforcement ✅ DONE
 
 Scope:
-1. Convert `docs/35` § 5 readiness gate from operator discipline to a code-side guard.
-2. Gate blocks `/r` and `/p` mint attempts when any of the 15 readiness conditions fail.
-3. Operator UI surfaces the gate state explicitly ("9 / 15 ready — N items remaining").
-4. Bypass requires explicit operator override with audit-logged reason text.
+1. ✅ Converted `docs/35` § 5 readiness gate from operator discipline to a centralized server-side evaluator (`lib/engagement-readiness/pre-delivery-audit.ts`).
+2. ✅ Gate blocks `/r` and `/p` mint attempts when any of the 15 readiness conditions fail; refusal happens before any token / snapshot side-effect.
+3. ✅ Operator UI surfaces the gate state via `PreDeliveryAuditCard` mounted near the mint controls on both report + proposal pages — shows ready/blocked state, blocking reasons in plain language, and a 6-cell counts grid.
+4. ✅ Blocked attempts emit sanitized `pre_delivery_audit_blocked` activity event (codes / counts / UUID anchors only — no raw label, no PII, no token).
 
-Non-goals: minting any actual `/r` or `/p` link for Sapient Digital — that's S12.
+Acceptance criteria coverage:
+- #5 fixture passes the applicable gate (`Fixture A: /p mint PASSES`).
+- #6 negative report case blocked (`Fixture A: /r mint BLOCKED`).
+- #7 negative proposal case blocked (`Fixture B: /p mint BLOCKED`).
+- #8 blocked attempts create no token / snapshot (source-side review verified).
+
+Non-goals (honored): no public SOW route, no SOW share link, no Send to Client, no email, no CRM / Attio writes, no e-signature, no new public routes, no Group-B wiring, no Sapient mutation, no real-client mutation, no `/r` or `/p` rendering change. Sprint S12 mints Sapient Digital share links.
+
+Smoke: `node artifacts/s11-pre-delivery-audit-smoke.mjs` — 49 / 49 PASS. Documentation: `docs/55_PRE_DELIVERY_AUDIT_CODE_ENFORCEMENT.md`.
 
 ### Sprint S12 — Sapient Digital Controlled `/r` + `/p` Mint
 

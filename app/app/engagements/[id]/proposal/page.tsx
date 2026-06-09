@@ -17,6 +17,8 @@ import { ImplementationCreditPanel } from "@/components/proposals/implementation
 import { InitializeProposalForm } from "@/components/proposals/initialize-proposal-form";
 import { SowReadinessHint } from "@/components/proposals/sow-readiness-hint";
 import { GenerateAllProposalOptionsButton } from "@/components/proposals/generate-all-proposal-options-button";
+import { PreDeliveryAuditCard } from "@/components/engagement-readiness/pre-delivery-audit-card";
+import { loadPreDeliveryAudit } from "@/lib/engagement-readiness/pre-delivery-audit-loader";
 import { getLatestProposalDeliverySnapshotForProposal } from "@/lib/proposals/delivery-snapshot-queries";
 import {
   buildSowReadinessSignal,
@@ -95,6 +97,15 @@ export default async function EngagementProposalPage({
       ? await getLatestProposalDeliverySnapshotForProposal(proposal.id)
       : null;
   const aiAvailable = isAiConfigured();
+
+  // Sprint S11 — pre-delivery audit (code-side enforcement of
+  // docs/35 § 5) for the proposal surface. Surfaces near the mint
+  // controls so the operator can see exactly why /p mint is blocked.
+  // The mint action itself independently re-evaluates the audit so
+  // this card is purely advisory display.
+  const preDeliveryAudit = isPersisted
+    ? await loadPreDeliveryAudit(engagement.id, { surface: "proposal" })
+    : null;
 
   // Sprint S9 — derive S10 readiness signal from already-loaded data.
   // The S8 readiness signal (`buildProposalReadinessSignal`) gives us
@@ -321,6 +332,15 @@ export default async function EngagementProposalPage({
               a persisted proposal exists. */}
           {isPersisted && sowReadinessSignal ? (
             <SowReadinessHint signal={sowReadinessSignal} />
+          ) : null}
+
+          {/* Sprint S11 — pre-delivery audit (code-side enforcement of
+              docs/35 § 5). Read-only card surfacing the canonical
+              readiness gate so the operator can see exactly what's
+              blocking a /p mint. The mint action independently
+              re-evaluates the audit. */}
+          {preDeliveryAudit ? (
+            <PreDeliveryAuditCard audit={preDeliveryAudit} />
           ) : null}
 
           {proposal && isPersisted ? (

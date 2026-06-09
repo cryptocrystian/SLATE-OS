@@ -200,7 +200,7 @@ Zero — no source touch this sprint.
 ## 11. Limitations
 
 - **L-32 — No SOW Draft approval UI surfaced.** The deployed UI surfaces `Void` and `Open SOW Draft` (internal preview), but no "Approve SOW" button. The action layer's `approval_state` enum allows `approved` (and a future action could flip it), but the canonical S10 scope per the user spec is internal review only — not a separate SOW approval workflow. The current flow is: generate → operator reviews via internal preview → operator either accepts implicit (no UI flip) or voids. This matches the spec's "internal draft, operator-reviewable" contract. Add an explicit `Approve SOW` button only if a downstream sprint requires it.
-- **L-33 — Public SOW route is canonically absent.** `/s/[token]` does not exist per `docs/28` decision (default: defer). Sprint S11 (Pre-Delivery Audit) does not unblock this. Adding a public SOW share route would be a separate canon decision, not an S10/S11 task.
+- **L-33 — Public SOW route is canonically absent.** `/s/[token]` does not exist per `docs/28` decision (default: defer). Sprint S11 (Pre-Delivery Audit) **landed** without changing this — the S11 evaluator is surface-aware (`/r` and `/p` only); SOW Draft stays out of S11's audit scope and its own internal 15-condition gate is unchanged. Adding a public SOW share route would be a separate canon decision, not an S10/S11 task. Full S11 evidence: `docs/55_PRE_DELIVERY_AUDIT_CODE_ENFORCEMENT.md`.
 - **L-25/L-26 (carried forward) — Chrome MCP synthetic-click workaround** still required for browser MCP automation. Not a source bug.
 
 ## 12. Recommended next sprint

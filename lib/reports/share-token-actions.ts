@@ -8,6 +8,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isUuid } from "./mappers";
 import { mapReportDeliverySnapshotRow } from "./delivery-snapshot-mappers";
 import { evaluateReportShareEligibility } from "./share-token-eligibility";
+import { loadPreDeliveryAudit } from "@/lib/engagement-readiness/pre-delivery-audit-loader";
+import type { PreDeliveryReason } from "@/lib/engagement-readiness/pre-delivery-audit";
 import {
   calculateShareTokenExpiry,
   generateRawShareToken,
@@ -44,6 +46,7 @@ export type GenerateShareLinkError =
   | "invalid-snapshot"
   | "snapshot-not-found"
   | "snapshot-not-eligible"
+  | "pre-delivery-audit-blocked"
   | "invalid-expiry"
   | "service-error";
 
@@ -63,6 +66,12 @@ export interface GenerateShareLinkFailure {
   ok: false;
   error: GenerateShareLinkError;
   ineligibilityReasons?: ReadonlyArray<{ code: string; note: string }>;
+  /**
+   * Sprint S11 — when `error === "pre-delivery-audit-blocked"`, the
+   * structured blocking reasons returned by the pre-delivery audit
+   * evaluator. The operator UI surfaces these inline.
+   */
+  preDeliveryAuditReasons?: ReadonlyArray<PreDeliveryReason>;
 }
 
 export type GenerateShareLinkResult =
@@ -175,6 +184,43 @@ export async function generateShareLinkAction(args: {
   const snapshot = mapReportDeliverySnapshotRow(
     row as unknown as DbReportDeliverySnapshotRow,
   );
+
+  // Sprint S11 — pre-delivery audit (code-side enforcement of
+  // docs/35 § 5 readiness gate). The mint is refused before any token
+  // / snapshot is created; a sanitized `pre_delivery_audit_blocked`
+  // activity event records the attempt with reason codes only.
+  const audit = await loadPreDeliveryAudit(snapshot.engagementId, {
+    surface: "report",
+    audienceLabel: args.audienceLabel ?? null,
+  });
+  if (!audit.ready) {
+    await logActivityEvent({
+      eventType: "pre_delivery_audit_blocked",
+      entityType: "engagement",
+      entityId: snapshot.engagementId,
+      engagementId: snapshot.engagementId,
+      title: "Report share mint blocked by pre-delivery audit",
+      summary:
+        "Pre-delivery audit refused a report share-token mint attempt. No token was created.",
+      metadata: {
+        surface: "report",
+        ready: false,
+        severity: audit.severity,
+        snapshotId: snapshot.id,
+        blockingReasonCodes: audit.blockingReasons.map((r) => r.code),
+        warningCodes: audit.warnings.map((r) => r.code),
+        blockingReasonCount: audit.blockingReasons.length,
+        evaluatedAt: audit.evaluatedAt,
+        audienceLabelPresent: Boolean(args.audienceLabel),
+      },
+    });
+    return {
+      ok: false,
+      error: "pre-delivery-audit-blocked",
+      preDeliveryAuditReasons: audit.blockingReasons,
+    };
+  }
+
   const eligibility = evaluateReportShareEligibility(snapshot);
   if (!eligibility.eligible) {
     return {

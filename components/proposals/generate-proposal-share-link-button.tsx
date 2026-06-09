@@ -10,6 +10,7 @@ import {
   type GenerateProposalShareLinkResult,
 } from "@/lib/proposals/share-token-actions";
 import type { ProposalShareEligibilityReason } from "@/lib/proposals/share-token-types";
+import { PRE_DELIVERY_REASON_DISPLAY } from "@/lib/engagement-readiness/pre-delivery-audit";
 
 /**
  * Phase 1B Proposal/SOW Delivery Sprint P4 — operator-only Generate
@@ -312,6 +313,31 @@ function FailureNotice({
           ))}
         </ul>
       ) : null}
+      {result.error === "pre-delivery-audit-blocked" &&
+      result.preDeliveryAuditReasons ? (
+        <ul className="flex flex-col gap-1 text-text-secondary">
+          {result.preDeliveryAuditReasons.slice(0, 6).map((r, i) => {
+            const display = PRE_DELIVERY_REASON_DISPLAY[r.code];
+            return (
+              <li
+                key={`${r.code}-${i}`}
+                className="flex items-start gap-2"
+              >
+                <span
+                  aria-hidden
+                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-status-risk"
+                />
+                <span>
+                  <code className="font-mono text-[10px]">
+                    {display?.shortLabel ?? r.code}
+                  </code>{" "}
+                  · <span className="text-text-muted">{r.message}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
 }
@@ -328,6 +354,8 @@ function translateError(
       return "Snapshot not found";
     case "snapshot-not-eligible":
       return "Snapshot is not share-eligible";
+    case "pre-delivery-audit-blocked":
+      return "Pre-delivery audit blocked mint";
     case "invalid-expiry":
       return "Requested expiry outside policy";
     case "service-error":

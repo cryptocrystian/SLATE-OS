@@ -17,6 +17,8 @@ import { ReportPdfCandidatesPanel } from "@/components/reports/report-pdf-candid
 import { ProposalReadinessHint } from "@/components/reports/proposal-readiness-hint";
 import { GenerateAllReportSectionsButton } from "@/components/reports/generate-all-report-sections-button";
 import { buildProposalReadinessSignal } from "@/lib/reports/readiness";
+import { PreDeliveryAuditCard } from "@/components/engagement-readiness/pre-delivery-audit-card";
+import { loadPreDeliveryAudit } from "@/lib/engagement-readiness/pre-delivery-audit-loader";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -232,6 +234,15 @@ export default async function EngagementReportPage({
 
   const aiAvailable = isAiConfigured();
 
+  // Sprint S11 — pre-delivery audit (code-side enforcement of
+  // docs/35 § 5). Surfaces near the mint controls so the operator can
+  // see exactly why /r mint is blocked. The mint action itself
+  // independently re-evaluates the audit so this card is purely
+  // advisory display.
+  const preDeliveryAudit = isPersisted
+    ? await loadPreDeliveryAudit(engagement.id, { surface: "report" })
+    : null;
+
   return (
     <div className="flex flex-col gap-8 lg:gap-10">
       <PageHeader
@@ -434,6 +445,15 @@ export default async function EngagementReportPage({
               sprint. Mounted only when a persisted report exists. */}
           {isPersisted && proposalReadinessSignal ? (
             <ProposalReadinessHint signal={proposalReadinessSignal} />
+          ) : null}
+
+          {/* Sprint S11 — pre-delivery audit (code-side enforcement of
+              docs/35 § 5). Read-only card surfacing the canonical
+              readiness gate so the operator can see exactly what's
+              blocking a /r mint. The mint action independently
+              re-evaluates the audit. */}
+          {preDeliveryAudit ? (
+            <PreDeliveryAuditCard audit={preDeliveryAudit} />
           ) : null}
 
           {exhibitSlotResults && report ? (

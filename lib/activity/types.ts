@@ -39,6 +39,11 @@ export type ActivityEventType =
   | "ai_proposal_options_drafted"
   | "ai_roadmap_items_drafted"
   | "ai_synthesis_failed"
+  // Sprint S11 — code-side pre-delivery audit gate. Emitted whenever a
+  // /r or /p mint attempt is REFUSED by the audit evaluator before any
+  // token / snapshot is created. Carries blocking-reason codes + safe
+  // counts only; never raw audience labels (canon-allowed enum / boolean).
+  | "pre_delivery_audit_blocked"
   | "report_pdf_candidate_generated"
   | "report_pdf_candidate_failed"
   | "report_pdf_candidate_downloaded"

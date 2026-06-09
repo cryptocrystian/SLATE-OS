@@ -16,6 +16,8 @@ import { mapProposalDeliverySnapshotRow } from "./delivery-snapshot-mappers";
 import type { DbProposalDeliverySnapshotRow } from "./delivery-snapshot-types";
 import { isUuid } from "./mappers";
 import { evaluateProposalShareEligibility } from "./share-token-eligibility";
+import { loadPreDeliveryAudit } from "@/lib/engagement-readiness/pre-delivery-audit-loader";
+import type { PreDeliveryReason } from "@/lib/engagement-readiness/pre-delivery-audit";
 import {
   DEFAULT_PROPOSAL_SHARE_TOKEN_EXPIRY_DAYS,
   MAX_PROPOSAL_SHARE_TOKEN_EXPIRY_DAYS,
@@ -59,6 +61,7 @@ export type GenerateProposalShareLinkError =
   | "invalid-snapshot"
   | "snapshot-not-found"
   | "snapshot-not-eligible"
+  | "pre-delivery-audit-blocked"
   | "invalid-expiry"
   | "service-error";
 
@@ -84,6 +87,12 @@ export interface GenerateProposalShareLinkFailure {
   ok: false;
   error: GenerateProposalShareLinkError;
   ineligibilityReasons?: ReadonlyArray<{ code: string; note: string }>;
+  /**
+   * Sprint S11 — when `error === "pre-delivery-audit-blocked"`, the
+   * structured blocking reasons returned by the pre-delivery audit
+   * evaluator. The operator UI surfaces these inline.
+   */
+  preDeliveryAuditReasons?: ReadonlyArray<PreDeliveryReason>;
 }
 
 export type GenerateProposalShareLinkResult =
@@ -189,6 +198,43 @@ export async function generateProposalShareLinkAction(args: {
   const snapshot = mapProposalDeliverySnapshotRow(
     row as unknown as DbProposalDeliverySnapshotRow,
   );
+
+  // Sprint S11 — pre-delivery audit (code-side enforcement of
+  // docs/35 § 5 readiness gate). Refuses the mint before any token /
+  // snapshot side-effects; emits a sanitized
+  // `pre_delivery_audit_blocked` event with reason codes only.
+  const audit = await loadPreDeliveryAudit(snapshot.engagementId, {
+    surface: "proposal",
+    audienceLabel: args.audienceLabel ?? null,
+  });
+  if (!audit.ready) {
+    await logActivityEvent({
+      eventType: "pre_delivery_audit_blocked",
+      entityType: "engagement",
+      entityId: snapshot.engagementId,
+      engagementId: snapshot.engagementId,
+      title: "Proposal share mint blocked by pre-delivery audit",
+      summary:
+        "Pre-delivery audit refused a proposal share-token mint attempt. No token was created.",
+      metadata: {
+        surface: "proposal",
+        ready: false,
+        severity: audit.severity,
+        snapshotId: snapshot.id,
+        blockingReasonCodes: audit.blockingReasons.map((r) => r.code),
+        warningCodes: audit.warnings.map((r) => r.code),
+        blockingReasonCount: audit.blockingReasons.length,
+        evaluatedAt: audit.evaluatedAt,
+        audienceLabelPresent: Boolean(args.audienceLabel),
+      },
+    });
+    return {
+      ok: false,
+      error: "pre-delivery-audit-blocked",
+      preDeliveryAuditReasons: audit.blockingReasons,
+    };
+  }
+
   const eligibility = evaluateProposalShareEligibility(snapshot);
   if (!eligibility.eligible) {
     return {
