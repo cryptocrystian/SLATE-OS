@@ -167,7 +167,7 @@ OpenAI cost for the walkthrough ≈ $0.02–0.05 (3 sequential `gpt-4o-mini` cal
 
 ## 12. Limitations
 
-- **L-31 (NEW) — `buildSowReadinessSignal` contract is over-strict relative to the deployed UI.** The signal requires both `proposalApproved===true` AND `hasApprovedSnapshot===true`. The deployed UI surfaces only snapshot-level approval (`approveProposalCandidateButton`); the proposal-row-level `approveProposal` server action exists in `lib/proposals/actions.ts` lines 300-304 but has **no UI mount** on the deployed page. Result: even with a successfully-approved snapshot whose commercial guard passed, the hint stays on "Not yet" forever.
+- **L-31 (CLOSED 2026-06-08 via S9-Fix · see `docs/53`) — `buildSowReadinessSignal` contract was over-strict relative to the deployed UI.** The signal requires both `proposalApproved===true` AND `hasApprovedSnapshot===true`. The deployed UI surfaces only snapshot-level approval (`approveProposalCandidateButton`); the proposal-row-level `approveProposal` server action exists in `lib/proposals/actions.ts` lines 300-304 but has **no UI mount** on the deployed page. Result: even with a successfully-approved snapshot whose commercial guard passed, the hint stays on "Not yet" forever.
 
   **The smallest fix** is a 4-line change to `lib/proposals/readiness.ts`. Two viable shapes:
 
@@ -184,7 +184,9 @@ OpenAI cost for the walkthrough ≈ $0.02–0.05 (3 sequential `gpt-4o-mini` cal
 
 **Pass with one documented contract gap.** The S9 drafting pipeline itself is fundamentally working — bulk drafting, provenance allowlist enforcement, commercial guard, snapshot lifecycle, sanitized activity metadata all green live.
 
-**Recommended next sprint: a small blocker-fix sprint (S9-Fix) before S10.** Scope:
+**✅ S9-Fix LANDED 2026-06-08 — L-31 closed.** See `docs/53_S9_FIX_SOW_READINESS_CONTRACT.md`. The 4-line softening of `buildSowReadinessSignal.proposalApproved` (OR with `hasApprovedSnapshot`) aligns the operator-facing hint with the canonical `sow-draft-eligibility.ts` gate. Smoke 42/42 pass. Live hint-flip validation will land with the next post-commit deploy.
+
+**Original recommended scope (now landed):**
 
 1. Apply L-31 fix Option A — soften `buildSowReadinessSignal.proposalApproved` so snapshot-approval is sufficient.
 2. Update `artifacts/s9-readiness-smoke.mjs` accordingly.

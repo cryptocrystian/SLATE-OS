@@ -135,7 +135,23 @@ export function buildSowReadinessSignal(
   const recommendedHasProvenance =
     recommendedOpportunityLinkCount + recommendedRoadmapLinkCount > 0;
 
-  const proposalApproved = proposal?.status === "approved";
+  // Sprint S9-Fix (L-31) — align with `evaluateSowDraftEligibility` in
+  // `lib/proposals/sow-draft-eligibility.ts`, which gates the canonical
+  // S10 entry on the snapshot's `approval_state === 'approved'` and the
+  // snapshot's commercial-guard verdict — NOT on `proposals.status`.
+  // The deployed UI surfaces only snapshot-level approval (the
+  // `Approve candidate` button on the Past Proposal Candidates panel);
+  // the proposal-row `approveProposal` server action exists but has no
+  // UI mount. Pre-S9-Fix the operator-facing hint stayed on "Not yet"
+  // forever after snapshot-approval; this fix aligns the advisory hint
+  // with the actual hard gate. See `docs/52` § 11 (L-31) and `docs/53`.
+  //
+  // Strict-or semantics: `proposalApproved` is true when the proposal
+  // row itself is approved (existing behaviour, still allowed) OR when
+  // an approved + non-voided snapshot exists (the canonical S10 entry
+  // gesture surfaced in the UI).
+  const proposalRowApproved = proposal?.status === "approved";
+  const proposalApproved = proposalRowApproved || hasApprovedSnapshot;
 
   const advisories = buildAdvisories({
     hasProposal,
@@ -217,8 +233,15 @@ function buildAdvisories(args: {
   }
 
   if (!args.proposalApproved) {
+    // Sprint S9-Fix (L-31) — `proposalApproved` is now satisfied by
+    // EITHER an `approved` proposal row OR an operator-approved
+    // proposal candidate snapshot. When the advisory fires, neither
+    // is true. Direct the operator to the canonical UI gesture
+    // (snapshot approval) — that's the path the deployed UI surfaces
+    // via the `Approve candidate` button on the Past Proposal
+    // Candidates panel.
     out.push(
-      "Proposal is not yet approved. Use the proposal status control to mark it approved after operator review.",
+      "Proposal is not yet approved. Approve a proposal candidate snapshot (via the `Approve candidate` button on the Past Proposal Candidates panel) to mark the proposal operator-blessed.",
     );
   }
 
