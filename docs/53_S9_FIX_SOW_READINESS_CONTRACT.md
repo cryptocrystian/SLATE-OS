@@ -188,3 +188,11 @@ Align SOW readiness with approved proposal snapshot
 ```
 
 (Per task spec.)
+
+---
+
+## 12. Follow-on — S10 consumed the readiness signal correctly (2026-06-09)
+
+✅ The S9-Fix readiness contract was consumed by Sprint S10 (`docs/54`) live on deployed Production. The post-S9-Fix `SowReadinessHint` rendered `Ready for SOW Draft` on the controlled fixture, the operator clicked `Generate SOW Draft`, the action's defense-gate matched the readiness signal's expectations (snapshot approved + non-voided + commercial guard passed + recommended option present), and the SOW Draft snapshot `f6ed1fe5-c6e2-4a5c-a29e-5fbad6ab0574` was successfully generated with the 70-pattern SOW guard scanning 71 patterns across 5 families with 0 violations. The S9 → S9-Fix → S10 chain is end-to-end live-verified.
+
+L-31 remains CLOSED.
