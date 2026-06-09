@@ -303,7 +303,7 @@ Non-goals (honored): no public SOW route, no SOW share link, no Send to Client, 
 
 Smoke: `node artifacts/s11-pre-delivery-audit-smoke.mjs` — 49 / 49 PASS. Documentation: `docs/55_PRE_DELIVERY_AUDIT_CODE_ENFORCEMENT.md`.
 
-### Sprint S12 — Sapient Digital Controlled `/r` + `/p` Mint
+### Sprint S12 — Sapient Digital Controlled `/r` + `/p` Mint ✅ RAN (Gate Blocked — Canonically-Correct Outcome)
 
 Scope:
 1. Mint Sapient Digital report share token with `FIRST CLIENT PILOT 2026-XX-YY SAPIENT DIGITAL` audience label.
@@ -313,6 +313,8 @@ Scope:
 5. **PAUSE** between mint + delivery; wait for operator delivery confirmation.
 
 Non-goals: SLATE-side send; CRM push; e-sign.
+
+**S12 landing note (2026-06-09):** Sprint executed against the deployed S11 build (`5775e9a`). The S11 pre-delivery audit gate refused both `/r` and `/p` mint attempts on the Sapient Digital engagement (`76097653-fedb-42e5-9ef6-e89a0e97f802`) — `/r` blocked on 10 reason codes; `/p` blocked on 8 reason codes. **No token row created. No delivery snapshot created. No public link minted. No Sapient mutation. Zero bypass.** The system worked exactly as designed on first contact with a not-yet-ready client engagement. Sapient Digital is at `current_stage='setup'` with 0 findings / 0 opportunities / 0 ready-roadmap-linked / 1 invited intake role of 3 required / 0 ready-for-synthesis responses of 2 required / 0 supporting documents. Full evidence: `docs/56_SAPIENT_DIGITAL_CONTROLLED_MINT.md`. **S13 entry condition (S12 mint success) is not satisfied;** the canonically-correct next step before retrying S12 is Sapient stakeholder intake onboarding (operator-staged offline lane + canonical role coverage per `docs/37`). Roadmap sequence unchanged — S13 still follows S12.
 
 ### Sprint S13 — Sapient Digital Mark Sent + Engagement Closure
 

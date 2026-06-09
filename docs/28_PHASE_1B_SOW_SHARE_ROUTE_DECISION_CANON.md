@@ -337,4 +337,12 @@ After `docs/29` lands and is accepted, the SOW share decision becomes re-eligibl
 
 ---
 
+---
+
+## Sprint S12 first-mint reaffirmation (2026-06-09)
+
+Sprint S12 ran the first controlled client-pilot mint attempt for Sapient Digital through the S11 pre-delivery audit gate. The gate refused both `/r` and `/p` mint attempts. Crucially, **S12 did not touch the SOW surface at all** — no `/s/[token]` route was created, no SOW share token was minted or attempted, no SOW Draft snapshot was generated, no SOW-side public route changes were made. The `/s/test` URL still returns 404 on the deployed canonical alias. SOW Drafts remain internal-only per the locked decision in this canon. The S11 gate is surface-aware (`report` and `proposal` only); SOW Draft has its own pre-existing 15-condition internal eligibility evaluator (`lib/proposals/sow-draft-eligibility.ts`, `docs/54`) and is unchanged. Full S12 evidence: `docs/56_SAPIENT_DIGITAL_CONTROLLED_MINT.md`. **The decision matrix in this canon is unchanged.**
+
+---
+
 _End of `docs/28`. Future Sprint P7-B / P8 / e-signature agents must consume this canon as source of truth; deviations require canon amendment before code._
