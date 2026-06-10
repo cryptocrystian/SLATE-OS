@@ -191,6 +191,10 @@ If the operator clicks the mint affordance while blocked, the action refuses wit
 
 No new buttons. No Send to Client. No public SOW link. No email. No e-sign. No client delivery automation.
 
+## 9c. Sprint S12-Fix — document-count loader contract restored (2026-06-09)
+
+S12 surfaced L-34: `lib/engagement-readiness/pre-delivery-audit-loader.ts` filtered `input_assets` with `.is("deleted_at", null)` but the deployed schema has no such column. Sprint S12-Fix drops the spurious clause so the loader reads the real count via the same pattern as `lib/intake/queries.ts`. **No migration. No new column. No new soft-delete concept.** Conservative null→0 posture preserved for genuine query failures. The evaluator (`evaluatePreDeliveryAudit`) is unchanged — only the loader. The S11 contract for C3 (`documents_not_uploaded_or_acked`) is intact: missing documents + no acknowledgement blocks; presence OR acknowledgement clears. Smoke extended with 4 new C3 regression cases — 53 / 53 PASS. Full evidence: `docs/57_S12_FIX_DOCUMENT_COUNT_GATE.md`.
+
 ## 9b. First gated mint attempt — Sprint S12 (2026-06-09)
 
 The S11 evaluator was exercised end-to-end against the deployed Production build on its first contact with a real client engagement (Sapient Digital, `76097653-fedb-42e5-9ef6-e89a0e97f802`) during Sprint S12. The gate **refused** both `/r` and `/p` mint attempts — `/r` blocked on 10 reason codes; `/p` blocked on 8. Zero tokens minted. Zero delivery snapshots created. Zero Sapient mutation. The canonically-correct outcome of running an audit gate against a not-yet-ready engagement. Full evidence: `docs/56_SAPIENT_DIGITAL_CONTROLLED_MINT.md`. **No regression delta** to S11 source or evaluator logic; the verdict is purely a function of upstream-chain state, exactly as designed.

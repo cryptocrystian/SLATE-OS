@@ -245,11 +245,38 @@ async function loadDocumentsCount(
   supabase: ReturnType<typeof createSupabaseServerClient>,
   engagementId: string,
 ): Promise<number> {
-  const { count } = await supabase
+  // Sprint S12-Fix (L-34 closure) — `input_assets` has NO `deleted_at`
+  // column in the deployed schema (migrations 0005 + 0010 + 0017 define
+  // a single canonical `status` lifecycle and no soft-delete pattern).
+  // The pre-S12-Fix loader filtered `.is("deleted_at", null)`, which
+  // PostgREST rejected and the supabase-js count path silently
+  // resolved to `null → 0`. Effect: `totalDocuments` always read as 0
+  // in production, forcing C3 (`documents_not_uploaded_or_acked`) to
+  // block unless the operator explicitly passed
+  // `documentsClearedOrAcknowledged === true`. This was a conservative
+  // failure mode (never a false PASS) but a contract drift against
+  // `lib/intake/queries.ts` and `docs/35` § 5 row 3.
+  //
+  // Fix: drop the soft-delete filter. Count semantics now match the
+  // canonical loader pattern verbatim. The `count ?? 0` fallback
+  // preserves the original conservative posture for any future query
+  // failure that is NOT a missing-column error.
+  const { count, error } = await supabase
     .from("input_assets")
     .select("id", { count: "exact", head: true })
-    .eq("engagement_id", engagementId)
-    .is("deleted_at", null);
+    .eq("engagement_id", engagementId);
+  if (error) {
+    // Conservative fallback — a transient read failure must not be
+    // re-interpreted as "documents are present". The evaluator's C3
+    // gate will then block unless the operator has separately set
+    // `documentsClearedOrAcknowledged`.
+    console.error("[engagement-readiness.pre-delivery-audit] documents-count-failed", {
+      name: error.name,
+      code: error.code,
+      message: error.message,
+    });
+    return 0;
+  }
   return count ?? 0;
 }
 
