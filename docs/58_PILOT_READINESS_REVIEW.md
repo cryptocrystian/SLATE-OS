@@ -380,6 +380,10 @@ Stop immediately and do not proceed if any of:
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — ✅ `next build` succeeds, 33-route table byte-stable
 - `npm run check:send-to-client-disclaimers` — ✅ all 4 canonical pins present
 
+## 13b. Synthetic ICP fixture follow-on (2026-06-10)
+
+Per the operator-driven follow-on, a **synthetic ICP pilot fixture** has landed alongside this review — paired docs `docs/59_SYNTHETIC_ICP_PILOT_PACKET.md` (Meridian Field Services discovery packet) + `docs/60_SYNTHETIC_ICP_PILOT_RUN.md` (operator runbook + per-stage verification protocol). The synthetic fixture is **clearly labeled as such** and must not be used in any real client communication, testimonial, or case study. The fixture validates the deployed SLATE workflow end-to-end through operator-driven UI execution: Claude prepares the packet + runbook + verification protocol; the operator drives every authenticated UI action; Claude verifies database state via Supabase MCP after each major stage; the mint (if reached) flows only through the canonical deployed action layer (never direct token insertion). This sprint ships the packet + runbook + verification template; operator-driven execution + per-stage verification + audit verdict + mint outcome will be recorded in `docs/60` § 5–10 in a follow-on session. No deployed-UI execution has occurred yet. Boundary preserved verbatim: no Sapient mutation, no real client mutation, no direct token insertion, no S11 audit bypass, no Send to Client, no email/CRM/Attio/e-sign, no public SOW route, no Group-B wiring, no `docs/39` sequence change, no real-client claim.
+
 ## 14. Files changed
 
 | File | Kind |
