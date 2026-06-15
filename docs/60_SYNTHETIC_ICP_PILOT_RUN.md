@@ -1,5 +1,9 @@
 # docs/60 — Synthetic ICP Pilot Run: Meridian Field Services
 
+> **Presentation Pass · Pass 1 follow-on note (2026-06-11):** the operator drove Meridian end-to-end through the deployed UI in a session not captured in § 5 below, and the exported PDFs surfaced a client-facing presentation gap. Sprint **Client Deliverable Presentation Pass · Pass 1** (`docs/61`) shipped the two hard-blocker fixes — print isolation CSS (kills the `"Claude is active in this tab group"` Chrome extension artifact) and session-status auto-update (closes stale "intake has not started" copy generation). Remaining presentation work (viewerMode toggle, Group-A live exhibit rendering, visual hierarchy polish) is scoped + queued in `docs/61` § 7. The § 5–10 PENDING tables below remain accurate for the original synthetic run inventory; the presentation pass shipped in a separate commit and is captured in `docs/61` rather than backfilling these tables.
+
+
+
 > **Status:** ⏸ **Operator-driven execution PENDING.** This document lands as the canonical operator runbook + per-stage verification protocol + result template for the synthetic ICP pilot. **No deployed-UI execution has been performed in the sprint that creates this doc.** The execution is operator-assisted: the operator drives every authenticated UI action; Claude verifies database state through Supabase MCP (read-only) after each major stage; minting (if reached) flows only through the canonical deployed action layer (never direct token insertion).
 >
 > **Paired packet:** `docs/59_SYNTHETIC_ICP_PILOT_PACKET.md` — fixture content + synthetic responses + document baseline.

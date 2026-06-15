@@ -58,7 +58,10 @@ export function ReportPdfCandidateDocument({
     snapshot.sourceSummarySnapshot.acceptedStaleSlots ?? [];
 
   return (
-    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+    <div
+      data-deliverable-export="report-candidate"
+      className="flex flex-col gap-8 print:max-w-none print:gap-6"
+    >
       <OperatorCandidateHint />
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
       <CandidateBanner snapshot={snapshot} />

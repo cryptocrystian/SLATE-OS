@@ -77,7 +77,10 @@ export function ClientProposalShareDocument({
   );
 
   return (
-    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+    <div
+      data-deliverable-export="client-proposal-share"
+      className="flex flex-col gap-8 print:max-w-none print:gap-6"
+    >
       <ProposalHeader
         proposalTitle={proposalTitle}
         generatedAt={snapshot.generatedAt}

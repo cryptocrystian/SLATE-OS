@@ -85,7 +85,10 @@ export function SowDraftDocument({
   const sowDraft = readSowDraftFromSnapshot(snapshot);
 
   return (
-    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+    <div
+      data-deliverable-export="sow-draft"
+      className="flex flex-col gap-8 print:max-w-none print:gap-6"
+    >
       <OperatorSowHint />
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
       <SowBanner snapshot={snapshot} isApproved={isApproved} />

@@ -65,7 +65,10 @@ export function ClientReportShareDocument({
   );
 
   return (
-    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+    <div
+      data-deliverable-export="client-report-share"
+      className="flex flex-col gap-8 print:max-w-none print:gap-6"
+    >
       <IdentityHeader
         reportTitle={reportTitle}
         generatedAt={snapshot.generatedAt}

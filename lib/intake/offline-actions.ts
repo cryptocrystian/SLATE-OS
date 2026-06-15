@@ -504,6 +504,28 @@ export async function markStakeholderResponseReadyForSynthesisAction(
     return { ok: false, error: "service-error" };
   }
 
+  // Presentation Pass — when a session crosses from "no ready responses"
+  // to "≥ 1 ready response", auto-flip the session.status from
+  // `not_started` to `completed` so downstream AI synthesis prompts +
+  // operator-facing assumption copy no longer claim "intake has not
+  // started" while ready responses exist. Best-effort: failure does
+  // not block the promote.
+  //
+  // Idempotent semantics:
+  //   - If `existing.session_id` already has another `ready_for_synthesis`
+  //     response, no change (session is already at least `completed`).
+  //   - If the session.status is anything other than `not_started`
+  //     (e.g. `in_progress`, `completed`), no change.
+  //   - Only the `not_started → completed` transition fires here.
+  const { error: sessionUpdateError } = await supabase
+    .from("stakeholder_intake_sessions")
+    .update({ status: "completed" })
+    .eq("id", existing.session_id)
+    .eq("status", "not_started");
+  if (sessionUpdateError) {
+    logActionFailure("session-status-auto-update-failed", sessionUpdateError);
+  }
+
   // If this response supersedes a prior, auto-flip the prior to
   // 'superseded'. Best-effort: failure does not block the promote.
   if (existing.supersedes_response_id) {

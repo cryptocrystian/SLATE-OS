@@ -62,7 +62,10 @@ export function ProposalCandidateDocument({
   const isApproved = snapshot.approvalState === "approved";
 
   return (
-    <div className="flex flex-col gap-8 print:max-w-none print:gap-6">
+    <div
+      data-deliverable-export="proposal-candidate"
+      className="flex flex-col gap-8 print:max-w-none print:gap-6"
+    >
       <OperatorCandidateHint />
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
       <CandidateBanner snapshot={snapshot} isApproved={isApproved} />

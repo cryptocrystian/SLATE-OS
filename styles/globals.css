@@ -183,4 +183,58 @@
       --shadow-elevated: none;
     }
   }
+
+  /*
+   * Sprint Presentation Pass — Print isolation for client deliverable
+   * exports.
+   *
+   * Hard-isolates the deliverable artifact from app chrome AND from
+   * browser-extension overlays (Claude.ai extension, Grammarly, etc.)
+   * when an operator drives browser Save-as-PDF / Ctrl-P. Without this
+   * rule the exported PDF picked up extension-injected DOM like "Claude
+   * is active in this tab group" which is unacceptable for a
+   * client-facing deliverable.
+   *
+   * Mechanism: any element wrapped in `[data-deliverable-export]`
+   * occupies the full print viewport; every sibling at body level
+   * (including extension overlays mounted as direct body children) is
+   * hidden. Operator hints inside the wrapper retain `print:hidden`.
+   *
+   * Strict scope:
+   *   - Only applies when a deliverable document component sets the
+   *     `data-deliverable-export` attribute on its root.
+   *   - Does NOT affect the on-screen operator preview.
+   *   - Does NOT remove any guardrail copy, watermark, or boundary
+   *     footer — those are inside the export wrapper.
+   *   - Does NOT enable any client-facing automation (no Send to
+   *     Client, no email, no public SOW route, no e-sign).
+   */
+  @media print {
+    body > *:not([data-deliverable-export]):not(script):not(style):not(link) {
+      display: none !important;
+    }
+    [data-deliverable-export] {
+      display: block !important;
+      width: 100% !important;
+      max-width: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+    }
+    [data-deliverable-export],
+    [data-deliverable-export] * {
+      box-shadow: none !important;
+    }
+    /*
+     * Extension overlay containers commonly mount as fixed/absolute
+     * elements outside the page flow with high z-index. Force-hide any
+     * direct body descendant that wasn't tagged for export, including
+     * those rendered into portals (`#__next` siblings, claude-extension
+     * roots, etc.). The :not() guards above already cover the common
+     * case; this rule is the belt-and-braces.
+     */
+    body > div:not([data-deliverable-export]):not(#__next) {
+      display: none !important;
+    }
+  }
 }
