@@ -49,17 +49,20 @@ import type {
 export interface ProposalCandidateDocumentProps {
   engagement: Engagement;
   snapshot: ProposalDeliverySnapshot;
+  viewerMode?: "operator" | "client-facing";
 }
 
 export function ProposalCandidateDocument({
   engagement,
   snapshot,
+  viewerMode = "operator",
 }: ProposalCandidateDocumentProps) {
   const includedOptions = snapshot.optionSnapshot.filter(
     (o) => o.includedInArtifact,
   );
   const isVoided = snapshot.status === "voided";
   const isApproved = snapshot.approvalState === "approved";
+  const isClient = viewerMode === "client-facing";
 
   return (
     <div
@@ -68,13 +71,22 @@ export function ProposalCandidateDocument({
     >
       <OperatorCandidateHint />
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
-      <CandidateBanner snapshot={snapshot} isApproved={isApproved} />
-      <IdentityHeader engagement={engagement} snapshot={snapshot} />
-      <SafetyStrip guard={snapshot.commercialGuardResult} />
+      <CandidateBanner
+        snapshot={snapshot}
+        isApproved={isApproved}
+        viewerMode={viewerMode}
+      />
+      <IdentityHeader
+        engagement={engagement}
+        snapshot={snapshot}
+        viewerMode={viewerMode}
+      />
+      {!isClient ? <SafetyStrip guard={snapshot.commercialGuardResult} /> : null}
       {snapshot.draftWatermark ? <DraftCandidateWatermark /> : null}
       <ProposalDisclosureNotice
         approvalState={snapshot.approvalState}
         pricingReviewState={snapshot.pricingReviewState}
+        viewerMode={viewerMode}
       />
       <OptionsList
         options={includedOptions}
@@ -144,10 +156,34 @@ function VoidedBanner({ snapshot }: { snapshot: ProposalDeliverySnapshot }) {
 function CandidateBanner({
   snapshot,
   isApproved,
+  viewerMode,
 }: {
   snapshot: ProposalDeliverySnapshot;
   isApproved: boolean;
+  viewerMode: "operator" | "client-facing";
 }) {
+  if (viewerMode === "client-facing") {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-text-secondary print:break-after-avoid print:shadow-none">
+        <div className="flex items-start gap-2">
+          <FileSignature
+            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
+            aria-hidden
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              Proposal · Draft for review
+            </span>
+            <p className="text-xs leading-relaxed">
+              Prepared {formatTimestamp(snapshot.generatedAt)} for
+              discussion. Final scope, timing, and pricing will be
+              confirmed in writing. Not a binding quote.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const surfaceLabel = (() => {
     switch (snapshot.deliverySurface) {
       case "sow_draft_candidate":
@@ -192,56 +228,76 @@ function CandidateBanner({
 function IdentityHeader({
   engagement,
   snapshot,
+  viewerMode,
 }: {
   engagement: Engagement;
   snapshot: ProposalDeliverySnapshot;
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
   return (
     <header className="flex flex-col gap-2 border-b border-border-subtle pb-6 print:break-after-avoid">
       <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-        AdvisoryOps · Proposal · Operator-internal candidate
+        {isClient
+          ? "Proposal · Discussion draft"
+          : "AdvisoryOps · Proposal · Operator-internal candidate"}
       </span>
       <h1 className="text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
         {engagement.companyName} · {engagement.engagementType} · Proposal
         discussion draft
       </h1>
-      <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
-        <span className="text-text-primary">
-          Proposal status at generation:{" "}
-        </span>
-        {snapshot.proposalStatusAtGeneration}
-      </p>
+      {!isClient ? (
+        <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
+          <span className="text-text-primary">
+            Proposal status at generation:{" "}
+          </span>
+          {snapshot.proposalStatusAtGeneration}
+        </p>
+      ) : null}
       <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[11px] font-mono uppercase tracking-[0.14em] text-text-muted">
         <span>
-          Generated{" "}
+          Prepared{" "}
           <span className="text-text-secondary">
             {formatTimestamp(snapshot.generatedAt)}
           </span>
         </span>
-        <span>
-          Approval{" "}
-          <span className="text-text-secondary">{snapshot.approvalState}</span>
-        </span>
-        <span>
-          Pricing review{" "}
-          <span className="text-text-secondary">
-            {snapshot.pricingReviewState}
-          </span>
-        </span>
-        <span>
-          Options{" "}
-          <span className="text-text-secondary">
-            {snapshot.selectedOptionIds.length} included
-          </span>
-        </span>
-        {snapshot.generatedByLabel ? (
+        {!isClient ? (
+          <>
+            <span>
+              Approval{" "}
+              <span className="text-text-secondary">
+                {snapshot.approvalState}
+              </span>
+            </span>
+            <span>
+              Pricing review{" "}
+              <span className="text-text-secondary">
+                {snapshot.pricingReviewState}
+              </span>
+            </span>
+            <span>
+              Options{" "}
+              <span className="text-text-secondary">
+                {snapshot.selectedOptionIds.length} included
+              </span>
+            </span>
+            {snapshot.generatedByLabel ? (
+              <span>
+                Generated by{" "}
+                <span className="text-text-secondary">
+                  {snapshot.generatedByLabel}
+                </span>
+              </span>
+            ) : null}
+          </>
+        ) : (
           <span>
-            Generated by{" "}
+            Options{" "}
             <span className="text-text-secondary">
-              {snapshot.generatedByLabel}
+              {snapshot.selectedOptionIds.length} included
             </span>
           </span>
-        ) : null}
+        )}
       </p>
     </header>
   );
@@ -291,10 +347,13 @@ function DraftCandidateWatermark() {
 function ProposalDisclosureNotice({
   approvalState,
   pricingReviewState,
+  viewerMode,
 }: {
   approvalState: ProposalDeliverySnapshot["approvalState"];
   pricingReviewState: ProposalPricingReviewState;
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
   const pricingNote = (() => {
     switch (pricingReviewState) {
       case "manually_approved":
@@ -317,9 +376,11 @@ function ProposalDisclosureNotice({
           binding quote, not a statement of work, and not a contract.
           Final scope, pricing, and timeline require written approval.
         </p>
-        <p className="text-[11px] leading-relaxed text-text-muted">
-          Approval state · {approvalState}. {pricingNote}
-        </p>
+        {!isClient ? (
+          <p className="text-[11px] leading-relaxed text-text-muted">
+            Approval state · {approvalState}. {pricingNote}
+          </p>
+        ) : null}
       </CardBody>
     </Card>
   );

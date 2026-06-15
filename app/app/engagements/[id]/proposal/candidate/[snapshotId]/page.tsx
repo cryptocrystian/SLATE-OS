@@ -5,6 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ProposalCandidateDocument } from "@/components/proposals/proposal-candidate-document";
+import {
+  ViewerModeToggle,
+  viewerModeFromSearchParam,
+} from "@/components/reports/viewer-mode-toggle";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getProposalDeliverySnapshotById } from "@/lib/proposals/delivery-snapshot-queries";
 
@@ -50,8 +54,10 @@ export async function generateMetadata({
 
 export default async function ProposalCandidatePage({
   params,
+  searchParams,
 }: {
   params: { id: string; snapshotId: string };
+  searchParams: { mode?: string | string[] };
 }) {
   const loaded = await loadEngagementForSubroute(params.id);
   if (!loaded) notFound();
@@ -59,6 +65,7 @@ export default async function ProposalCandidatePage({
   const isPersisted = loaded.kind === "real";
 
   const proposalHref = `/app/engagements/${engagement.id}/proposal`;
+  const viewerMode = viewerModeFromSearchParam(searchParams.mode);
 
   if (!isPersisted) {
     return (
@@ -112,19 +119,37 @@ export default async function ProposalCandidatePage({
 
   return (
     <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
-      <BackLink proposalHref={proposalHref} />
+      <PageChrome proposalHref={proposalHref} />
 
       <ProposalCandidateDocument
         engagement={engagement}
         snapshot={snapshot}
+        viewerMode={viewerMode}
       />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// On-screen-only back link
+// On-screen-only operator chrome (back link + viewer-mode toggle)
 // ---------------------------------------------------------------------------
+
+function PageChrome({ proposalHref }: { proposalHref: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <Link href={proposalHref}>
+        <Button
+          variant="ghost"
+          size="sm"
+          leadingIcon={<ArrowLeft className="h-3.5 w-3.5" />}
+        >
+          Back to proposal
+        </Button>
+      </Link>
+      <ViewerModeToggle label="Proposal viewer mode" />
+    </div>
+  );
+}
 
 function BackLink({ proposalHref }: { proposalHref: string }) {
   return (

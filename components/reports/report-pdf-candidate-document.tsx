@@ -15,6 +15,34 @@ import type {
   ReportDeliverySectionSnapshot,
   ReportDeliverySnapshot,
 } from "@/lib/reports/delivery-snapshot-types";
+import {
+  ReportGroupAExhibits,
+  type ReportGroupAExhibitResults,
+} from "./report-group-a-exhibits";
+
+/**
+ * Sprint Presentation Pass 2 — docs/61 § 7.B viewerMode + § 7.A
+ * live Group-A visuals + § 7.F technical-copy cleanup.
+ *
+ * `viewerMode`:
+ *   - `"operator"` (default) — preserves all operator-only metadata
+ *     (UUIDs, claim-guard scan counts, generated-by, snapshot id, the
+ *     candidate banner, the on-screen operator hint). This is the
+ *     pre-Pass-2 behavior, byte-stable.
+ *   - `"client-facing"` — hides every operator-only metadata surface so
+ *     the operator can drive Save-as-PDF for client handoff. Keeps
+ *     every guardrail (boundary footer, watermark, voided banner,
+ *     stale-acceptance note when present, omitted-exhibits appendix
+ *     copy reframed for non-technical audience).
+ *
+ * `liveExhibits`:
+ *   - Optional. When provided, the Group-A live exhibit SVGs render in
+ *     a new "Visuals" section between the SectionsList and the
+ *     ExhibitSlotsList. Group-B exhibits are not imported and not
+ *     rendered (slot map `lib/reports/slot-map.ts` enforces the split).
+ *   - When omitted, the original snapshot-pure exhibit slot card list
+ *     is preserved unchanged.
+ */
 
 /**
  * Phase 1B Sprint 4C-B — operator-only report PDF candidate document.
@@ -41,11 +69,15 @@ import type {
 export interface ReportPdfCandidateDocumentProps {
   engagement: Engagement;
   snapshot: ReportDeliverySnapshot;
+  viewerMode?: "operator" | "client-facing";
+  liveExhibits?: ReportGroupAExhibitResults;
 }
 
 export function ReportPdfCandidateDocument({
   engagement,
   snapshot,
+  viewerMode = "operator",
+  liveExhibits,
 }: ReportPdfCandidateDocumentProps) {
   const includedSections = snapshot.sectionSnapshot.filter(
     (s) => s.includedInArtifact,
@@ -56,6 +88,7 @@ export function ReportPdfCandidateDocument({
   const isVoided = snapshot.status === "voided";
   const acceptedStaleSlots =
     snapshot.sourceSummarySnapshot.acceptedStaleSlots ?? [];
+  const isClient = viewerMode === "client-facing";
 
   return (
     <div
@@ -64,17 +97,31 @@ export function ReportPdfCandidateDocument({
     >
       <OperatorCandidateHint />
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
-      <CandidateBanner snapshot={snapshot} />
-      <IdentityHeader engagement={engagement} snapshot={snapshot} />
-      <ClaimGuardStrip snapshot={snapshot} />
-      {acceptedStaleSlots.length > 0 ? (
+      <CandidateBanner snapshot={snapshot} viewerMode={viewerMode} />
+      <IdentityHeader
+        engagement={engagement}
+        snapshot={snapshot}
+        viewerMode={viewerMode}
+      />
+      {!isClient ? <ClaimGuardStrip snapshot={snapshot} /> : null}
+      {!isClient && acceptedStaleSlots.length > 0 ? (
         <StaleAcceptanceNote acceptedStaleSlots={acceptedStaleSlots} />
       ) : null}
       {snapshot.draftWatermark ? <DraftCandidateWatermark /> : null}
       <SectionsList sections={includedSections} />
-      <ExhibitSlotsList exhibits={renderedExhibits} />
-      <OmittedExhibitsAppendix omissions={snapshot.omittedExhibits} />
-      <FooterBanner snapshot={snapshot} />
+      {liveExhibits ? (
+        <ReportGroupAExhibits
+          exhibits={liveExhibits}
+          viewerMode={viewerMode}
+        />
+      ) : (
+        <ExhibitSlotsList exhibits={renderedExhibits} viewerMode={viewerMode} />
+      )}
+      <OmittedExhibitsAppendix
+        omissions={snapshot.omittedExhibits}
+        viewerMode={viewerMode}
+      />
+      <FooterBanner snapshot={snapshot} viewerMode={viewerMode} />
     </div>
   );
 }
@@ -171,7 +218,39 @@ function OperatorCandidateHint() {
 // Banner / identity
 // ---------------------------------------------------------------------------
 
-function CandidateBanner({ snapshot }: { snapshot: ReportDeliverySnapshot }) {
+function CandidateBanner({
+  snapshot,
+  viewerMode,
+}: {
+  snapshot: ReportDeliverySnapshot;
+  viewerMode: "operator" | "client-facing";
+}) {
+  // Client-facing mode replaces the operator-only banner with a softer
+  // "Discovery report · Draft for review" framing. Operator-only mode
+  // preserves the pre-Pass-2 wording verbatim (audit trail + boundary
+  // language unchanged).
+  if (viewerMode === "client-facing") {
+    return (
+      <div className="flex flex-col gap-1 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-text-secondary print:break-after-avoid print:shadow-none">
+        <div className="flex items-start gap-2">
+          <FileWarning
+            className="mt-0.5 h-4 w-4 shrink-0 text-text-muted"
+            aria-hidden
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              Discovery report · Draft for review
+            </span>
+            <p className="text-xs leading-relaxed">
+              Prepared {formatTimestamp(snapshot.generatedAt)} for
+              discussion. This draft is provided for review; final scope,
+              timing, and pricing will be confirmed in writing.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const label =
     snapshot.deliverySurface === "client_pdf_candidate"
       ? "Client-safe PDF candidate"
@@ -199,24 +278,31 @@ function CandidateBanner({ snapshot }: { snapshot: ReportDeliverySnapshot }) {
 function IdentityHeader({
   engagement,
   snapshot,
+  viewerMode,
 }: {
   engagement: Engagement;
   snapshot: ReportDeliverySnapshot;
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
   return (
     <header className="flex flex-col gap-2 border-b border-border-subtle pb-6 print:break-after-avoid">
       <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-        AdvisoryOps · Report · Client-safe PDF candidate
+        {isClient
+          ? "Discovery report"
+          : "AdvisoryOps · Report · Client-safe PDF candidate"}
       </span>
       <h1 className="text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
         {engagement.companyName} · {engagement.engagementType} · Report
       </h1>
-      <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
-        <span className="text-text-primary">
-          Report status at generation:{" "}
-        </span>
-        {snapshot.reportStatusAtGeneration}
-      </p>
+      {!isClient ? (
+        <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
+          <span className="text-text-primary">
+            Report status at generation:{" "}
+          </span>
+          {snapshot.reportStatusAtGeneration}
+        </p>
+      ) : null}
       <p className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-[11px] font-mono uppercase tracking-[0.14em] text-text-muted">
         <span>
           Generated{" "}
@@ -224,25 +310,36 @@ function IdentityHeader({
             {formatTimestamp(snapshot.generatedAt)}
           </span>
         </span>
-        <span>
-          Engagement ID{" "}
-          <span className="text-text-secondary">{snapshot.engagementId}</span>
-        </span>
-        <span>
-          Report ID{" "}
-          <span className="text-text-secondary">{snapshot.reportId}</span>
-        </span>
-        <span>
-          Snapshot ID{" "}
-          <span className="text-text-secondary">{snapshot.id}</span>
-        </span>
-        {snapshot.generatedByLabel ? (
-          <span>
-            Generated by{" "}
-            <span className="text-text-secondary">
-              {snapshot.generatedByLabel}
+        {/*
+          Client-facing mode strips internal UUIDs + generated-by
+          metadata. Operator mode preserves them verbatim for audit
+          traceability.
+        */}
+        {!isClient ? (
+          <>
+            <span>
+              Engagement ID{" "}
+              <span className="text-text-secondary">
+                {snapshot.engagementId}
+              </span>
             </span>
-          </span>
+            <span>
+              Report ID{" "}
+              <span className="text-text-secondary">{snapshot.reportId}</span>
+            </span>
+            <span>
+              Snapshot ID{" "}
+              <span className="text-text-secondary">{snapshot.id}</span>
+            </span>
+            {snapshot.generatedByLabel ? (
+              <span>
+                Generated by{" "}
+                <span className="text-text-secondary">
+                  {snapshot.generatedByLabel}
+                </span>
+              </span>
+            ) : null}
+          </>
         ) : null}
       </p>
     </header>
@@ -391,10 +488,13 @@ function SectionCard({
 
 function ExhibitSlotsList({
   exhibits,
+  viewerMode,
 }: {
   exhibits: ReportDeliveryExhibitSnapshot[];
+  viewerMode: "operator" | "client-facing";
 }) {
   if (exhibits.length === 0) return null;
+  const isClient = viewerMode === "client-facing";
   return (
     <section
       aria-label="Report exhibits"
@@ -402,44 +502,80 @@ function ExhibitSlotsList({
     >
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Report exhibits · included in candidate
+          {isClient ? "Supporting summaries" : "Report exhibits · included in candidate"}
         </span>
         <p className="max-w-prose text-xs leading-relaxed text-text-muted">
-          Source-summary identity for each Group-A exhibit slot at
-          generation time. Live chart SVGs are deliberately omitted
-          from this candidate document to preserve snapshot purity;
-          the operator can cross-reference the live exhibit by opening
-          the internal report preview.
+          {isClient
+            ? "Supporting summaries for each visual section. Pass live rendering on the candidate page to render the corresponding visuals."
+            : "Source-summary identity for each Group-A exhibit slot at generation time. Live visuals render when the candidate page loads with live-exhibit data; this list is the snapshot-only fallback."}
         </p>
       </header>
       {exhibits.map((exhibit) => (
-        <ExhibitCard key={exhibit.slot} exhibit={exhibit} />
+        <ExhibitCard
+          key={exhibit.slot}
+          exhibit={exhibit}
+          viewerMode={viewerMode}
+        />
       ))}
     </section>
   );
 }
 
-function ExhibitCard({ exhibit }: { exhibit: ReportDeliveryExhibitSnapshot }) {
+function ExhibitCard({
+  exhibit,
+  viewerMode,
+}: {
+  exhibit: ReportDeliveryExhibitSnapshot;
+  viewerMode: "operator" | "client-facing";
+}) {
+  const isClient = viewerMode === "client-facing";
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-2 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-            Slot · {exhibit.slot}
+            {isClient ? friendlyExhibitTitle(exhibit.slot) : `Slot · ${exhibit.slot}`}
           </span>
-          <Badge tone="success">{exhibit.adapterStatus}</Badge>
-          <Badge tone={freshnessTone(exhibit.sourceSummary.freshness)} variant="outline">
-            {exhibit.sourceSummary.freshness}
-          </Badge>
+          {!isClient ? (
+            <>
+              <Badge tone="success">{exhibit.adapterStatus}</Badge>
+              <Badge
+                tone={freshnessTone(exhibit.sourceSummary.freshness)}
+                variant="outline"
+              >
+                {exhibit.sourceSummary.freshness}
+              </Badge>
+            </>
+          ) : null}
         </div>
-        <p className="text-[11px] leading-relaxed text-text-muted">
-          <span className="font-mono uppercase tracking-[0.14em]">Source</span> · {exhibit.sourceSummary.source} ·{" "}
-          <span className="font-mono">n={exhibit.sourceSummary.rowCount}</span>{" "}
-          · generated {formatTimestamp(exhibit.sourceSummary.generatedAt)}
-        </p>
+        {!isClient ? (
+          <p className="text-[11px] leading-relaxed text-text-muted">
+            <span className="font-mono uppercase tracking-[0.14em]">Source</span>{" "}
+            · {exhibit.sourceSummary.source} ·{" "}
+            <span className="font-mono">n={exhibit.sourceSummary.rowCount}</span>{" "}
+            · generated {formatTimestamp(exhibit.sourceSummary.generatedAt)}
+          </p>
+        ) : null}
       </CardBody>
     </Card>
   );
+}
+
+function friendlyExhibitTitle(slot: string): string {
+  switch (slot) {
+    case "executive_summary_portfolio":
+      return "Opportunity portfolio";
+    case "findings_risk_priority":
+      return "Risk-adjusted priority";
+    case "diagnostic_capability_maturity":
+      return "Capability maturity";
+    case "diagnostic_stakeholder_coverage":
+      return "Stakeholder coverage";
+    case "roadmap_90_day_sequence":
+      return "30 / 60 / 90 roadmap";
+    default:
+      return slot.replace(/_/g, " ");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -448,9 +584,13 @@ function ExhibitCard({ exhibit }: { exhibit: ReportDeliveryExhibitSnapshot }) {
 
 function OmittedExhibitsAppendix({
   omissions,
+  viewerMode,
 }: {
   omissions: ReportDeliveryOmittedExhibit[];
+  viewerMode: "operator" | "client-facing";
 }) {
+  if (omissions.length === 0) return null;
+  const isClient = viewerMode === "client-facing";
   return (
     <section
       aria-label="Omitted exhibits"
@@ -458,13 +598,14 @@ function OmittedExhibitsAppendix({
     >
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Omitted exhibits ({omissions.length})
+          {isClient
+            ? `Visuals not included in this version (${omissions.length})`
+            : `Omitted exhibits (${omissions.length})`}
         </span>
         <p className="max-w-prose text-xs leading-relaxed text-text-muted">
-          Slots intentionally excluded from this candidate. Group-B
-          (benchmark / financial) is always omitted under the current
-          docs/14 / docs/15 data gates. Group-A omissions list the
-          adapter reason.
+          {isClient
+            ? "Some visuals are not included in this version because supporting data has not been validated. Final scope, sequencing, and any quantitative claim will be confirmed in writing."
+            : "Slots intentionally excluded from this candidate. Group-B (benchmark / financial) is always omitted under the current docs/14 / docs/15 data gates. Group-A omissions list the adapter reason."}
         </p>
       </header>
       <div className="flex flex-col gap-2">
@@ -475,16 +616,24 @@ function OmittedExhibitsAppendix({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
-                {omission.slot}
+                {isClient ? friendlyExhibitTitle(omission.slot) : omission.slot}
               </span>
-              <Badge tone={omissionTone(omission.reason)} variant="outline">
-                {omission.reason}
-              </Badge>
-              <code className="font-mono text-[10px] text-text-muted">
-                {omission.issueCode}
-              </code>
+              {!isClient ? (
+                <>
+                  <Badge tone={omissionTone(omission.reason)} variant="outline">
+                    {omission.reason}
+                  </Badge>
+                  <code className="font-mono text-[10px] text-text-muted">
+                    {omission.issueCode}
+                  </code>
+                </>
+              ) : null}
             </div>
-            <p>{omission.operatorFacingNote}</p>
+            <p>
+              {isClient
+                ? "Not included in this version because supporting data has not been validated."
+                : omission.operatorFacingNote}
+            </p>
           </div>
         ))}
       </div>
@@ -496,7 +645,23 @@ function OmittedExhibitsAppendix({
 // Footer
 // ---------------------------------------------------------------------------
 
-function FooterBanner({ snapshot }: { snapshot: ReportDeliverySnapshot }) {
+function FooterBanner({
+  snapshot,
+  viewerMode,
+}: {
+  snapshot: ReportDeliverySnapshot;
+  viewerMode: "operator" | "client-facing";
+}) {
+  if (viewerMode === "client-facing") {
+    return (
+      <footer className="flex flex-col gap-1 border-t border-border-subtle pt-4 text-[11px] leading-relaxed text-text-muted print:break-inside-avoid">
+        <p>
+          Discovery draft for review. Final scope, sequencing, and
+          pricing will be confirmed in writing. Not a contract.
+        </p>
+      </footer>
+    );
+  }
   return (
     <footer className="flex flex-col gap-1 border-t border-border-subtle pt-4 text-[11px] leading-relaxed text-text-muted print:break-inside-avoid">
       <span className="font-mono uppercase tracking-[0.16em]">
