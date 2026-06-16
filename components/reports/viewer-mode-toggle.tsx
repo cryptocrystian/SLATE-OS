@@ -10,11 +10,19 @@ import { Eye, EyeOff } from "lucide-react";
  *
  * Two-button radio that flips the URL search param `?mode=client`
  * (default state is implicit `operator`). The candidate page reads the
- * param server-side and passes it to the document component.
+ * param server-side via the helper in `./viewer-mode.ts` and passes it
+ * to the document component.
  *
  * `print:hidden` keeps the toggle out of exported PDFs. Operator drives
  * the toggle on-screen, then runs Ctrl-P / Cmd-P; the selected mode is
  * baked into the page render before printing.
+ *
+ * Sprint Pass 2-Fix: this module is `"use client"` and exports ONLY
+ * `ViewerModeToggle`. The pure helper `viewerModeFromSearchParam` lives
+ * in `./viewer-mode.ts` so server components can import + call it
+ * directly. (Exports of a `"use client"` module become client references
+ * across the server/client boundary, which made the helper uncallable
+ * from server pages — runtime digest 2113504269.)
  *
  * State semantics:
  *   - `?mode=client` or `?mode=client-facing` → `client-facing`
@@ -85,18 +93,5 @@ export function ViewerModeToggle({ label }: ViewerModeToggleProps) {
 
 function readMode(raw: string | null): "operator" | "client-facing" {
   if (raw === "client" || raw === "client-facing") return "client-facing";
-  return "operator";
-}
-
-/**
- * Server-safe helper for the candidate pages to derive the viewerMode
- * from the Next.js `searchParams` prop. Keeps the param semantics in a
- * single place so the page + component agree.
- */
-export function viewerModeFromSearchParam(
-  raw: string | string[] | undefined,
-): "operator" | "client-facing" {
-  const v = Array.isArray(raw) ? raw[0] : raw;
-  if (v === "client" || v === "client-facing") return "client-facing";
   return "operator";
 }

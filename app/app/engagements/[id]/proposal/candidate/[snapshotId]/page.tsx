@@ -5,10 +5,8 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ProposalCandidateDocument } from "@/components/proposals/proposal-candidate-document";
-import {
-  ViewerModeToggle,
-  viewerModeFromSearchParam,
-} from "@/components/reports/viewer-mode-toggle";
+import { ViewerModeToggle } from "@/components/reports/viewer-mode-toggle";
+import { viewerModeFromSearchParam } from "@/components/reports/viewer-mode";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getProposalDeliverySnapshotById } from "@/lib/proposals/delivery-snapshot-queries";
 
