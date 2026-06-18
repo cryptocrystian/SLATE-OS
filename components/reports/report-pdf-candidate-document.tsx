@@ -611,6 +611,8 @@ function friendlyExhibitTitle(slot: string): string {
       return "Stakeholder coverage";
     case "roadmap_90_day_sequence":
       return "30 / 60 / 90 roadmap";
+    case "group_b_block":
+      return "Visuals not included";
     default:
       return slot.replace(/_/g, " ");
   }
