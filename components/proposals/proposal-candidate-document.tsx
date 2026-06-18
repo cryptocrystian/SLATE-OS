@@ -16,6 +16,13 @@ import type {
   ProposalOptionSnapshot,
   ProposalPricingReviewState,
 } from "@/lib/proposals/delivery-snapshot-types";
+import {
+  CLIENT_SAFE_OMISSION_NOTE,
+  clientSafeOmissionScopeLabel,
+  clientSafeOptionTypeLabel,
+  sanitizeClientBullets,
+  sanitizeClientProse,
+} from "@/lib/deliverables/client-copy-sanitizer";
 
 /**
  * Phase 1B Proposal/SOW Delivery Sprint P3 — operator-internal proposal
@@ -91,8 +98,12 @@ export function ProposalCandidateDocument({
       <OptionsList
         options={includedOptions}
         pricingReviewState={snapshot.pricingReviewState}
+        viewerMode={viewerMode}
       />
-      <OmittedContentAppendix omissions={snapshot.omittedContent} />
+      <OmittedContentAppendix
+        omissions={snapshot.omittedContent}
+        viewerMode={viewerMode}
+      />
       <ClientFooter />
     </div>
   );
@@ -393,10 +404,13 @@ function ProposalDisclosureNotice({
 function OptionsList({
   options,
   pricingReviewState,
+  viewerMode,
 }: {
   options: ProposalOptionSnapshot[];
   pricingReviewState: ProposalPricingReviewState;
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
   return (
     <section
       aria-label="Proposal options"
@@ -415,11 +429,9 @@ function OptionsList({
               No included options
             </span>
             <p className="text-sm leading-relaxed text-text-secondary">
-              This snapshot has no options marked for inclusion. Either
-              every option was excluded by the eligibility evaluator or
-              the operator passed an empty selection. Regenerate after
-              marking one option recommended or selecting at least one
-              option explicitly.
+              {isClient
+                ? "This draft has no options marked for inclusion. The discussion can resume once at least one option is in place."
+                : "This snapshot has no options marked for inclusion. Either every option was excluded by the eligibility evaluator or the operator passed an empty selection. Regenerate after marking one option recommended or selecting at least one option explicitly."}
             </p>
           </CardBody>
         </Card>
@@ -429,6 +441,7 @@ function OptionsList({
             key={option.optionId}
             option={option}
             pricingReviewState={pricingReviewState}
+            viewerMode={viewerMode}
           />
         ))
       )}
@@ -439,17 +452,51 @@ function OptionsList({
 function OptionCard({
   option,
   pricingReviewState,
+  viewerMode,
 }: {
   option: ProposalOptionSnapshot;
   pricingReviewState: ProposalPricingReviewState;
+  viewerMode: "operator" | "client-facing";
 }) {
   const showPricing = pricingReviewState !== "placeholder";
+  const isClient = viewerMode === "client-facing";
+
+  // In client mode, run a conservative text-only sanitization over
+  // each persisted prose block. Bullets that sanitize to empty are
+  // dropped (`sanitizeClientBullets` filters them). Operator mode
+  // renders verbatim.
+  const optionTypeLabel = isClient
+    ? clientSafeOptionTypeLabel(option.optionType)
+    : option.optionType.replace(/-/g, " ");
+  const bestFitScenario = isClient
+    ? sanitizeClientProse(option.bestFitScenario)
+    : option.bestFitScenario ?? null;
+  const scopeSummary = isClient
+    ? sanitizeClientProse(option.scopeSummary)
+    : option.scopeSummary ?? null;
+  const timeline = isClient
+    ? sanitizeClientProse(option.timeline)
+    : option.timeline ?? null;
+  const deliverables = isClient
+    ? sanitizeClientBullets(option.deliverables)
+    : option.deliverables;
+  const assumptions = isClient
+    ? sanitizeClientBullets(option.assumptions)
+    : option.assumptions;
+  const dependencies = isClient
+    ? sanitizeClientBullets(option.dependencies)
+    : option.dependencies;
+  const risks = isClient ? sanitizeClientBullets(option.risks) : option.risks;
+  const pricingPlaceholder = isClient
+    ? sanitizeClientProse(option.pricingPlaceholder)
+    : option.pricingPlaceholder ?? null;
+
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-            {option.optionType.replace(/-/g, " ")}
+            {optionTypeLabel}
           </span>
           {option.recommended ? (
             <Badge tone="success">Recommended</Badge>
@@ -458,39 +505,47 @@ function OptionCard({
         <h3 className="text-base font-semibold tracking-tight text-text-primary sm:text-lg">
           {option.title}
         </h3>
-        {option.bestFitScenario ? (
+        {bestFitScenario ? (
           <p className="text-sm leading-relaxed text-text-secondary">
-            {option.bestFitScenario}
+            {bestFitScenario}
           </p>
         ) : null}
-        {option.scopeSummary ? (
-          <SectionBlock label="Scope summary" body={option.scopeSummary} />
+        {scopeSummary ? (
+          <SectionBlock label="Scope summary" body={scopeSummary} />
         ) : null}
-        {option.timeline ? (
+        {timeline ? (
           <SectionBlock
             label="Estimated timeline"
-            body={option.timeline}
+            body={timeline}
             note="Proposed range only — not a delivery guarantee."
           />
         ) : null}
-        {option.deliverables.length > 0 ? (
-          <BulletBlock label="Deliverables" items={option.deliverables} />
+        {deliverables.length > 0 ? (
+          <BulletBlock label="Deliverables" items={deliverables} />
         ) : null}
-        {option.assumptions.length > 0 ? (
-          <BulletBlock label="Assumptions" items={option.assumptions} />
+        {assumptions.length > 0 ? (
+          <BulletBlock label="Assumptions" items={assumptions} />
         ) : null}
-        {option.dependencies.length > 0 ? (
-          <BulletBlock label="Dependencies" items={option.dependencies} />
+        {dependencies.length > 0 ? (
+          <BulletBlock label="Dependencies" items={dependencies} />
         ) : null}
-        {option.risks.length > 0 ? (
-          <BulletBlock label="Risks" items={option.risks} />
+        {risks.length > 0 ? (
+          <BulletBlock label="Risks" items={risks} />
         ) : null}
-        {showPricing && option.pricingPlaceholder ? (
+        {showPricing && pricingPlaceholder ? (
           <SectionBlock
             label="Estimated pricing"
-            body={option.pricingPlaceholder}
+            body={pricingPlaceholder}
             note="Estimated · subject to final approval. Not a binding quote."
           />
+        ) : isClient ? (
+          <div className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-3 text-[11px] leading-relaxed text-text-muted">
+            <span className="font-mono uppercase tracking-[0.14em]">
+              Pricing
+            </span>{" "}
+            · pricing will be confirmed in writing once scope is agreed.
+            Not a binding quote.
+          </div>
         ) : (
           <div className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-3 text-[11px] leading-relaxed text-text-muted">
             <span className="font-mono uppercase tracking-[0.14em]">
@@ -558,24 +613,32 @@ function BulletBlock({ label, items }: { label: string; items: string[] }) {
 
 function OmittedContentAppendix({
   omissions,
+  viewerMode,
 }: {
   omissions: ProposalOmittedContent[];
+  viewerMode: "operator" | "client-facing";
 }) {
   if (omissions.length === 0) return null;
+  const isClient = viewerMode === "client-facing";
   return (
     <section
-      aria-label="Intentionally not included"
+      aria-label={
+        isClient
+          ? "Not included in this version"
+          : "Intentionally not included"
+      }
       className="flex flex-col gap-3 border-t border-border-subtle pt-6 print:break-before-page print:break-after-avoid"
     >
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Intentionally not included ({omissions.length})
+          {isClient
+            ? `Not included in this version (${omissions.length})`
+            : `Intentionally not included (${omissions.length})`}
         </span>
         <p className="max-w-prose text-xs leading-relaxed text-text-muted">
-          Group-B (benchmark / financial) is always omitted from every
-          proposal artifact until the relevant data canons advance.
-          Per-option omissions list the reason the option was set aside
-          for this candidate.
+          {isClient
+            ? "Some content is not included in this version because supporting data has not been validated. Final scope, sequencing, and any quantitative claim will be confirmed in writing."
+            : "Group-B (benchmark / financial) is always omitted from every proposal artifact until the relevant data canons advance. Per-option omissions list the reason the option was set aside for this candidate."}
         </p>
       </header>
       <div className="flex flex-col gap-2">
@@ -586,15 +649,23 @@ function OmittedContentAppendix({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
-                {omission.scope === "group_b_block"
+                {isClient
+                  ? clientSafeOmissionScopeLabel(omission.scope)
+                  : omission.scope === "group_b_block"
                   ? "Group-B (gated)"
                   : "Option excluded"}
               </span>
-              <Badge tone="neutral" variant="outline">
-                {omission.reason.replace(/_/g, " ")}
-              </Badge>
+              {!isClient ? (
+                <Badge tone="neutral" variant="outline">
+                  {omission.reason.replace(/_/g, " ")}
+                </Badge>
+              ) : null}
             </div>
-            <p>{omission.operatorFacingNote}</p>
+            <p>
+              {isClient
+                ? CLIENT_SAFE_OMISSION_NOTE
+                : omission.operatorFacingNote}
+            </p>
           </div>
         ))}
       </div>

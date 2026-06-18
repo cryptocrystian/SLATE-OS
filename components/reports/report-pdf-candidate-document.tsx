@@ -16,6 +16,10 @@ import type {
   ReportDeliverySnapshot,
 } from "@/lib/reports/delivery-snapshot-types";
 import {
+  clientSafeSectionLabel,
+  sanitizeClientProse,
+} from "@/lib/deliverables/client-copy-sanitizer";
+import {
   ReportGroupAExhibits,
   type ReportGroupAExhibitResults,
 } from "./report-group-a-exhibits";
@@ -108,7 +112,7 @@ export function ReportPdfCandidateDocument({
         <StaleAcceptanceNote acceptedStaleSlots={acceptedStaleSlots} />
       ) : null}
       {snapshot.draftWatermark ? <DraftCandidateWatermark /> : null}
-      <SectionsList sections={includedSections} />
+      <SectionsList sections={includedSections} viewerMode={viewerMode} />
       {liveExhibits ? (
         <ReportGroupAExhibits
           exhibits={liveExhibits}
@@ -392,9 +396,12 @@ function DraftCandidateWatermark() {
 
 function SectionsList({
   sections,
+  viewerMode,
 }: {
   sections: ReportDeliverySectionSnapshot[];
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
   return (
     <section
       aria-label="Report sections"
@@ -402,7 +409,7 @@ function SectionsList({
     >
       <header className="flex flex-col gap-1">
         <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Sections ({sections.length})
+          {isClient ? `Sections (${sections.length})` : `Sections (${sections.length})`}
         </span>
       </header>
 
@@ -413,16 +420,19 @@ function SectionsList({
               No included sections
             </span>
             <p className="text-sm leading-relaxed text-text-secondary">
-              This snapshot has no sections marked for inclusion. Either
-              every section was excluded (e.g., all not-started) or the
-              report was empty at generation time. Regenerate after
-              promoting sections to needs-review or approved.
+              {isClient
+                ? "This draft has no sections marked for inclusion. The discussion can resume once content is in place."
+                : "This snapshot has no sections marked for inclusion. Either every section was excluded (e.g., all not-started) or the report was empty at generation time. Regenerate after promoting sections to needs-review or approved."}
             </p>
           </CardBody>
         </Card>
       ) : (
         sections.map((section) => (
-          <SectionCard key={section.sectionId} section={section} />
+          <SectionCard
+            key={section.sectionId}
+            section={section}
+            viewerMode={viewerMode}
+          />
         ))
       )}
     </section>
@@ -431,49 +441,77 @@ function SectionsList({
 
 function SectionCard({
   section,
+  viewerMode,
 }: {
   section: ReportDeliverySectionSnapshot;
+  viewerMode: "operator" | "client-facing";
 }) {
+  const isClient = viewerMode === "client-facing";
+
+  // Persisted narrative carries operator vocabulary from S8 drafting
+  // (raw finding-UUIDs, EVIDENCE NOTES / GROUP B BLOCK labels, etc.).
+  // In client mode we run a conservative text-only sanitization pass.
+  // Operator mode renders verbatim — audit traceability stays intact.
+  const summary = isClient ? sanitizeClientProse(section.summary) : section.summary ?? null;
+  const draftPreview = isClient
+    ? sanitizeClientProse(section.draftPreview)
+    : section.draftPreview ?? null;
+  const evidenceNotes = isClient
+    ? sanitizeClientProse(section.evidenceNotes)
+    : section.evidenceNotes ?? null;
+
+  const clientSectionLabel = isClient ? clientSafeSectionLabel(section.sectionType) : null;
+
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-            {section.sectionType}
-          </span>
-          <Badge tone={statusTone(section.status)}>{statusLabel(section.status)}</Badge>
-          {section.aiDrafted ? <Badge tone="ai" dot>AI-drafted</Badge> : null}
-          {section.exhibitSlot ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
-              Slot · {section.exhibitSlot}
+        {!isClient ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              {section.sectionType}
             </span>
-          ) : null}
-        </div>
+            <Badge tone={statusTone(section.status)}>{statusLabel(section.status)}</Badge>
+            {section.aiDrafted ? <Badge tone="ai" dot>AI-drafted</Badge> : null}
+            {section.exhibitSlot ? (
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                Slot · {section.exhibitSlot}
+              </span>
+            ) : null}
+          </div>
+        ) : clientSectionLabel ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              {clientSectionLabel}
+            </span>
+          </div>
+        ) : null}
         <h3 className="text-base font-semibold tracking-tight text-text-primary sm:text-lg">
           {section.title}
         </h3>
-        {section.summary ? (
+        {summary ? (
           <p className="text-sm leading-relaxed text-text-secondary">
-            {section.summary}
+            {summary}
           </p>
         ) : null}
-        {section.draftPreview ? (
+        {draftPreview ? (
           <div className="flex flex-col gap-1.5 border-t border-border-subtle pt-3">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-              Draft preview
-            </span>
+            {!isClient ? (
+              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                Draft preview
+              </span>
+            ) : null}
             <p className="whitespace-pre-line text-sm leading-relaxed text-text-secondary">
-              {section.draftPreview}
+              {draftPreview}
             </p>
           </div>
         ) : null}
-        {section.evidenceNotes ? (
+        {evidenceNotes ? (
           <div className="flex flex-col gap-1.5 border-t border-border-subtle pt-3">
             <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-              Evidence notes
+              {isClient ? "Basis for recommendations" : "Evidence notes"}
             </span>
             <p className="whitespace-pre-line text-[11px] leading-relaxed text-text-secondary">
-              {section.evidenceNotes}
+              {evidenceNotes}
             </p>
           </div>
         ) : null}
