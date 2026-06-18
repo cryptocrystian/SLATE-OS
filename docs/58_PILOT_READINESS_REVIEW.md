@@ -380,6 +380,19 @@ Stop immediately and do not proceed if any of:
 - `NEXT_TELEMETRY_DISABLED=1 npm run build` — ✅ `next build` succeeds, 33-route table byte-stable
 - `npm run check:send-to-client-disclaimers` — ✅ all 4 canonical pins present
 
+## 13e. Client Deliverable Presentation Pass · Pass 3 follow-on (2026-06-18)
+
+Pass 3 ships the client content redaction layer (`lib/deliverables/client-copy-sanitizer.ts`) that scrubs operator vocabulary embedded in the persisted snapshot narrative — raw finding-UUIDs in prose, `EVIDENCE NOTES` / `GROUP B BLOCK` / `group b canon gate` / `GROUP-B (GATED)` / `INTENTIONALLY NOT INCLUDED` headings, bare `Finding ID:` / `Snapshot ID:` etc. labels, adapter-mechanics phrasing, and the "Live chart SVGs are deliberately omitted" sentence — without mutating the snapshot itself. Sanitization runs only when `viewerMode === "client-facing"`; operator mode renders byte-stable. The "Evidence notes" heading in client mode relabels to "Basis for recommendations"; the proposal omitted-content appendix replaces the operator description + reason badge + `operatorFacingNote` body with friendly client copy; the report `friendlyExhibitTitle` helper gained a `group_b_block` case → "Visuals not included" to close a residual chip-label leak.
+
+Meridian live verification on the canonical alias confirmed both routes are fully clean: **zero matches across all 20 forbidden strings on both surfaces, zero raw UUIDs in subtree, zero Group-B slot id leaks, Group-A still renders (57 SVGs in report subtree), Group-B exhibits still gated, all defensive non-binding/contract language preserved.** Boundary held verbatim: no DB writes, no re-synthesis, no snapshot mutation, no `/r` mint, no `/p` mint, no SOW share link, no Send to Client, no email/CRM/Attio/e-sign, no Group-B unlock, no new public routes, no migrations, no new package dependencies, no Sapient mutation, no real-client mutation, no docs/39 sequence change. Lint + production build + disclaimer check clean.
+
+**Readiness verdict updated:**
+- **Client deliverable presentation: PASS.**
+- **Client-mode content sanitation: PASS.**
+- **Minimum real-pilot readiness: PASS.**
+
+Backlog items 7.C / 7.D / 7.E (visual hierarchy polish, proposal option-card emphasis, SOW layout polish) remain defensible to defer until post-first-pilot iteration. The Pass 1 + Pass 2 + Pass 2-Fix + Pass 3 chain has closed every operator-flagged Meridian PDF defect plus the operator-vocabulary leak that surfaced only after the SSR crash was resolved. Full evidence: `docs/61` § 16.
+
 ## 13d. Client Deliverable Presentation Pass · Pass 2 follow-on (2026-06-12)
 
 Pass 2 shipped items 7.A + 7.B + 7.F from `docs/61` § 7. Group-A live exhibits now render in the report PDF candidate (opportunity portfolio 2×2, risk-adjusted priority quadrant, capability maturity heatmap, stakeholder coverage matrix, 30/60/90 roadmap Gantt). A `?mode=client` URL toggle on both report + proposal candidate pages flips the document into client-facing render that strips operator metadata (UUIDs, scan-count metadata, generated-by label, snapshot id, technical adapter language). The technical "Live chart SVGs are deliberately omitted..." copy is replaced with mode-aware language; no adapter codes leak. **Readiness verdict updated: minimum real-pilot output-quality readiness reached.** The remaining backlog items 7.C / 7.D / 7.E (visual hierarchy polish, proposal option-card emphasis, SOW layout polish) are defensible to defer until post-first-pilot iteration. Full evidence: `docs/61` § 15.

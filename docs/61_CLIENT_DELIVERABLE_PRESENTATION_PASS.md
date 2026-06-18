@@ -366,3 +366,121 @@ Meridian fixture state (engagement `f477346c-85b4-41b2-a7a2-fe65c7f2ca5d`) carri
 `docs/60` § 5–10 stays PENDING per the operator-driven execution contract — the operator may now drive the Pass 2-aware UI walkthrough.
 
 (Per task spec — body authored to capture the hard-blocker fixes + scoped backlog + boundary preservation.)
+
+## 16. Pass 3 — Client Content Redaction Layer (2026-06-18)
+
+**Verdict:** ✅ **PASS — client deliverable presentation cleared. Client-mode content sanitation cleared. Minimum real-pilot readiness cleared.**
+
+Pass 2 (commit `26930c8`) deployed but the report PDF candidate + proposal candidate pages SSR-crashed in `?mode=client` with `TypeError: (0 , O.g) is not a function` (digest `2113504269`). Pass 2-Fix (commit `7660807`) resolved the boundary crash by splitting `viewerModeFromSearchParam` out of the `"use client"` module so server pages can call it. Live verification after Pass 2-Fix surfaced operator vocabulary leaking through the persisted snapshot narrative now that the page actually rendered — raw finding-UUIDs in prose, `EVIDENCE NOTES` headings, `GROUP B BLOCK` / `INTENTIONALLY NOT INCLUDED` / `GROUP-B (GATED) group b canon gate` operator labels in client-facing copy. The viewerMode toggle was designed to strip chrome metadata; it was never designed to rewrite persisted snapshot copy authored by S8 / S9 AI drafting.
+
+Pass 3 closes that gap with a conservative, text-only **client content redaction layer** that runs only when `viewerMode === "client-facing"`. Operator mode is byte-stable.
+
+### 16.1 Architecture — `lib/deliverables/client-copy-sanitizer.ts`
+
+Pure helper module, no I/O, no React, no client-only API. Exports:
+
+| Export | Purpose |
+|---|---|
+| `sanitizeClientProse(input)` | Rewrites UUID-bearing attribution phrases ("as noted in finding `<uuid>`" → "as reflected in the discovery findings"), strips bare UUIDs left in prose, strips bare `Finding ID:` / `Opportunity ID:` / `Roadmap Item ID:` / `Snapshot ID:` / `Engagement ID:` / `Report ID:` labels, strips operator-only inline labels (`EVIDENCE NOTES`, `GROUP B BLOCK`, `group b canon gate`, `GROUP-B (GATED)`, `INTENTIONALLY NOT INCLUDED`, `no_topic_axis`, `no_capability_axis`, `pass topics`, `pass capabilities`, `snapshot purity`, full-sentence `Live chart SVGs are deliberately omitted ... .`). Tightens whitespace + punctuation gaps the strips leave behind, preserves paragraph structure (newlines), returns `null` if the body becomes empty so callers can hide the block. Idempotent. |
+| `sanitizeClientBullets(items)` | Maps `sanitizeClientProse` across an array, dropping bullets that sanitize to empty. |
+| `clientSafeSectionLabel(sectionType)` | Maps report `sectionType` chips to friendly client copy (`executive_summary` → "Executive summary", etc.); returns `null` for chips that look like internal mechanics (digits + underscores) so callers can hide them. |
+| `clientSafeOptionTypeLabel(optionType)` | Humanizes proposal `optionType` for the client chip. |
+| `clientSafeSlotLabel(slot)` | Friendly Group-A exhibit slot label for the proposal-side appendix; matches the in-report `friendlyExhibitTitle`. |
+| `clientSafeOmissionScopeLabel(scope)` | Replaces `group_b_block` scope chip with "Visuals not included in this version"; everything else with "Not included in this version". |
+| `CLIENT_SAFE_OMISSION_NOTE` (const) | "Not included in this version because supporting data has not been validated." Used as the body of every omitted-content entry in client mode. |
+
+The disclaimers ("Not a contract", "not a binding quote", "final scope, sequencing, pricing, timeline … will be confirmed in writing", the proposal four-denial footer) contain none of the targeted patterns and pass through untouched. Sanitization is conservative — meaningful business prose (margins, dispatch, billing, workflow descriptions) is never removed.
+
+### 16.2 Report wiring — `components/reports/report-pdf-candidate-document.tsx`
+
+`SectionsList` + `SectionCard` now take `viewerMode`. In client mode:
+
+- `section.sectionType` chip uses `clientSafeSectionLabel`; the chip is hidden entirely when the label returns `null` (internal mechanics).
+- Status badge, AI-drafted badge, and `Slot · {exhibitSlot}` chip are suppressed.
+- `section.summary`, `section.draftPreview`, `section.evidenceNotes` run through `sanitizeClientProse`. Blocks whose sanitized body returns `null` are not rendered.
+- The "Draft preview" sub-heading is dropped (the body flows as narrative).
+- The "Evidence notes" heading relabels to **"Basis for recommendations"**.
+
+The in-file `friendlyExhibitTitle` helper gained one case — `group_b_block` → "Visuals not included" — to close a residual chip-label leak that pre-existed Pass 3 inside `OmittedExhibitsAppendix` (it defaulted to `slot.replace(/_/g, " ")` which CSS-uppercased to `GROUP B BLOCK`).
+
+Operator mode preserves the original chip row (`sectionType` + status badge + `AI-drafted` + `Slot · {exhibitSlot}`), unsanitized prose, and the "Draft preview" / "Evidence notes" headings byte-stable.
+
+### 16.3 Proposal wiring — `components/proposals/proposal-candidate-document.tsx`
+
+`OptionsList` + `OptionCard` + `OmittedContentAppendix` now take `viewerMode`. In client mode:
+
+- `option.optionType` chip uses `clientSafeOptionTypeLabel`.
+- `option.bestFitScenario`, `option.scopeSummary`, `option.timeline`, `option.pricingPlaceholder` run through `sanitizeClientProse`.
+- `option.deliverables`, `option.assumptions`, `option.dependencies`, `option.risks` filter through `sanitizeClientBullets`.
+- The pricing-hidden fallback drops the operator `<code>{pricingReviewState}</code>` label and replaces it with "pricing will be confirmed in writing once scope is agreed. Not a binding quote." Pricing review state itself remains hidden.
+- `OmittedContentAppendix` heading swaps to "Not included in this version (N)"; the operator description ("Group-B (benchmark / financial) is always omitted … until the relevant data canons advance") is replaced with friendly client copy; the scope chip uses `clientSafeOmissionScopeLabel`; the reason badge is suppressed; the persisted `operatorFacingNote` body is replaced with `CLIENT_SAFE_OMISSION_NOTE`.
+
+Operator mode preserves the original `optionType.replace(/-/g, " ")` chip, unsanitized bodies/bullets, the original "Pricing · hidden — pricing review state is `{pricingReviewState}` …" fallback, the "Intentionally not included (N)" heading, the "Group-B (gated)" chip, the reason badge, and the raw `operatorFacingNote` body byte-stable.
+
+### 16.4 Boundary preservation
+
+- No DB writes. No `/r` mint, no `/p` mint. No Send to Client wiring change.
+- No email, no CRM writeback, no Attio writes, no e-signature.
+- No public SOW route, no SOW share link.
+- No Group-B unlock. The slot-map gate (`lib/reports/slot-map.ts::isGroupAReportSlot`) and the proposal exhibit slot map are not touched. Group-B exhibits remain not rendered; Pass 3 only changes how the OMISSION is presented in client copy.
+- No re-synthesis. No mutation of Meridian snapshot content (or any other snapshot). The sanitizer rewrites at render time only.
+- No unsupported ROI / financial claims. Sanitizer is text-redaction only, never authors content.
+- No new public routes, no new migrations, no new package dependencies.
+- No broad design polish (only the previously-leaking elements were touched). No docs/39 sequence change.
+- Lint clean ✅ · Production build clean ✅ · Send-to-Client disclaimer check ✅.
+
+### 16.5 Meridian live verification (2026-06-18)
+
+Canonical alias `https://slate-os-staging.vercel.app` (Production target, commit `1dee900`, deployment `dpl_FCCcGrTqfSRCQJ4t9nhyGQHMcqox`).
+
+**Report `?mode=client`** (`/app/engagements/f477346c-…/report/pdf-candidate/9f770711-…?mode=client`):
+
+| Check | Result |
+|---|---|
+| SSR renders cleanly (no `TypeError` regression) | ✅ |
+| `[data-deliverable-export="report-candidate"]` present + viewer toggle present | ✅ |
+| **All 20 forbidden strings: zero matches** (`EVIDENCE NOTES`, `GROUP B BLOCK`, `group b canon gate`, `GROUP-B (GATED)`, `INTENTIONALLY NOT INCLUDED`, `Finding ID`, `Opportunity ID`, `Roadmap Item ID`, `Snapshot ID`, `Engagement ID`, `Report ID`, `Generated by`, `Scanned`, `fields against`, `preserve snapshot purity`, `Live chart SVGs are deliberately omitted`, `no_topic_axis`, `no_capability_axis`, `pass topics`, `pass capabilities`) | ✅ |
+| Raw UUIDs in subtree | ✅ 0 (was 5 in Pass 2-Fix verification) |
+| Group-A live exhibits render | ✅ 57 SVGs in subtree |
+| Group-B slot ids (`benchmark_comparison_bars`, `ai_savings_waterfall`, `roi_bridge`) leaked | ✅ 0 |
+| "Basis for recommendations" relabel rendered | ✅ |
+| "Visuals not included" chip rendered (was "GROUP B BLOCK" pre-Pass-3) | ✅ |
+| "Discovery report" friendly banner present | ✅ |
+| Defensive language preserved ("Not a contract", final-scope/pricing/written-approval phrasing) | ✅ |
+| No Send to Client / email / CRM / Attio / Salesforce / HubSpot / e-sign / public SOW (`/s/`, `/sow/`) | ✅ |
+
+**Proposal `?mode=client`** (`/app/engagements/f477346c-…/proposal/candidate/897fe797-…?mode=client`):
+
+| Check | Result |
+|---|---|
+| SSR renders cleanly | ✅ |
+| `[data-deliverable-export="proposal-candidate"]` present + viewer toggle present | ✅ |
+| **All 20 forbidden strings: zero matches** | ✅ |
+| Raw UUIDs in subtree | ✅ 0 |
+| Group-B slot ids leaked | ✅ 0 |
+| Group-B exhibit content rendered | ✅ Not rendered (gating intact) |
+| "Not included in this version" heading (relabel) | ✅ |
+| Defensive language preserved ("Not a contract", "Not a binding quote", final-scope/pricing/written-approval) | ✅ |
+| Pricing review state visible (`placeholder` / `manually_approved` / `workflow_approved`) | ✅ Hidden |
+| Operator pricing fallback ("pricing review state is …") | ✅ Hidden — replaced with client copy |
+| No Send to Client / email / CRM / Attio / e-sign / public SOW / SOW share link | ✅ |
+
+**Operator-mode preservation:** all operator-mode code paths are `isClient`-gated ternaries with the previous branch preserved verbatim. Operator traceability (UUIDs in IdentityHeader, ClaimGuardStrip/SafetyStrip, generated-by label, snapshotId footer, raw `operatorFacingNote`, scope chip "Group-B (gated)", reason badge, `<code>{pricingReviewState}</code>` fallback, raw section chips, "Draft preview" + "Evidence notes" headings, persisted prose verbatim) all render unchanged. Static review of the diff confirms.
+
+### 16.6 Files modified
+
+- NEW — `lib/deliverables/client-copy-sanitizer.ts`
+- MODIFIED — `components/reports/report-pdf-candidate-document.tsx` (sanitizer wiring + `friendlyExhibitTitle` Group-B case)
+- MODIFIED — `components/proposals/proposal-candidate-document.tsx` (sanitizer wiring + `OmittedContentAppendix` viewerMode handling)
+
+Commits: `aa1bc8d` (Sanitize client deliverable copy) + `1dee900` (Add Group-B slot label to friendly exhibit title). Both deployed via `vercel deploy --prod --yes` from staging.
+
+### 16.7 Readiness update
+
+- **Client deliverable presentation: PASS.**
+- **Client-mode content sanitation: PASS.**
+- **Minimum real-pilot readiness: PASS.**
+
+`docs/58` § 13e captures the readiness reassessment. Backlog items 7.C / 7.D / 7.E (visual hierarchy polish, proposal option-card emphasis, SOW layout polish) remain defensible to defer until post-first-pilot iteration. The operator + first client can iterate visual quality in production based on actual client reaction.
+
+**Suggested commit message:** `Record client deliverable redaction pass`.
