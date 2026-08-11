@@ -3,19 +3,14 @@
 import * as React from "react";
 import {
   AlertTriangle,
-  Check,
-  Pencil,
   Plus,
-  RefreshCw,
   ShieldAlert,
   Sparkles,
   StickyNote,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FindingStatusChip } from "./finding-status-chip";
 import { ConfidenceIndicator } from "./confidence-indicator";
@@ -320,55 +315,7 @@ function FindingDetail({
           <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
             <FindingReviewActionBar finding={finding} />
           </div>
-        ) : (
-          <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-              Review actions · mock
-            </span>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="primary"
-                size="sm"
-                leadingIcon={<Check className="h-3.5 w-3.5" />}
-              >
-                Approve
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                leadingIcon={<Pencil className="h-3.5 w-3.5" />}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
-              >
-                Regenerate
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
-              >
-                Add note
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leadingIcon={<X className="h-3.5 w-3.5" />}
-                className="text-status-risk hover:text-status-risk"
-              >
-                Reject
-              </Button>
-            </div>
-            <p className="text-[11px] leading-relaxed text-text-muted">
-              Review actions are mock for now. Approvals, edits, and rejections
-              persist with the backend.
-            </p>
-          </div>
-        )}
+        ) : null}
       </CardBody>
     </Card>
   );
@@ -492,7 +439,7 @@ export function ManualFindingPlaceholder() {
         </span>
         <p className="text-xs leading-relaxed text-text-muted">
           Consultant-authored findings sit alongside AI-drafted ones and follow
-          the same approval flow. Wiring lands with the backend.
+          the same approval flow.
         </p>
       </div>
     </div>

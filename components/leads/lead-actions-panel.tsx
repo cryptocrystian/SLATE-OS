@@ -96,8 +96,8 @@ export function LeadActionsPanel({
         </div>
         <p className="border-t border-border-subtle pt-3 text-[11px] leading-relaxed text-text-muted">
           {engagementId
-            ? "“Open AI Opportunity Sprint” jumps to the engagement workspace tied to this lead. Status changes (Convert to Account, Move to Nurture, Disqualify) activate as later steps land."
-            : "“Start AI Opportunity Sprint” creates a real engagement workspace tied to this lead. Status changes (Convert to Account, Move to Nurture, Disqualify) activate as later steps land."}
+            ? "“Open AI Opportunity Sprint” jumps to the engagement workspace tied to this lead. Convert to Account, Move to Nurture, and Disqualify are coming soon."
+            : "“Start AI Opportunity Sprint” creates a real engagement workspace tied to this lead. Convert to Account, Move to Nurture, and Disqualify are coming soon."}
         </p>
       </CardBody>
     </Card>

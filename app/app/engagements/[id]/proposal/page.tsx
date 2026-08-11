@@ -223,10 +223,6 @@ export default async function EngagementProposalPage({
             <span className="text-text-muted">
               Pricing is placeholder · validate scope before quoting
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 8 · Live" : "Sprint 7 · Mock data"}
-            </span>
           </>
         }
       />

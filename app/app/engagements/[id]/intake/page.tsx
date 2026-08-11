@@ -182,10 +182,6 @@ export default async function EngagementIntakePage({
             <span className="text-text-muted">
               Owner {engagement.owner} · Target {engagement.targetDate}
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 5 · Live" : "Sprint 5 · Mock data"}
-            </span>
           </>
         }
       />

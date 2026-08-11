@@ -349,9 +349,8 @@ export default async function EngagementDetailPage({
               </span>
               <p className="text-xs leading-relaxed text-text-muted">
                 The engagement workspace coordinates intake, synthesis, scoring,
-                report, and proposal. Each module ships in its own sprint —
-                deep workflows are not built yet, but every status panel
-                points at the next action so progress stays legible today.
+                report, and proposal. Every status panel points at the next
+                action so progress stays legible at a glance.
               </p>
             </CardBody>
           </Card>

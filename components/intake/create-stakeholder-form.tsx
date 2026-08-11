@@ -102,7 +102,8 @@ export function CreateStakeholderForm({
           </h2>
           <p className="text-xs leading-relaxed text-text-muted">
             Enter the stakeholder&apos;s details, copy the generated link,
-            and send it manually. Email automation lands later.
+            and deliver it through your own channel. SLATE does not send
+            email on your behalf.
           </p>
         </div>
 
@@ -218,8 +219,8 @@ export function CreateStakeholderForm({
             </code>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[11px] text-text-muted">
-                Copy this intake link and send it manually. Email
-                automation lands later.
+                Copy this intake link and deliver it through your own
+                channel. SLATE does not send email on your behalf.
               </p>
               <Button
                 type="button"

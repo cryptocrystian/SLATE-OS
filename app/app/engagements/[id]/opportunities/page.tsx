@@ -177,14 +177,6 @@ export default async function EngagementOpportunitiesPage({
               <Sparkles className="mr-1 inline h-3 w-3 align-text-bottom text-practice-ai" />
               Directional scoring · validate during scoping
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted
-                ? aiConfigured
-                  ? "AI Synthesis Step 2 · Live"
-                  : "Persistence Step 7 · Live"
-                : "Sprint 6 · Mock data"}
-            </span>
           </>
         }
       />

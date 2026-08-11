@@ -23,7 +23,7 @@ export function EngagementNotesPanel({ notes }: EngagementNotesPanelProps) {
           <EmptyState
             icon={<StickyNote className="h-4 w-4" />}
             title="No notes yet"
-            description="Decisions and consultant notes will live here once persistence is in place."
+            description="Decisions and consultant notes will appear here as the engagement progresses."
           />
         ) : (
           <ul className="flex flex-col gap-2.5">

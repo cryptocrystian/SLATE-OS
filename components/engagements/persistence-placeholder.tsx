@@ -86,11 +86,9 @@ export function EngagementPersistencePlaceholder({
                   Workspace ready · activates with {activatesIn}
                 </h2>
                 <p className="max-w-prose text-sm leading-relaxed text-text-muted">
-                  This engagement was created from a real lead in Step 4. The
-                  deliverable persistence for this workspace ships in a later
-                  step — until then the surface lives behind a clean
-                  placeholder so demo paths and real engagements stay
-                  visually consistent.
+                  This engagement was created from a real lead. This workspace
+                  is being prepared — until it&apos;s ready, the surface stays
+                  in a clean holding state.
                 </p>
               </div>
               <Link href={`/app/engagements/${engagement.id}`}>

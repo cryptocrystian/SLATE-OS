@@ -45,14 +45,6 @@ export default async function EngagementsPage() {
                 Open Leads
               </Button>
             </Link>
-            <Button
-              variant="primary"
-              size="md"
-              leadingIcon={<Briefcase className="h-4 w-4" />}
-              trailingIcon={<ArrowRight className="h-4 w-4" />}
-            >
-              Review Active Sprints
-            </Button>
           </>
         }
         meta={
@@ -61,12 +53,7 @@ export default async function EngagementsPage() {
               AI Systems · AI Opportunity Sprint
             </Badge>
             <span className="text-text-muted">
-              Engagement workspaces persist; downstream advisory deliverables
-              activate as later steps land
-            </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Persistence Step 4 · Live
+              Setup through proposal, tracked in one workspace per engagement
             </span>
           </>
         }

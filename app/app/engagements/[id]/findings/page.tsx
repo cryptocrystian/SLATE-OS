@@ -110,10 +110,6 @@ export default async function EngagementFindingsPage({
                   : "Operator-authored · AI synthesis available once configured"
                 : "AI-drafted · awaits human approval"}
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "AI Synthesis Step 1 · Live" : "Sprint 5 · Mock data"}
-            </span>
           </>
         }
       />

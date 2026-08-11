@@ -108,8 +108,8 @@ export function EngagementRecommendedActionCard({
           {showSelf
             ? "This is the current step of the engagement. Action lives in the workspace below."
             : href
-              ? "Action stays mock for now — wiring lands when stakeholder intake, findings, scoring, report, and proposal modules ship in Sprints 5–7."
-              : "Destination activates with the sprint that ships its module."}
+              ? "Opens the workspace for the recommended next step."
+              : "This step becomes available as the engagement progresses."}
         </p>
       </div>
     </section>

@@ -325,10 +325,6 @@ export default async function EngagementReportPage({
               <ScrollText className="mr-1 inline h-3 w-3 align-text-bottom text-practice-ai" />
               AI-drafted · awaits human approval before client-facing use
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 8 · Live" : "Sprint 7 · Mock data"}
-            </span>
           </>
         }
       />

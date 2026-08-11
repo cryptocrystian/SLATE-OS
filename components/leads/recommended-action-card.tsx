@@ -34,10 +34,6 @@ export function RecommendedActionCard({ lead }: RecommendedActionCardProps) {
         >
           {lead.recommendedAction.cta}
         </Button>
-        <p className="border-t border-border-subtle pt-3 text-[11px] leading-relaxed text-text-muted">
-          Action stays mock for now — wiring lands when scorecard submissions
-          and lead persistence move to a real backend.
-        </p>
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
-import { ArrowRight, BookMarked, ClipboardCheck } from "lucide-react";
+import { ArrowRight, ClipboardCheck } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,14 +27,7 @@ export default function CommandCenterPage() {
         title="A live operating view of Saipien Labs."
         description="Scorecards, audits, reports, proposals, and next actions across every engagement — calm, structured, and ready for the next decision."
         actions={
-          <>
-            <Button
-              variant="secondary"
-              size="md"
-              leadingIcon={<BookMarked className="h-4 w-4" />}
-            >
-              Open Library
-            </Button>
+          <Link href="/app/leads">
             <Button
               variant="primary"
               size="md"
@@ -42,7 +36,7 @@ export default function CommandCenterPage() {
             >
               Review New Leads
             </Button>
-          </>
+          </Link>
         }
         meta={
           <>
@@ -55,10 +49,6 @@ export default function CommandCenterPage() {
             <span className="text-text-disabled">·</span>
             <span>
               GrowthOps + AdvisoryOps active · BuildOps, StudioOps queued
-            </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-              Sprint 1 · Foundation
             </span>
           </>
         }
@@ -134,13 +124,6 @@ export default function CommandCenterPage() {
               </span>
             </li>
           </ul>
-          <div className="border-t border-border-subtle pt-4">
-            <p className="text-[11px] leading-relaxed text-text-muted">
-              Sprint 1 ships the visual foundation and command center shell.
-              Lead triage, engagement workspaces, and report builders arrive in
-              Sprints 2–7.
-            </p>
-          </div>
         </aside>
       </section>
     </div>

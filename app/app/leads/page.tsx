@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowRight, ClipboardCheck, ExternalLink, Inbox } from "lucide-react";
+import { ExternalLink, Inbox } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -49,14 +49,6 @@ export default async function LeadsPage() {
                 Open public scorecard
               </Button>
             </Link>
-            <Button
-              variant="primary"
-              size="md"
-              leadingIcon={<ClipboardCheck className="h-4 w-4" />}
-              trailingIcon={<ArrowRight className="h-4 w-4" />}
-            >
-              Review High-Fit Leads
-            </Button>
           </>
         }
         meta={
@@ -69,10 +61,6 @@ export default async function LeadsPage() {
             <span className="text-text-muted">
               Internal Saipien Fit Score is operator-only — never shown to
               prospects
-            </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              Persistence Step 3 · Live
             </span>
           </>
         }

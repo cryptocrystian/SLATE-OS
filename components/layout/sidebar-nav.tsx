@@ -14,7 +14,6 @@ import {
   Workflow,
   BookMarked,
   Settings,
-  Lock,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,24 +46,14 @@ const sections: NavSection[] = [
     label: "Operate",
     items: [
       { label: "Overview", href: "/app", icon: LayoutDashboard },
-      {
-        label: "Leads",
-        href: "/app/leads",
-        icon: Users,
-        badge: { label: "6", tone: "info" },
-      },
+      { label: "Leads", href: "/app/leads", icon: Users },
       { label: "Accounts", href: "/app/accounts", icon: Building2, disabled: true },
     ],
   },
   {
     label: "Deliver",
     items: [
-      {
-        label: "Engagements",
-        href: "/app/engagements",
-        icon: Briefcase,
-        badge: { label: "5", tone: "info" },
-      },
+      { label: "Engagements", href: "/app/engagements", icon: Briefcase },
       { label: "Audits", href: "/app/audits", icon: ClipboardCheck, disabled: true },
       { label: "Proposals", href: "/app/proposals", icon: FileText, disabled: true },
       { label: "Delivery", href: "/app/delivery", icon: Workflow, disabled: true },
@@ -146,7 +135,9 @@ export function SidebarNav({ identity }: SidebarNavProps = {}) {
                         <Badge tone={item.badge.tone}>{item.badge.label}</Badge>
                       ) : null}
                       {disabled ? (
-                        <Lock className="h-3 w-3 text-text-disabled" aria-label="Coming in a later sprint" />
+                        <span className="rounded border border-border-subtle px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-[0.12em] text-text-disabled">
+                          Soon
+                        </span>
                       ) : null}
                       {isActive ? (
                         <span

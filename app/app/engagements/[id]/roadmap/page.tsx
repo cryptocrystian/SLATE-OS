@@ -191,10 +191,6 @@ export default async function EngagementRoadmapPage({
               <Calendar className="mr-1 inline h-3 w-3 align-text-bottom" />
               Owner {engagement.owner} · Target {engagement.targetDate}
             </span>
-            <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
-              {isPersisted ? "Persistence Step 7 · Live" : "Sprint 6 · Mock data"}
-            </span>
           </>
         }
       />

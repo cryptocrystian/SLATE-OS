@@ -203,9 +203,6 @@ export function ReportExhibitSlots({
           <h2 className="text-lg font-semibold tracking-tight text-text-primary">
             Visual exhibits from persisted engagement data.
           </h2>
-          <Badge tone="ai" dot>
-            Phase 1B · Sprint 2
-          </Badge>
           <Badge tone="neutral" variant="outline">
             Internal only · not client-facing
           </Badge>

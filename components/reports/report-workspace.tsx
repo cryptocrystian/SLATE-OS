@@ -3,16 +3,12 @@
 import * as React from "react";
 import {
   AlertTriangle,
-  Check,
-  Pencil,
-  RefreshCw,
   Sparkles,
   StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { ReportSectionStatusChip } from "./report-status-chip";
 import { ReportSectionActionBar } from "./report-section-action-bar";
 import {
@@ -359,52 +355,11 @@ export function ReportWorkspace({
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-            {actionBar ? (
-              actionBar
-            ) : (
-              <>
-                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-                  Review actions · mock
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    leadingIcon={<Check className="h-3.5 w-3.5" />}
-                  >
-                    Approve section
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    leadingIcon={<Pencil className="h-3.5 w-3.5" />}
-                  >
-                    Edit section
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leadingIcon={<RefreshCw className="h-3.5 w-3.5" />}
-                  >
-                    Regenerate draft
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    leadingIcon={<StickyNote className="h-3.5 w-3.5" />}
-                  >
-                    Add note
-                  </Button>
-                </div>
-                <p className="text-[11px] leading-relaxed text-text-muted">
-                  Review actions are mock until persistence ships. Approving a
-                  section locks it for the report; editing keeps the consultant
-                  in control of the language.
-                </p>
-              </>
-            )}
-          </div>
+          {actionBar ? (
+            <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+              {actionBar}
+            </div>
+          ) : null}
         </CardBody>
       </Card>
     );
