@@ -53,7 +53,7 @@ export function ProposalReadinessHint({ signal }: ProposalReadinessHintProps) {
       <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Proposal readiness
             </span>
             <Badge tone={headlineTone}>
@@ -103,7 +103,7 @@ export function ProposalReadinessHint({ signal }: ProposalReadinessHintProps) {
 
         {/* Required-section coverage */}
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Required sections for proposal
           </span>
           <div className="flex flex-wrap gap-1.5">

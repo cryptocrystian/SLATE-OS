@@ -371,7 +371,7 @@ function ProposalOptionDetail({
         <div className="flex flex-col gap-2 rounded-lg border border-border-strong bg-bg-elevated/60 p-4">
           <div className="flex items-center gap-2">
             <Coins aria-hidden className="h-4 w-4 text-status-success" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Pricing placeholder · for internal planning only
             </span>
           </div>
@@ -445,7 +445,7 @@ function Block({
         <span className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-bg-elevated">
           {icon}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
           {label}
         </span>
       </div>

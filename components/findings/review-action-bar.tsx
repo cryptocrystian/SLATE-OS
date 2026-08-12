@@ -83,7 +83,7 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+      <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
         Review actions
       </span>
 
@@ -168,7 +168,7 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
           persisted in reviewer_note AND activity event metadata. */}
       {rejectOpen ? (
         <div className="flex flex-col gap-2 rounded-md border border-status-risk/40 bg-status-risk/10 p-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-status-risk">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-status-risk">
             Reject finding · reason (optional, 10–500 chars)
           </span>
           <textarea
@@ -222,7 +222,7 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
         <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/50 p-3">
           <label
             htmlFor={`note-${finding.id}`}
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted"
+            className="text-[11px] uppercase tracking-[0.14em] text-text-muted"
           >
             Reviewer note
           </label>

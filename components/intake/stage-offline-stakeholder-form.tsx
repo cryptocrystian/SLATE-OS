@@ -177,7 +177,7 @@ export function StageOfflineStakeholderForm({
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Stage offline stakeholder
             </span>
             <Badge tone="neutral" variant="outline">
@@ -379,7 +379,7 @@ export function StageOfflineStakeholderForm({
         {success ? (
           <div className="flex flex-col gap-2 rounded-md border border-status-success/40 bg-status-success/10 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-status-success">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-status-success">
                 Offline stakeholder staged
               </span>
               <Badge tone="success" variant="outline">

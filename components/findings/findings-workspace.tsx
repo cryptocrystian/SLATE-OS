@@ -251,7 +251,7 @@ function FindingDetail({
         <ConfidenceIndicator confidence={finding.confidence} variant="block" />
 
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Summary
           </span>
           <p className="text-sm leading-relaxed text-text-secondary">
@@ -260,7 +260,7 @@ function FindingDetail({
         </div>
 
         <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-elevated/40 p-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Evidence summary
           </span>
           <p className="text-xs leading-relaxed text-text-secondary">
@@ -269,7 +269,7 @@ function FindingDetail({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Suggested impact
           </span>
           <p className="text-sm leading-relaxed text-text-secondary">
@@ -362,7 +362,7 @@ function FindingProvenanceChip({
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/30 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
           Provenance
         </span>
         {provenance.needsValidation ? (

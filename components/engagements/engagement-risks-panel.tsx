@@ -30,7 +30,7 @@ export function EngagementRisksPanel({
 
         {risks.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Risks
             </span>
             <ul className="flex flex-col gap-2.5">
@@ -52,7 +52,7 @@ export function EngagementRisksPanel({
 
         {dependencies.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-text-muted">
               <Link2 aria-hidden className="h-3 w-3" /> Dependencies
             </span>
             <ul className="flex flex-col gap-2.5">

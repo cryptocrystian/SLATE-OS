@@ -95,7 +95,7 @@ export function RevokeShareLinkButton({ tokenId }: RevokeShareLinkButtonProps) {
         page. This action is logged and cannot be undone.
       </p>
       <label className="flex flex-col gap-1 text-text-secondary">
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
           Reason (optional)
         </span>
         <input

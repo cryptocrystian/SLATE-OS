@@ -136,7 +136,7 @@ export async function ProposalCandidatesPanel({
               <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-bg-elevated text-text-muted">
                 <History className="h-3.5 w-3.5" />
               </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Past proposal candidates
               </span>
             </div>
@@ -268,7 +268,7 @@ function SnapshotRow(props: SnapshotRowProps) {
         ) : null}
         {props.commercialGuardPassed ? (
           <span
-            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-status-success"
+            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-status-success"
             title="Commercial guard scan passed"
           >
             <ShieldCheck className="h-3 w-3" aria-hidden />
@@ -276,7 +276,7 @@ function SnapshotRow(props: SnapshotRowProps) {
           </span>
         ) : (
           <span
-            className="inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-status-risk"
+            className="inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-status-risk"
             title="Commercial guard violations recorded"
           >
             <ShieldAlert className="h-3 w-3" aria-hidden />
@@ -381,7 +381,7 @@ function ShareTokenSummary({ tokens }: { tokens: ProposalShareToken[] }) {
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-surface/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-text-muted">
           <Link2 className="h-3 w-3" aria-hidden />
           Proposal review links
         </span>

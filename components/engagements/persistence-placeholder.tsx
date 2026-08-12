@@ -67,7 +67,7 @@ export function EngagementPersistencePlaceholder({
               Owner {engagement.owner} · Target {engagement.targetDate}
             </span>
             <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
+            <span className="text-[11px] uppercase tracking-[0.14em]">
               {activatesIn}
             </span>
           </>

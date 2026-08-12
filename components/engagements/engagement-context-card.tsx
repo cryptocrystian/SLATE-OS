@@ -47,7 +47,7 @@ export function EngagementContextCard({
           <div className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-bg-elevated/40 p-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-practice-ai" />
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
                 Source scorecard
               </span>
               <Badge tone="ai" variant="outline">

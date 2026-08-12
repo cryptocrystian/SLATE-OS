@@ -28,7 +28,7 @@ export function LeadProfileHeader({ lead }: LeadProfileHeaderProps) {
             <Badge tone="ai">{lead.practiceArea}</Badge>
             <Badge tone="neutral">{lead.industry}</Badge>
             <Badge tone="neutral">{lead.employeeRange}</Badge>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Source · {lead.source.replace(/-/g, " ")}
             </span>
           </div>

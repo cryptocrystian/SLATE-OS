@@ -89,7 +89,7 @@ export function OpportunityActionBar({
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
           Triage
         </span>
         <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>
@@ -161,7 +161,7 @@ export function OpportunityActionBar({
           persisted in reviewer_notes AND activity event metadata. */}
       {rejectOpen ? (
         <div className="flex flex-col gap-2 rounded-md border border-status-risk/40 bg-status-risk/10 p-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-status-risk">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-status-risk">
             Reject opportunity · reason (optional, 10–500 chars)
           </span>
           <textarea
@@ -215,7 +215,7 @@ export function OpportunityActionBar({
           already-rejected opportunities. */}
       {status === "rejected" && reviewerNote ? (
         <div className="flex flex-col gap-1 rounded-md border border-status-risk/40 bg-status-risk/5 p-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-status-risk">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-status-risk">
             Rejection rationale
           </span>
           <p className="text-xs leading-relaxed text-text-secondary">

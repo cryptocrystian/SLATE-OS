@@ -173,7 +173,7 @@ function StaleAcceptancePrompt({
                 disabled={pending}
                 className="mt-0.5"
               />
-              <code className="font-mono text-[10px] uppercase tracking-[0.12em]">
+              <code className="text-[10px] uppercase tracking-[0.12em]">
                 {slot}
               </code>
             </label>
@@ -216,7 +216,7 @@ function SuccessNotice({
   const href = `/app/engagements/${engagementId}/report/pdf-candidate/${snapshotId}`;
   return (
     <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-success/40 bg-status-success/10 p-3 text-[11px] leading-relaxed text-status-success">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+      <span className="text-[11px] uppercase tracking-[0.16em]">
         Candidate snapshot ready
       </span>
       <p className="text-text-secondary">

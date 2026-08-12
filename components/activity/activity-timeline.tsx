@@ -186,7 +186,7 @@ export function ActivityTimeline({
             <span className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle bg-bg-elevated text-text-muted">
               <Activity className="h-3.5 w-3.5" />
             </span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               {heading}
             </span>
           </div>

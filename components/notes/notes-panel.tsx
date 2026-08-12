@@ -59,7 +59,7 @@ export function NotesPanel({
     <Card variant="base">
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Internal notes
           </span>
           <span className="text-[11px] text-text-muted">
@@ -73,7 +73,7 @@ export function NotesPanel({
         >
           <label
             htmlFor={`notes-${entityId}-body`}
-            className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted"
+            className="text-[11px] uppercase tracking-[0.14em] text-text-muted"
           >
             {composerLabel}
           </label>

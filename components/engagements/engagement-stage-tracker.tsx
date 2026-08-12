@@ -38,10 +38,10 @@ export function EngagementStageTracker({
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             AI Opportunity Sprint flow
           </span>
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-brand-primary">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-brand-primary">
             Stage {currentIdx + 1} of {STAGES.length} · {STAGE_LABEL[currentStage]}
           </span>
         </div>

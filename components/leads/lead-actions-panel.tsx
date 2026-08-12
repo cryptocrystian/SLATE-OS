@@ -30,7 +30,7 @@ export function LeadActionsPanel({
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Lead actions
           </span>
           <Badge tone={engagementId ? "success" : "info"} variant="outline">

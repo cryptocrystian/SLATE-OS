@@ -147,7 +147,7 @@ export function CreateOpportunityForm({
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Score an opportunity
             </span>
             <h2 className="text-base font-semibold tracking-tight text-text-primary">
@@ -300,7 +300,7 @@ export function CreateOpportunityForm({
 
             <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
                   Linked findings
                 </span>
                 <Badge tone="neutral" variant="outline">

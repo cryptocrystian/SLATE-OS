@@ -48,7 +48,7 @@ export function ApproveProposalCandidateButton({
 
   if (!guardPassed) {
     return (
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
         Approval unavailable · commercial guard failed
       </span>
     );

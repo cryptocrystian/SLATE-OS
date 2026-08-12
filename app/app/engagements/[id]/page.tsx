@@ -135,7 +135,7 @@ export default async function EngagementDetailPage({
 
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Where this engagement is right now
           </span>
           <h2 className="text-base font-semibold tracking-tight text-text-primary">
@@ -344,7 +344,7 @@ export default async function EngagementDetailPage({
           ) : null}
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Boundary reminder
               </span>
               <p className="text-xs leading-relaxed text-text-muted">

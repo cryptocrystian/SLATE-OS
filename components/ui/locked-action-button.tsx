@@ -58,7 +58,7 @@ export const LockedActionButton = React.forwardRef<
       {lockedNote ? (
         <span
           aria-hidden
-          className="ml-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+          className="ml-1 text-[10px] uppercase tracking-[0.14em] text-text-muted"
         >
           {lockedNote}
         </span>

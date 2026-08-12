@@ -30,7 +30,7 @@ export function LeadSourceCard({ lead }: LeadSourceCardProps) {
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-5 sm:p-6">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
           Source metadata
         </span>
         <dl className="grid grid-cols-1 gap-y-2 text-xs">

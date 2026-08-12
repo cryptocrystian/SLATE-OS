@@ -36,7 +36,7 @@ export function SowReadinessHint({ signal }: SowReadinessHintProps) {
       <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               SOW Draft readiness
             </span>
             <Badge tone={headlineTone}>
@@ -58,7 +58,7 @@ export function SowReadinessHint({ signal }: SowReadinessHintProps) {
 
         {/* Precondition checklist */}
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             S10 entry conditions
           </span>
           <div className="flex flex-wrap gap-1.5">

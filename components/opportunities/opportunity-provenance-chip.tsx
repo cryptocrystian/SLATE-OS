@@ -45,7 +45,7 @@ export function OpportunityProvenanceChip({
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
           {label}
         </span>
         <span className="font-mono text-[11px] tabular-nums text-text-secondary">

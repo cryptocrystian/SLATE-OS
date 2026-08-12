@@ -86,7 +86,7 @@ export function VoidProposalCandidateButton({
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-status-warning">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-status-warning">
         Void this proposal candidate?
       </span>
       <label className="flex flex-col gap-1 text-[11px] text-text-secondary">

@@ -191,7 +191,7 @@ export function ReportWorkspace({
                   )}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+                    <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
                       {sectionNumber}
                     </span>
                     <ReportSectionStatusChip status={s.status} />
@@ -264,7 +264,7 @@ export function ReportWorkspace({
       <Card variant="base">
         <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
               {SECTION_LABEL[section.sectionType]}
             </span>
             <ReportSectionStatusChip status={section.status} />
@@ -298,7 +298,7 @@ export function ReportWorkspace({
           </p>
 
           <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-elevated/40 p-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Draft preview
             </span>
             {section.draftPreview ? (
@@ -396,7 +396,7 @@ function LinkedRefsPanel({
     <Card variant="base" className="h-full">
       <CardBody className="flex h-full flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Linked context
           </span>
           <h3 className="text-sm font-semibold tracking-tight text-text-primary">
@@ -446,7 +446,7 @@ function RefBlock({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
           {label}
         </span>
         <a

@@ -48,7 +48,7 @@ export function OfflineIntakePanel({
     return (
       <Card variant="base">
         <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Offline sessions
           </span>
           <p className="text-xs leading-relaxed text-text-muted">
@@ -67,7 +67,7 @@ export function OfflineIntakePanel({
         <Card variant="base">
           <CardBody className="flex flex-col gap-3 p-5 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Offline stakeholder sessions ({sessions.length})
               </span>
               <Badge tone="neutral" variant="outline">
@@ -194,7 +194,7 @@ export function OfflineIntakePanel({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-text-muted" />
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                   Offline source documents ({documents.length})
                 </span>
               </div>

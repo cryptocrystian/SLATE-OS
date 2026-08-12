@@ -478,7 +478,7 @@ export default async function EngagementReportPage({
 
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Boundary reminder
               </span>
               <p className="text-xs leading-relaxed text-text-muted">
@@ -502,7 +502,7 @@ export default async function EngagementReportPage({
           {report ? (
             <Card variant="base">
               <CardBody className="flex flex-col gap-3 p-5 sm:p-6">
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                   Recommended next step
                 </span>
                 <p className="text-xs leading-relaxed text-text-secondary">
@@ -510,7 +510,7 @@ export default async function EngagementReportPage({
                 </p>
                 {report.consultantNotes.length > 0 ? (
                   <div className="flex flex-col gap-2 border-t border-border-subtle pt-3">
-                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+                    <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
                       Consultant notes
                     </span>
                     <ul className="flex flex-col gap-1.5 text-[11px] leading-relaxed text-text-secondary">

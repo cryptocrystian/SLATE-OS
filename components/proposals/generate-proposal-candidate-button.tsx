@@ -89,7 +89,7 @@ function SuccessNotice({
   const href = `/app/engagements/${engagementId}/proposal/candidate/${result.snapshotId}`;
   return (
     <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-success/40 bg-status-success/10 p-3 text-[11px] leading-relaxed text-status-success">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+      <span className="text-[11px] uppercase tracking-[0.16em]">
         Proposal candidate ready · operator review only
       </span>
       <p className="text-text-secondary">

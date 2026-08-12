@@ -60,7 +60,7 @@ export function ConfidenceIndicator({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
           Confidence
         </span>
         <span className={cn("text-xs font-medium", TONE_TEXT[tone])}>

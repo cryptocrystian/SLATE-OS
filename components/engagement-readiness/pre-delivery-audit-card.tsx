@@ -44,7 +44,7 @@ export function PreDeliveryAuditCard({ audit }: PreDeliveryAuditCardProps) {
       <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Pre-delivery audit ·{" "}
               {audit.surface === "report" ? "/r mint" : "/p mint"}
             </span>
@@ -69,7 +69,7 @@ export function PreDeliveryAuditCard({ audit }: PreDeliveryAuditCardProps) {
         {/* Blocking reasons */}
         {audit.blockingReasons.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Blocking reasons ({audit.blockingReasons.length})
             </span>
             <ul className="flex flex-col gap-2 rounded-md border border-status-risk/30 bg-status-risk/[0.05] p-3">
@@ -85,7 +85,7 @@ export function PreDeliveryAuditCard({ audit }: PreDeliveryAuditCardProps) {
                       className="mt-0.5 h-3 w-3 shrink-0 text-status-risk"
                     />
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-status-risk">
+                      <span className="text-[10px] uppercase tracking-[0.12em] text-status-risk">
                         {display?.shortLabel ?? reason.code}
                         {typeof reason.threshold === "number" &&
                         typeof reason.observed === "number"
@@ -106,7 +106,7 @@ export function PreDeliveryAuditCard({ audit }: PreDeliveryAuditCardProps) {
         {/* Warnings (non-blocking) */}
         {audit.warnings.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Advisories ({audit.warnings.length})
             </span>
             <ul className="flex flex-col gap-1.5 rounded-md border border-status-warning/30 bg-status-warning/[0.05] p-3">

@@ -112,7 +112,7 @@ export function ReportSectionActionBar({
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
           Section review
         </span>
         <Badge tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Badge>

@@ -94,7 +94,7 @@ export function CreateStakeholderForm({
     <Card variant="base">
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
             Invite a stakeholder
           </span>
           <h2 className="text-base font-semibold tracking-tight text-text-primary">
@@ -202,7 +202,7 @@ export function CreateStakeholderForm({
           <div className="flex flex-col gap-3 rounded-md border border-status-success/40 bg-status-success/10 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-col gap-1">
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-status-success">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-status-success">
                   Token link generated
                 </span>
                 <p className="text-sm text-text-primary">

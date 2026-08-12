@@ -260,7 +260,7 @@ function OpportunityDetailPanel({
         <OpportunityScoreStrip opportunity={opportunity} />
 
         <div className="flex flex-col gap-2 rounded-lg border border-border-subtle bg-bg-elevated/40 p-3">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Implementation shape
           </span>
           <p className="text-xs leading-relaxed text-text-secondary">
@@ -269,7 +269,7 @@ function OpportunityDetailPanel({
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Source summary
           </span>
           <p className="text-xs leading-relaxed text-text-secondary">
@@ -296,7 +296,7 @@ function OpportunityDetailPanel({
         </div>
 
         <div className="flex flex-col gap-2 rounded-lg border border-border-strong bg-bg-elevated/60 p-4">
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Recommended next action
           </span>
           <p className="text-sm leading-relaxed text-text-primary">
@@ -327,7 +327,7 @@ function Block({
         <span className="flex h-6 w-6 items-center justify-center rounded-md border border-border-subtle bg-bg-elevated">
           {icon}
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
           {label}
         </span>
       </div>

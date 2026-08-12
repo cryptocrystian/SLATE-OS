@@ -45,7 +45,7 @@ export function InternalFitScorePanel({ lead }: InternalFitScorePanelProps) {
       <CardBody className="flex flex-col gap-6 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
-            <span className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-text-muted">
               <Lock aria-hidden className="h-3 w-3" />
               Internal qualification · never shown to prospect
             </span>
@@ -89,7 +89,7 @@ export function InternalFitScorePanel({ lead }: InternalFitScorePanelProps) {
         </div>
 
         <div>
-          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
             Signals behind the fit score
           </span>
           <ul className="mt-3 flex flex-col gap-3">

@@ -236,7 +236,7 @@ export default async function ChartDiagnosticsPage({
               Generated {formatTimestamp(generatedAt)}
             </span>
             <span className="text-text-disabled">·</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em]">
+            <span className="text-[11px] uppercase tracking-[0.14em]">
               Read-only · does not write report sections
             </span>
           </>
@@ -248,7 +248,7 @@ export default async function ChartDiagnosticsPage({
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 text-status-warning" aria-hidden />
             <div className="flex flex-col gap-1">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Diagnostic only
               </span>
               <p className="text-sm leading-relaxed text-text-secondary">
@@ -259,7 +259,7 @@ export default async function ChartDiagnosticsPage({
           <div className="flex items-start gap-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 text-text-muted" aria-hidden />
             <div className="flex flex-col gap-1">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Group B omitted
               </span>
               <p className="text-sm leading-relaxed text-text-secondary">
@@ -349,7 +349,7 @@ function DiagnosticPanel<TProps>({
       <CardBody className="flex flex-col gap-5 p-5 sm:p-6">
         <header className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Slot · {slot}
             </span>
             <Badge tone={STATUS_BADGE_TONE[status]}>
@@ -379,7 +379,7 @@ function DiagnosticPanel<TProps>({
           <div className="-mx-1 sm:-mx-2">{exhibit}</div>
         ) : (
           <div className="rounded-md border border-dashed border-border-subtle bg-bg-elevated/40 p-5 sm:p-6">
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Adapter not ready · exhibit not rendered
             </p>
             <p className="mt-2 text-sm leading-relaxed text-text-secondary">
@@ -390,7 +390,7 @@ function DiagnosticPanel<TProps>({
 
         {issues.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Issues · {issues.length}
             </span>
             <ul className="flex flex-col gap-2">
@@ -407,7 +407,7 @@ function DiagnosticPanel<TProps>({
                       {issue.code}
                     </code>
                     {issue.field ? (
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-disabled">
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-text-disabled">
                         field · {issue.field}
                       </span>
                     ) : null}

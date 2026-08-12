@@ -112,7 +112,7 @@ export function GenerateFindingsForm({
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               AI synthesis · findings draft
             </span>
             <h2 className="text-base font-semibold tracking-tight text-text-primary">
@@ -186,7 +186,7 @@ export function GenerateFindingsForm({
         {evidenceSummary ? (
           <div className="flex flex-col gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Synthesis evidence
               </span>
               {evidenceSummary.readinessReady ? (
@@ -375,7 +375,7 @@ function EvidenceStat({
           : "text-text-primary";
   return (
     <div className="flex flex-col gap-1 rounded-md border border-border-subtle bg-bg-page/40 p-2">
-      <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+      <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
         {label}
       </span>
       <span

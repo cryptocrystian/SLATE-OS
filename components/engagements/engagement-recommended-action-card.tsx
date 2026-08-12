@@ -66,7 +66,7 @@ export function EngagementRecommendedActionCard({
             </span>
             <span
               aria-hidden
-              className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+              className="ml-2 text-[10px] uppercase tracking-[0.14em] text-text-muted"
             >
               You are here
             </span>
@@ -96,7 +96,7 @@ export function EngagementRecommendedActionCard({
             {lockedNote ? (
               <span
                 aria-hidden
-                className="ml-2 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+                className="ml-2 text-[10px] uppercase tracking-[0.14em] text-text-muted"
               >
                 {lockedNote}
               </span>

@@ -361,7 +361,7 @@ export default async function EngagementProposalPage({
           {proposal ? (
             <Card variant="base">
               <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                   Boundary reminder
                 </span>
                 <p className="text-xs leading-relaxed text-text-muted">
@@ -392,7 +392,7 @@ export default async function EngagementProposalPage({
           {report ? (
             <Card variant="base">
               <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                   Report readiness
                 </span>
                 <p className="text-xs leading-relaxed text-text-secondary">
@@ -414,7 +414,7 @@ export default async function EngagementProposalPage({
           {proposal && proposal.assumptions.length > 0 ? (
             <Card variant="base">
               <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                   Commercial assumptions
                 </span>
                 <ul className="flex flex-col gap-1.5 text-[11px] leading-relaxed text-text-secondary">

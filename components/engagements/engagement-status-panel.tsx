@@ -164,7 +164,7 @@ function renderCta(cta: NonNullable<EngagementStatusPanelProps["cta"]>) {
       {cta.lockedNote ? (
         <span
           aria-hidden
-          className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted"
+          className="text-[10px] uppercase tracking-[0.14em] text-text-muted"
         >
           {cta.lockedNote}
         </span>

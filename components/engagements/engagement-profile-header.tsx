@@ -29,7 +29,7 @@ export function EngagementProfileHeader({
             <Badge tone="ai">{engagement.engagementType}</Badge>
             <Badge tone="neutral">{engagement.industry}</Badge>
             <Badge tone="neutral">{engagement.practiceArea}</Badge>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.14em] text-text-muted">
               Owner · {engagement.owner}
             </span>
           </div>

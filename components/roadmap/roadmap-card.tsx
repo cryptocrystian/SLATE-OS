@@ -142,7 +142,7 @@ function Block({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
         {label}
       </span>
       <ul className="flex flex-col gap-1.5 text-[11px] leading-relaxed text-text-secondary">

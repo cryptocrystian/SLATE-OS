@@ -146,7 +146,7 @@ function LinkedState({
 
       {account.knownPainPointsPreview ? (
         <div className="flex flex-col gap-1 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
             Known pain points
           </span>
           <p className="text-xs leading-relaxed text-text-secondary">
@@ -157,7 +157,7 @@ function LinkedState({
 
       {deals.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
             Deals ({deals.length})
           </span>
           <ul className="flex flex-col gap-1.5">
@@ -187,7 +187,7 @@ function LinkedState({
 
       {contacts.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+          <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
             Contacts ({contacts.length})
           </span>
           <ul className="flex flex-col gap-1.5">

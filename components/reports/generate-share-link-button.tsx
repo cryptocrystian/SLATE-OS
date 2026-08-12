@@ -142,7 +142,7 @@ function OperatorTrackingFields({
           stores the raw address.
         </p>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
             Audience label
           </span>
           <input
@@ -156,7 +156,7 @@ function OperatorTrackingFields({
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
             Recipient email (hashed at rest)
           </span>
           <input

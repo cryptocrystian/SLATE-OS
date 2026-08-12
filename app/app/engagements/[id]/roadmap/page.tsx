@@ -260,7 +260,7 @@ export default async function EngagementRoadmapPage({
             isPersisted ? (
               <Card variant="base">
                 <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+                  <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                     No roadmap yet
                   </span>
                   <p className="text-xs leading-relaxed text-text-muted">
@@ -324,7 +324,7 @@ export default async function EngagementRoadmapPage({
 
           <Card variant="base">
             <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Boundary reminder
               </span>
               <p className="text-xs leading-relaxed text-text-muted">

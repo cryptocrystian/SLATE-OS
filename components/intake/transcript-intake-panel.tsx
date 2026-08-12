@@ -206,7 +206,7 @@ export function TranscriptIntakePanel({
         <div className="flex flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
             <FileText className="h-4 w-4 text-text-muted" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
               Transcript / notetaker intake
             </span>
             <Badge tone="info" variant="outline">
@@ -355,7 +355,7 @@ export function TranscriptIntakePanel({
           {/* Segmentation preview (only when there's text but no import yet) */}
           {rawText.trim().length > 0 && !imported ? (
             <div className="sm:col-span-2 flex flex-col gap-1.5">
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
                 Preview ·{" "}
                 {previewSegmentation.segments.length} segment
                 {previewSegmentation.segments.length === 1 ? "" : "s"}
@@ -441,7 +441,7 @@ function ImportedSegmentReview({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Sparkles className="h-4 w-4 text-status-success" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-status-success">
+          <span className="text-[11px] uppercase tracking-[0.16em] text-status-success">
             Transcript imported · review segments
           </span>
         </div>
@@ -577,7 +577,7 @@ function SegmentRow({
   return (
     <li className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+        <span className="text-[10px] uppercase tracking-[0.16em] text-text-muted">
           Segment #{segment.index + 1}
         </span>
         {segment.speaker ? (
