@@ -5,6 +5,7 @@ import { Copy, Eye, EyeOff, Link2, ShieldAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   generateProposalShareLinkAction,
   type GenerateProposalShareLinkResult,
@@ -52,6 +53,7 @@ export function GenerateProposalShareLinkButton({
   const [reveal, setReveal] = React.useState(false);
   const [audienceLabel, setAudienceLabel] = React.useState("");
   const [recipientEmail, setRecipientEmail] = React.useState("");
+  const { toast } = useToast();
 
   if (ineligibilityReasons.length > 0) {
     return <IneligibleNotice reasons={ineligibilityReasons} />;
@@ -71,8 +73,26 @@ export function GenerateProposalShareLinkButton({
           recipientEmail: trimmedEmail.length > 0 ? trimmedEmail : undefined,
         });
         setResult(r);
+        toast(
+          r.ok
+            ? {
+                title: "Review link created",
+                description: "Copy it and deliver through your own channel.",
+                variant: "success",
+              }
+            : {
+                title: "Couldn’t create link",
+                description: "See the details below.",
+                variant: "error",
+              },
+        );
       } catch {
         setResult({ ok: false, error: "service-error" });
+        toast({
+          title: "Couldn’t create link",
+          description: "Something went wrong. Please try again.",
+          variant: "error",
+        });
       }
     });
   }

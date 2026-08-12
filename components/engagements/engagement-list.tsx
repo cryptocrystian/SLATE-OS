@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { EmptyState } from "@/components/ui/empty-state";
 import { EngagementListItem } from "./engagement-list-item";
 import {
@@ -45,43 +46,16 @@ export function EngagementList({ engagements }: EngagementListProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <div
-        role="tablist"
-        aria-label="Filter engagements by stage"
-        className="flex flex-wrap gap-1.5 rounded-lg border border-border-subtle bg-bg-surface/60 p-1.5"
-      >
-        {ENGAGEMENT_FILTERS.map((filter) => {
-          const isActive = active === filter.id;
-          const count = counts[filter.id];
-          return (
-            <button
-              key={filter.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              onClick={() => setActive(filter.id)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-colors",
-                isActive
-                  ? "bg-bg-elevated text-text-primary shadow-card"
-                  : "text-text-secondary hover:bg-bg-elevated/60 hover:text-text-primary",
-              )}
-            >
-              <span>{filter.label}</span>
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-px font-mono text-[10px] tabular-nums",
-                  isActive
-                    ? "bg-brand-primary/15 text-brand-primary"
-                    : "bg-white/[0.06] text-text-muted",
-                )}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <FilterTabs
+        ariaLabel="Filter engagements by stage"
+        activeId={active}
+        onChange={(id) => setActive(id as EngagementFilterId)}
+        tabs={ENGAGEMENT_FILTERS.map((filter) => ({
+          id: filter.id,
+          label: filter.label,
+          count: counts[filter.id],
+        }))}
+      />
 
       {filtered.length === 0 ? (
         <EmptyState

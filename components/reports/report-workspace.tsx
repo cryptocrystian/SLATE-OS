@@ -7,6 +7,7 @@ import {
   StickyNote,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { ReportSectionStatusChip } from "./report-status-chip";
@@ -134,42 +135,16 @@ export function ReportWorkspace({
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
       {/* Outline */}
       <div className="flex flex-col gap-3 lg:col-span-3">
-        <div
-          role="tablist"
-          aria-label="Filter report sections by status"
-          className="flex flex-wrap gap-1.5 rounded-lg border border-border-subtle bg-bg-surface/60 p-1.5"
-        >
-          {REPORT_FILTERS.map((filter) => {
-            const isActive = active === filter.id;
-            return (
-              <button
-                key={filter.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => setActive(filter.id)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium tracking-tight transition-colors",
-                  isActive
-                    ? "bg-bg-elevated text-text-primary shadow-card"
-                    : "text-text-secondary hover:bg-bg-elevated/60 hover:text-text-primary",
-                )}
-              >
-                <span>{filter.label}</span>
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-px font-mono text-[10px] tabular-nums",
-                    isActive
-                      ? "bg-brand-primary/15 text-brand-primary"
-                      : "bg-white/[0.06] text-text-muted",
-                  )}
-                >
-                  {counts[filter.id]}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+        <FilterTabs
+          ariaLabel="Filter report sections by status"
+          activeId={active}
+          onChange={(id) => setActive(id as ReportFilterId)}
+          tabs={REPORT_FILTERS.map((filter) => ({
+            id: filter.id,
+            label: filter.label,
+            count: counts[filter.id],
+          }))}
+        />
 
         <ol className="flex flex-col gap-1.5">
           {filtered.map((s) => {
