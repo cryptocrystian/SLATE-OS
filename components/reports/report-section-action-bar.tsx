@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Eye, Lock, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import {
   approveReportSection,
@@ -63,15 +64,29 @@ export function ReportSectionActionBar({
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
 
-  function run(runner: () => Promise<ReportActionResult>) {
+  const { toast } = useToast();
+
+  function run(runner: () => Promise<ReportActionResult>, success?: string) {
     setError(null);
     setNotice(null);
     startTransition(async () => {
       try {
         const result = await runner();
-        if (!result.ok) setError(translateError(result.error));
+        if (!result.ok) {
+          const message = translateError(result.error);
+          setError(message);
+          toast({
+            title: "Couldn’t save change",
+            description: message,
+            variant: "error",
+          });
+        } else {
+          toast({ title: success ?? "Change saved", variant: "success" });
+        }
       } catch {
-        setError("Something went wrong. Please try again.");
+        const message = "Something went wrong. Please try again.";
+        setError(message);
+        toast({ title: "Couldn’t save change", description: message, variant: "error" });
       }
     });
   }
@@ -93,11 +108,20 @@ export function ReportSectionActionBar({
           setNotice(
             `AI draft generated (${result.provider} · ${result.model}). Section moved to needs-review for operator approval.`,
           );
+          toast({
+            title: "AI draft generated",
+            description: "Section moved to needs-review for approval.",
+            variant: "success",
+          });
         } else {
-          setError(translateAiError(result.error));
+          const message = translateAiError(result.error);
+          setError(message);
+          toast({ title: "AI drafting failed", description: message, variant: "error" });
         }
       } catch {
-        setError("AI drafting failed unexpectedly. Please try again.");
+        const message = "AI drafting failed unexpectedly. Please try again.";
+        setError(message);
+        toast({ title: "AI drafting failed", description: message, variant: "error" });
       }
     });
   }
@@ -124,7 +148,9 @@ export function ReportSectionActionBar({
           size="sm"
           leadingIcon={<Check className="h-3.5 w-3.5" />}
           disabled={pending || status === "approved" || status === "final"}
-          onClick={() => run(() => approveReportSection(sectionId))}
+          onClick={() =>
+            run(() => approveReportSection(sectionId), "Section approved")
+          }
         >
           Approve section
         </Button>
@@ -134,7 +160,9 @@ export function ReportSectionActionBar({
           size="sm"
           leadingIcon={<Eye className="h-3.5 w-3.5" />}
           disabled={pending || status === "needs-review"}
-          onClick={() => run(() => markReportSectionNeedsReview(sectionId))}
+          onClick={() =>
+            run(() => markReportSectionNeedsReview(sectionId), "Moved to needs-review")
+          }
         >
           Needs review
         </Button>
@@ -144,7 +172,9 @@ export function ReportSectionActionBar({
           size="sm"
           leadingIcon={<Pencil className="h-3.5 w-3.5" />}
           disabled={pending || status === "drafted"}
-          onClick={() => run(() => markReportSectionDrafted(sectionId))}
+          onClick={() =>
+            run(() => markReportSectionDrafted(sectionId), "Marked drafted")
+          }
         >
           Mark drafted
         </Button>
@@ -154,7 +184,9 @@ export function ReportSectionActionBar({
           size="sm"
           leadingIcon={<Lock className="h-3.5 w-3.5" />}
           disabled={pending || status !== "approved"}
-          onClick={() => run(() => markReportSectionFinal(sectionId))}
+          onClick={() =>
+            run(() => markReportSectionFinal(sectionId), "Locked as final")
+          }
         >
           Lock as final
         </Button>

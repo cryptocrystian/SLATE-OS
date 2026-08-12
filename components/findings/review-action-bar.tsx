@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, RotateCcw, Send, ShieldAlert, StickyNote, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   approveFinding,
   markFindingNeedsReview,
@@ -55,21 +56,32 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
     setError(null);
   }, [finding.id, finding.reviewerNote]);
 
+  const { toast } = useToast();
+
   function run(
     runner: () => Promise<FindingActionResult>,
-    onOk?: () => void,
+    opts?: { onOk?: () => void; success?: string },
   ) {
     setError(null);
     startTransition(async () => {
       try {
         const result = await runner();
         if (!result.ok) {
-          setError(translateError(result.error));
+          const message = translateError(result.error);
+          setError(message);
+          toast({
+            title: "Couldn’t save change",
+            description: message,
+            variant: "error",
+          });
         } else {
-          onOk?.();
+          opts?.onOk?.();
+          toast({ title: opts?.success ?? "Change saved", variant: "success" });
         }
       } catch {
-        setError("Something went wrong. Please try again.");
+        const message = "Something went wrong. Please try again.";
+        setError(message);
+        toast({ title: "Couldn’t save change", description: message, variant: "error" });
       }
     });
   }
@@ -111,7 +123,9 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
           size="sm"
           leadingIcon={<Check className="h-3.5 w-3.5" />}
           disabled={pending || finding.reviewStatus === "approved"}
-          onClick={() => run(() => approveFinding(finding.id))}
+          onClick={() =>
+            run(() => approveFinding(finding.id), { success: "Finding approved" })
+          }
         >
           Approve
         </Button>
@@ -121,7 +135,11 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
           size="sm"
           leadingIcon={<Send className="h-3.5 w-3.5" />}
           disabled={pending || !isApproved || finding.reviewStatus === "report-ready"}
-          onClick={() => run(() => markFindingReportReady(finding.id))}
+          onClick={() =>
+            run(() => markFindingReportReady(finding.id), {
+              success: "Marked report-ready",
+            })
+          }
         >
           Mark report-ready
         </Button>
@@ -144,7 +162,11 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
           size="sm"
           leadingIcon={<RotateCcw className="h-3.5 w-3.5" />}
           disabled={pending || finding.reviewStatus === "needs-review"}
-          onClick={() => run(() => markFindingNeedsReview(finding.id))}
+          onClick={() =>
+            run(() => markFindingNeedsReview(finding.id), {
+              success: "Reopened for review",
+            })
+          }
         >
           Reopen
         </Button>
@@ -204,10 +226,12 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
                 className="bg-status-risk hover:bg-[color:color-mix(in_oklab,var(--color-status-risk)_88%,white)]"
                 disabled={pending || !rejectReasonValid}
                 onClick={() =>
-                  run(() =>
-                    rejectFinding(finding.id, {
-                      reason: rejectReason.trim() || undefined,
-                    }),
+                  run(
+                    () =>
+                      rejectFinding(finding.id, {
+                        reason: rejectReason.trim() || undefined,
+                      }),
+                    { success: "Finding rejected" },
                   )
                 }
               >
@@ -258,10 +282,10 @@ export function FindingReviewActionBar({ finding }: FindingReviewActionBarProps)
                 size="sm"
                 disabled={pending}
                 onClick={() =>
-                  run(
-                    () => updateFindingNote(finding.id, noteDraft),
-                    () => setNoteSaved(true),
-                  )
+                  run(() => updateFindingNote(finding.id, noteDraft), {
+                    onOk: () => setNoteSaved(true),
+                    success: "Note saved",
+                  })
                 }
               >
                 Save note

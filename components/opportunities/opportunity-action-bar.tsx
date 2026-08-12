@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Pause, RotateCcw, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import {
   deferOpportunity,
@@ -68,14 +69,31 @@ export function OpportunityActionBar({
     setError(null);
   }, [opportunityId]);
 
-  function run(runner: () => Promise<OpportunityActionResult>) {
+  const { toast } = useToast();
+
+  function run(
+    runner: () => Promise<OpportunityActionResult>,
+    success?: string,
+  ) {
     setError(null);
     startTransition(async () => {
       try {
         const result = await runner();
-        if (!result.ok) setError(translateError(result.error));
+        if (!result.ok) {
+          const message = translateError(result.error);
+          setError(message);
+          toast({
+            title: "Couldn’t save change",
+            description: message,
+            variant: "error",
+          });
+        } else {
+          toast({ title: success ?? "Change saved", variant: "success" });
+        }
       } catch {
-        setError("Something went wrong. Please try again.");
+        const message = "Something went wrong. Please try again.";
+        setError(message);
+        toast({ title: "Couldn’t save change", description: message, variant: "error" });
       }
     });
   }
@@ -117,7 +135,9 @@ export function OpportunityActionBar({
           size="sm"
           leadingIcon={<Check className="h-3.5 w-3.5" />}
           disabled={pending || status === "selected"}
-          onClick={() => run(() => markOpportunitySelected(opportunityId))}
+          onClick={() =>
+            run(() => markOpportunitySelected(opportunityId), "Opportunity selected")
+          }
         >
           Mark selected
         </Button>
@@ -127,7 +147,9 @@ export function OpportunityActionBar({
           size="sm"
           leadingIcon={<Pause className="h-3.5 w-3.5" />}
           disabled={pending || status === "deferred"}
-          onClick={() => run(() => deferOpportunity(opportunityId))}
+          onClick={() =>
+            run(() => deferOpportunity(opportunityId), "Opportunity deferred")
+          }
         >
           Defer
         </Button>
@@ -137,7 +159,9 @@ export function OpportunityActionBar({
           size="sm"
           leadingIcon={<RotateCcw className="h-3.5 w-3.5" />}
           disabled={pending || status === "scored" || status === "draft"}
-          onClick={() => run(() => reopenOpportunity(opportunityId))}
+          onClick={() =>
+            run(() => reopenOpportunity(opportunityId), "Reopened")
+          }
         >
           Reopen
         </Button>
@@ -197,10 +221,12 @@ export function OpportunityActionBar({
                 className="bg-status-risk hover:bg-[color:color-mix(in_oklab,var(--color-status-risk)_88%,white)]"
                 disabled={pending || !rejectReasonValid}
                 onClick={() =>
-                  run(() =>
-                    rejectOpportunity(opportunityId, {
-                      reason: rejectReason.trim() || undefined,
-                    }),
+                  run(
+                    () =>
+                      rejectOpportunity(opportunityId, {
+                        reason: rejectReason.trim() || undefined,
+                      }),
+                    "Opportunity rejected",
                   )
                 }
               >

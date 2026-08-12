@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Check, Pause, RotateCcw, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import {
   rejectRoadmapItem,
@@ -67,14 +68,28 @@ export function RoadmapActionBar({
     setError(null);
   }, [roadmapItemId]);
 
-  function run(runner: () => Promise<RoadmapActionResult>) {
+  const { toast } = useToast();
+
+  function run(runner: () => Promise<RoadmapActionResult>, success?: string) {
     setError(null);
     startTransition(async () => {
       try {
         const result = await runner();
-        if (!result.ok) setError(translateError(result.error));
+        if (!result.ok) {
+          const message = translateError(result.error);
+          setError(message);
+          toast({
+            title: "Couldn’t save change",
+            description: message,
+            variant: "error",
+          });
+        } else {
+          toast({ title: success ?? "Change saved", variant: "success" });
+        }
       } catch {
-        setError("Something went wrong. Please try again.");
+        const message = "Something went wrong. Please try again.";
+        setError(message);
+        toast({ title: "Couldn’t save change", description: message, variant: "error" });
       }
     });
   }
@@ -115,7 +130,7 @@ export function RoadmapActionBar({
           size="sm"
           leadingIcon={<Check className="h-3.5 w-3.5" />}
           disabled={pending || status === "ready"}
-          onClick={() => run(() => setRoadmapItemStatus(roadmapItemId, "ready"))}
+          onClick={() => run(() => setRoadmapItemStatus(roadmapItemId, "ready"), "Marked ready")}
         >
           Approve
         </Button>
@@ -126,7 +141,7 @@ export function RoadmapActionBar({
           leadingIcon={<Pause className="h-3.5 w-3.5" />}
           disabled={pending || status === "deferred"}
           onClick={() =>
-            run(() => setRoadmapItemStatus(roadmapItemId, "deferred"))
+            run(() => setRoadmapItemStatus(roadmapItemId, "deferred"), "Deferred")
           }
         >
           Defer
@@ -138,7 +153,7 @@ export function RoadmapActionBar({
           leadingIcon={<RotateCcw className="h-3.5 w-3.5" />}
           disabled={pending || status === "planned"}
           onClick={() =>
-            run(() => setRoadmapItemStatus(roadmapItemId, "planned"))
+            run(() => setRoadmapItemStatus(roadmapItemId, "planned"), "Reopened")
           }
         >
           Reopen
@@ -198,10 +213,12 @@ export function RoadmapActionBar({
                 className="bg-status-risk hover:bg-[color:color-mix(in_oklab,var(--color-status-risk)_88%,white)]"
                 disabled={pending || !rejectReasonValid}
                 onClick={() =>
-                  run(() =>
-                    rejectRoadmapItem(roadmapItemId, {
-                      reason: rejectReason.trim() || undefined,
-                    }),
+                  run(
+                    () =>
+                      rejectRoadmapItem(roadmapItemId, {
+                        reason: rejectReason.trim() || undefined,
+                      }),
+                    "Roadmap item rejected",
                   )
                 }
               >
