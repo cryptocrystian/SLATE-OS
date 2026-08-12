@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/layout/app-shell";
+import { ToastProvider } from "@/components/ui/toast";
 import { reviewQueue } from "@/lib/mock-data";
 import { getOperatorIdentity } from "@/lib/auth/identity";
 
@@ -12,7 +13,7 @@ export default async function AppLayout({
   const identity = await getOperatorIdentity();
   return (
     <AppShell reviewCount={reviewQueue.length} identity={identity}>
-      {children}
+      <ToastProvider>{children}</ToastProvider>
     </AppShell>
   );
 }
