@@ -313,8 +313,7 @@ export default async function EngagementOpportunitiesPage({
               <p className="text-xs leading-relaxed text-text-muted">
                 Scoring is directional and human-judgment based. Opportunities
                 are validated during scoping, not auto-promoted into the
-                roadmap. AI opportunity generation and report assembly
-                activate in later sprints.
+                roadmap.
               </p>
             </CardBody>
           </Card>

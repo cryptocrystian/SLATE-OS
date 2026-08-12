@@ -104,7 +104,7 @@ export function OfflineIntakeReadinessHint({
               Client-visible:
             </span>{" "}
             Offline rows never appear on the client report or proposal until
-            you explicitly clear them through the docs/35 § 5 readiness gate.
+            you explicitly clear them through the readiness gate.
           </p>
         </div>
       </CardBody>

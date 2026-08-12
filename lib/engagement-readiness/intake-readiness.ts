@@ -235,7 +235,7 @@ export function evaluateIntakeReadiness(
   const highestLaneSignal = LANE_PRIORITY.find((l) => allLanes.has(l)) ?? null;
   if (highestLaneSignal === "offline_operator") {
     advisories.push(
-      "Synthesis input is currently from operator-entered (tertiary) signal only. Consider capturing at least one live-link response or transcript before findings synthesis to anchor primary signal per docs/39 § 4.",
+      "Synthesis input is currently from operator-entered (tertiary) signal only. Consider capturing at least one live-link response or transcript before findings synthesis to anchor primary signal.",
     );
   } else if (
     highestLaneSignal === "transcript" &&

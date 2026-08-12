@@ -400,13 +400,13 @@ export async function buildEvidenceBundleForEngagement(
     warnings.push({
       code: "no-primary-evidence",
       message:
-        "No primary or secondary lane evidence. Synthesis will rely entirely on operator-entered offline notes, which is tertiary signal per docs/39 § 4.",
+        "No primary or secondary lane evidence. Synthesis will rely entirely on operator-entered offline notes, which is tertiary signal.",
     });
   } else if (byLane.live_link.length === 0) {
     warnings.push({
       code: "tertiary-only",
       message:
-        "No live-link primary evidence. Synthesis will weight transcripts (secondary) at moderate confidence per docs/39 § 4.5.",
+        "No live-link primary evidence. Synthesis will weight transcripts (secondary) at moderate confidence.",
     });
   }
   const coveredRoles = new Set(

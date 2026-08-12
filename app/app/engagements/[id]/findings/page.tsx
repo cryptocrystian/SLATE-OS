@@ -220,7 +220,7 @@ export default async function EngagementFindingsPage({
                 </span>
                 <p className="text-xs leading-relaxed text-text-muted">
                   Add a manual finding from stakeholder intake evidence above,
-                  or wait for AI-assisted synthesis in a later sprint.
+                  or generate draft findings once intake responses are ready.
                 </p>
               </CardBody>
             </Card>
@@ -240,8 +240,8 @@ export default async function EngagementFindingsPage({
               </span>
               <p className="text-xs leading-relaxed text-text-muted">
                 Findings are always reviewed by a consultant before they
-                become report-ready. AI synthesis, document parsing, and
-                opportunity scoring activate in later sprints.
+                become report-ready. Synthesis and downstream scoring stay
+                human-in-the-loop.
               </p>
             </CardBody>
           </Card>

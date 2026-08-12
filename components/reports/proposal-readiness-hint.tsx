@@ -67,7 +67,7 @@ export function ProposalReadinessHint({ signal }: ProposalReadinessHintProps) {
           </div>
           <p className="text-xs leading-relaxed text-text-muted">
             Advisory signal showing whether the report has approved enough
-            sections to feed Sprint S9 (Proposal AI Drafting). This is
+            sections to feed proposal drafting. This is
             operator-internal — it does not mint a client link or send
             anything to the client.
           </p>
@@ -165,7 +165,7 @@ export function ProposalReadinessHint({ signal }: ProposalReadinessHintProps) {
 
         {/* Boundary footer */}
         <p className="rounded-md border border-border-subtle bg-bg-surface/40 p-3 text-[11px] leading-relaxed text-text-muted">
-          Proposal drafting itself runs in Sprint S9. This card is a
+          Proposal drafting is a separate step. This card is a
           precondition signal only — it never mints a client-facing
           report or proposal link, never sends anything to the client,
           and never touches pricing, SOW language, or e-signature flows.

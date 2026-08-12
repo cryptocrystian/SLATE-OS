@@ -131,7 +131,7 @@ export function ReportReadinessHint({ signal }: ReportReadinessHintProps) {
         ) : null}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Sprint S8 report-section drafting consumes roadmap items with
+          Report-section drafting consumes roadmap items with
           status &quot;ready&quot; only. Items marked deferred, rejected,
           planned, blocked, or completed never feed report drafting. Items
           that inherit a needs-validation flag from source opportunities will

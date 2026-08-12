@@ -92,7 +92,7 @@ export function OpportunitiesReadinessHint({
         ) : null}
 
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Sprint S6 opportunities drafting consumes approved findings. Findings
+          Opportunity drafting consumes approved findings. Findings
           that carry a needs-validation flag will inherit weak provenance —
           either corroborate them with stakeholder evidence first, or treat
           the resulting opportunities as needing operator scoping work.

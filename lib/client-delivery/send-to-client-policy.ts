@@ -45,7 +45,7 @@ export function evaluateSendToClientEligibility(
       code: "artifact_kind_not_supported",
       severity: "error",
       message:
-        "Only report and proposal share links are eligible for Send to Client in the first unlock. SOW Drafts and other artifacts are deferred per docs/28 + docs/29 § 2.",
+        "Only report and proposal share links are eligible for Send to Client. SOW Drafts and other artifacts are not.",
       target: input.artifactKind,
     });
   }

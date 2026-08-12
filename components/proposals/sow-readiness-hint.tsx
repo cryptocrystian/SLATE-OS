@@ -50,7 +50,7 @@ export function SowReadinessHint({ signal }: SowReadinessHintProps) {
           </div>
           <p className="text-xs leading-relaxed text-text-muted">
             Advisory signal showing whether the proposal is ready to feed
-            Sprint S10 (Internal SOW Draft Validation). This is
+            the internal SOW Draft. This is
             operator-internal — it does not mint any client link, send
             anything to the client, or generate the SOW itself.
           </p>
@@ -140,7 +140,7 @@ export function SowReadinessHint({ signal }: SowReadinessHintProps) {
 
         {/* Boundary footer */}
         <p className="rounded-md border border-border-subtle bg-bg-surface/40 p-3 text-[11px] leading-relaxed text-text-muted">
-          SOW Draft generation itself runs in Sprint S10. This card is a
+          SOW Draft generation is a separate step. This card is a
           precondition signal only — it never mints a client-facing
           proposal link, never sends anything to the client, never
           generates a SOW Draft, and never touches e-signature or

@@ -331,8 +331,7 @@ export default async function EngagementRoadmapPage({
                 The 30/60/90 roadmap is an advisory implementation-readiness
                 plan, not a project-management board. Each roadmap item
                 stays linked to its source opportunity and underlying
-                evidence so the trail is intact through to the SOW. Report
-                and proposal assembly activate in a later sprint.
+                evidence so the trail is intact through to the SOW.
               </p>
             </CardBody>
           </Card>
