@@ -20,14 +20,48 @@ export function AppShell({
   identity,
 }: AppShellProps) {
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+  const drawerRef = React.useRef<HTMLDivElement>(null);
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
 
+  // Drawer a11y (Phase 1 / docs/63 W3): scroll lock, initial focus, focus
+  // restore, Escape-to-close, and a Tab focus trap.
   React.useEffect(() => {
     if (!mobileNavOpen) return;
+    const FOCUSABLE =
+      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    restoreFocusRef.current = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const t = window.setTimeout(() => {
+      drawerRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    }, 0);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileNavOpen(false);
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const nodes = drawerRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE);
+      if (!nodes || nodes.length === 0) return;
+      const list = Array.from(nodes).filter((el) => el.offsetParent !== null);
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = prevOverflow;
+      window.clearTimeout(t);
+      restoreFocusRef.current?.focus?.();
+    };
   }, [mobileNavOpen]);
 
   return (
@@ -50,7 +84,13 @@ export function AppShell({
             onClick={() => setMobileNavOpen(false)}
             aria-hidden
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[80%] flex-col border-r border-border-subtle bg-bg-shell shadow-elevated animate-fade-up">
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+            className="absolute inset-y-0 left-0 flex w-72 max-w-[80%] flex-col border-r border-border-subtle bg-bg-shell shadow-elevated motion-safe:animate-fade-up"
+          >
             <button
               type="button"
               onClick={() => setMobileNavOpen(false)}

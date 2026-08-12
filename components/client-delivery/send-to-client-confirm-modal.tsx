@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { Copy, Eye, EyeOff, Send, ShieldAlert, X } from "lucide-react";
+import { Copy, Eye, EyeOff, Send, ShieldAlert } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import {
   SEND_TO_CLIENT_DISCLAIMERS,
   type SendToClientArtifactKind,
@@ -121,6 +122,7 @@ export function SendToClientConfirmModal({
   const [urlCopied, setUrlCopied] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
   const [result, setResult] = React.useState<SendToClientResult | null>(null);
+  const audienceRef = React.useRef<HTMLInputElement>(null);
 
   // Reset transient state every time the modal is reopened so the
   // operator does not see stale checkboxes / inputs from a prior run.
@@ -191,49 +193,50 @@ export function SendToClientConfirmModal({
   }
 
   return (
-    <div
-      aria-modal
-      role="dialog"
-      aria-labelledby="send-to-client-modal-heading"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-    >
-      <div className="flex w-full max-w-lg flex-col gap-4 rounded-lg border border-border-strong bg-bg-elevated p-5 shadow-card">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-              Send to Client · operator-mediated handoff
-            </span>
-            <h2
-              id="send-to-client-modal-heading"
-              className="text-base font-semibold tracking-tight text-text-primary"
-            >
-              {headingLabel}
-            </h2>
-          </div>
+    <Dialog
+      open
+      onClose={() => onOpenChange(false)}
+      closeOnBackdrop={!pending}
+      initialFocusRef={audienceRef}
+      title={headingLabel}
+      description={disclaimer}
+      footer={
+        <>
+          {hasRecipientEmailHash ? (
+            <Badge tone="neutral" variant="outline">
+              Recipient hash stored
+            </Badge>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            leadingIcon={<X className="h-3.5 w-3.5" />}
             onClick={() => onOpenChange(false)}
             disabled={pending}
-            aria-label="Close"
           >
-            Close
+            Cancel
           </Button>
-        </div>
-
-        <p className="text-xs leading-relaxed text-text-secondary">
-          {disclaimer}
-        </p>
-
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            leadingIcon={<Send className="h-3.5 w-3.5" />}
+            onClick={onConfirmClick}
+            disabled={confirmDisabled}
+          >
+            {pending ? "Marking…" : "Confirm send"}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
         {eligibilityReasons && eligibilityReasons.length > 0 ? (
           <EligibilityNotice reasons={eligibilityReasons} />
         ) : null}
 
         {shareUrlPath ? (
           <div className="flex flex-col gap-2 rounded-md border border-border-subtle bg-bg-surface/50 p-3">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+            <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
               Share URL (operator copies; SLATE does not send)
             </span>
             <code
@@ -280,6 +283,7 @@ export function SendToClientConfirmModal({
             Audience label · required
           </span>
           <input
+            ref={audienceRef}
             type="text"
             value={audienceLabel}
             onChange={(e) => setAudienceLabel(e.target.value.slice(0, 80))}
@@ -318,7 +322,7 @@ export function SendToClientConfirmModal({
         </label>
 
         <fieldset className="flex flex-col gap-1.5 rounded-md border border-border-subtle bg-bg-surface/50 p-3 text-[11px] text-text-secondary">
-          <legend className="px-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          <legend className="px-1 text-[10px] uppercase tracking-[0.14em] text-text-muted">
             Operator acknowledgement
           </legend>
           <label className="flex items-start gap-2">
@@ -356,34 +360,6 @@ export function SendToClientConfirmModal({
           </label>
         </fieldset>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            leadingIcon={<Send className="h-3.5 w-3.5" />}
-            onClick={onConfirmClick}
-            disabled={confirmDisabled}
-          >
-            {pending ? "Marking…" : "Confirm send"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            leadingIcon={<X className="h-3.5 w-3.5" />}
-            onClick={() => onOpenChange(false)}
-            disabled={pending}
-          >
-            Cancel
-          </Button>
-          {hasRecipientEmailHash ? (
-            <Badge tone="neutral" variant="outline">
-              Recipient hash stored
-            </Badge>
-          ) : null}
-        </div>
-
         {result?.ok ? (
           <p className="rounded-md border border-status-success/40 bg-status-success/10 p-2 text-[11px] text-status-success">
             Marked sent. SLATE recorded the handoff in the audit log
@@ -392,7 +368,7 @@ export function SendToClientConfirmModal({
         ) : null}
         {result && !result.ok ? <FailureNotice result={result} /> : null}
       </div>
-    </div>
+    </Dialog>
   );
 }
 
