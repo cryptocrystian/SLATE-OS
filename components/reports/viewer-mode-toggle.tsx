@@ -58,7 +58,7 @@ export function ViewerModeToggle({ label }: ViewerModeToggleProps) {
       aria-label={label ?? "Viewer mode"}
       className="inline-flex items-center gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-1 text-[11px] print:hidden"
     >
-      <span className="ml-2 font-mono uppercase tracking-[0.14em] text-text-muted">
+      <span className="ml-2 uppercase tracking-[0.14em] text-text-muted">
         Viewer
       </span>
       <button

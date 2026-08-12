@@ -114,7 +114,7 @@ export function ActiveEngagementsPanel({
 
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+                    <span className="uppercase tracking-[0.14em] text-text-muted">
                       Stage
                     </span>
                     <span className="text-text-secondary">{eng.stage}</span>

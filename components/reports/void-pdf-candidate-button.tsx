@@ -83,7 +83,7 @@ export function VoidPdfCandidateButton({
         Void this candidate?
       </span>
       <label className="flex flex-col gap-1 text-[11px] text-text-secondary">
-        <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+        <span className="uppercase tracking-[0.12em] text-text-muted">
           Reason (operator-visible only)
         </span>
         <input

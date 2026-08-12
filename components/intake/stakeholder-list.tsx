@@ -195,7 +195,7 @@ function Block({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <dt className="font-mono uppercase tracking-[0.12em] text-text-muted">
+      <dt className="uppercase tracking-[0.12em] text-text-muted">
         {label}
       </dt>
       <dd>

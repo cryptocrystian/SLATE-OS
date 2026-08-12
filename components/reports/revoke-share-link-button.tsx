@@ -87,7 +87,7 @@ export function RevokeShareLinkButton({ tokenId }: RevokeShareLinkButtonProps) {
 
   return (
     <div className="flex max-w-sm flex-col gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-[11px] leading-relaxed text-status-warning">
-      <span className="font-mono uppercase tracking-[0.16em]">
+      <span className="uppercase tracking-[0.16em]">
         Confirm revoke
       </span>
       <p className="text-text-secondary">

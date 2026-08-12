@@ -192,7 +192,7 @@ function ProposalOptionCard({
         <Field label="Confidence" value={option.confidence} />
       </dl>
       <p className="mt-1 rounded-md border border-border-subtle bg-bg-elevated/40 px-2 py-1.5 text-[11px] text-text-secondary">
-        <span className="font-mono uppercase tracking-[0.12em] text-text-muted">
+        <span className="uppercase tracking-[0.12em] text-text-muted">
           Pricing placeholder ·
         </span>{" "}
         {option.pricingPlaceholder}
@@ -204,7 +204,7 @@ function ProposalOptionCard({
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="font-mono uppercase tracking-[0.12em] text-text-muted">
+      <dt className="uppercase tracking-[0.12em] text-text-muted">
         {label}
       </dt>
       <dd className="text-text-secondary">{value}</dd>

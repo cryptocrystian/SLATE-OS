@@ -68,10 +68,10 @@ export function OpportunityMatrix({
           id="opportunity-matrix-axis-x"
           className="flex items-center justify-between text-[11px] text-text-muted"
         >
-          <span className="font-mono uppercase tracking-[0.12em]">
+          <span className="uppercase tracking-[0.12em]">
             ← Lower complexity
           </span>
-          <span className="font-mono uppercase tracking-[0.12em]">
+          <span className="uppercase tracking-[0.12em]">
             Higher complexity →
           </span>
         </div>
@@ -163,10 +163,10 @@ export function OpportunityMatrix({
           id="opportunity-matrix-axis-y"
           className="flex items-center justify-between text-[11px] text-text-muted"
         >
-          <span className="font-mono uppercase tracking-[0.12em]">
+          <span className="uppercase tracking-[0.12em]">
             ↓ Lower impact
           </span>
-          <span className="font-mono uppercase tracking-[0.12em]">
+          <span className="uppercase tracking-[0.12em]">
             Higher impact ↑
           </span>
         </div>

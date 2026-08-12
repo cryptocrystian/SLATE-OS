@@ -65,7 +65,7 @@ export function FitScoreBadge({
       {showInternalLabel ? (
         <span
           className={cn(
-            "flex items-center gap-1 font-mono uppercase tracking-[0.14em] text-text-muted",
+            "flex items-center gap-1 uppercase tracking-[0.14em] text-text-muted",
             isSm ? "text-[9px]" : "text-[10px]",
           )}
           title="Internal Saipien Fit Score — never shown to prospects"
@@ -85,7 +85,7 @@ export function FitScoreBadge({
       </span>
       <span
         className={cn(
-          "border-l pl-2 font-mono uppercase tracking-[0.14em]",
+          "border-l pl-2 uppercase tracking-[0.14em]",
           tone.text,
           tone.border,
           isSm ? "text-[9px]" : "text-[10px]",

@@ -40,7 +40,7 @@ export function TopBar({
       </button>
 
       <div className="hidden items-center gap-2 text-xs text-text-muted lg:flex">
-        <span className="font-mono uppercase tracking-[0.14em]">SLATE</span>
+        <span className="uppercase tracking-[0.14em]">SLATE</span>
         <span aria-hidden className="text-text-disabled">/</span>
         <span className="text-text-secondary">{context}</span>
       </div>

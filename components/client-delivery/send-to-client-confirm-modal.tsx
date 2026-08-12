@@ -276,7 +276,7 @@ export function SendToClientConfirmModal({
         ) : null}
 
         <label className="flex flex-col gap-1 text-[11px] text-text-secondary">
-          <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+          <span className="uppercase tracking-[0.14em] text-text-muted">
             Audience label · required
           </span>
           <input
@@ -294,7 +294,7 @@ export function SendToClientConfirmModal({
         </label>
 
         <label className="flex flex-col gap-1 text-[11px] text-text-secondary">
-          <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+          <span className="uppercase tracking-[0.14em] text-text-muted">
             Recipient email · optional · hashed at rest
           </span>
           <input
@@ -407,7 +407,7 @@ function EligibilityNotice({
     <div className="flex max-w-md flex-col gap-1 rounded-md border border-status-risk/40 bg-status-risk/10 p-3 text-[11px] leading-relaxed text-status-risk">
       <div className="flex items-center gap-2">
         <ShieldAlert aria-hidden className="h-3.5 w-3.5" />
-        <span className="font-mono uppercase tracking-[0.16em]">
+        <span className="uppercase tracking-[0.16em]">
           Send disabled
         </span>
       </div>
@@ -433,7 +433,7 @@ function FailureNotice({
 }) {
   return (
     <div className="rounded-md border border-status-risk/40 bg-status-risk/10 p-2 text-[11px] text-status-risk">
-      <span className="font-mono uppercase tracking-[0.16em]">
+      <span className="uppercase tracking-[0.16em]">
         {translateError(result.error)}
       </span>
       {result.reasons && result.reasons.length > 0 ? (

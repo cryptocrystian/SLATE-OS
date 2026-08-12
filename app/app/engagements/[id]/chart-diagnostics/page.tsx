@@ -363,7 +363,7 @@ function DiagnosticPanel<TProps>({
             {title}
           </h2>
           <p className="text-xs leading-relaxed text-text-muted">
-            <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+            <span className="uppercase tracking-[0.14em] text-text-muted">
               Source
             </span>{" "}
             · {sourceSummary.source} · <span className="font-mono">n={sourceSummary.rowCount}</span> · generated {formatTimestamp(sourceSummary.generatedAt)}

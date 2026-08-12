@@ -133,7 +133,7 @@ function OperatorTrackingFields({
 }) {
   return (
     <details className="w-full max-w-md rounded-md border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-[11px] text-text-secondary">
-      <summary className="cursor-pointer font-mono uppercase tracking-[0.14em] text-text-muted">
+      <summary className="cursor-pointer uppercase tracking-[0.14em] text-text-muted">
         Optional · audience label and recipient email
       </summary>
       <div className="mt-2 flex flex-col gap-2">
@@ -228,7 +228,7 @@ function CopyOncePanel({
 
   return (
     <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-success/40 bg-status-success/10 p-3 text-[11px] leading-relaxed text-status-success">
-      <span className="font-mono uppercase tracking-[0.16em]">
+      <span className="uppercase tracking-[0.16em]">
         Proposal review link generated — copy now
       </span>
       <p className="text-text-secondary">
@@ -290,7 +290,7 @@ function FailureNotice({
     <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-risk/40 bg-status-risk/10 p-3 text-[11px] leading-relaxed text-status-risk">
       <div className="flex items-center gap-2">
         <ShieldAlert aria-hidden className="h-3.5 w-3.5" />
-        <span className="font-mono uppercase tracking-[0.16em]">
+        <span className="uppercase tracking-[0.16em]">
           {translateError(result.error)}
         </span>
       </div>

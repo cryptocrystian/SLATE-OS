@@ -53,7 +53,7 @@ export function RoadmapCard({
               aria-label={`Linked opportunity: ${linkedTitle ?? "linked opportunity"}`}
             >
               <Link2 aria-hidden className="h-3 w-3 text-text-muted" />
-              <span aria-hidden className="font-mono uppercase tracking-[0.12em] text-text-muted">
+              <span aria-hidden className="uppercase tracking-[0.12em] text-text-muted">
                 →
               </span>
               <span

@@ -214,7 +214,7 @@ function LinkedState({
         <div className="flex flex-col gap-1.5 rounded-md border border-border-subtle bg-bg-elevated/30 p-3">
           <div className="flex items-center gap-2 text-[11px] text-text-muted">
             <ShieldOff className="h-3 w-3" />
-            <span className="font-mono uppercase tracking-[0.16em]">
+            <span className="uppercase tracking-[0.16em]">
               Missing in Attio · {warnings.length}
             </span>
           </div>

@@ -67,13 +67,13 @@ export function EngagementListItem({ engagement }: EngagementListItemProps) {
           </div>
           <div className="flex items-center justify-between text-[11px] text-text-muted">
             <span>
-              <span className="font-mono uppercase tracking-[0.12em]">
+              <span className="uppercase tracking-[0.12em]">
                 Setup
               </span>
               <span aria-hidden className="mx-1.5 text-text-disabled">
                 →
               </span>
-              <span className="font-mono uppercase tracking-[0.12em]">
+              <span className="uppercase tracking-[0.12em]">
                 Proposal
               </span>
             </span>

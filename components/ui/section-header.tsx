@@ -6,8 +6,7 @@ import { cn } from "@/lib/utils";
  *
  * Phase 1 (docs/63) typography decision: SANS small-caps, never mono.
  * Mono is reserved for IDs, scores, and metadata. This replaces the
- * `font-mono uppercase tracking-[…] text-text-muted` "console" eyebrow
- * that saturated the app.
+ * mono-uppercase-muted "console" eyebrow that saturated the app.
  */
 export function Eyebrow({
   className,

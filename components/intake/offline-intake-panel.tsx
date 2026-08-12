@@ -137,7 +137,7 @@ export function OfflineIntakePanel({
                       <div className="flex flex-col gap-3 border-t border-border-subtle p-3">
                         {session.operatorNotes ? (
                           <p className="rounded-md border border-border-subtle bg-bg-page/40 p-2 text-[11px] leading-relaxed text-text-secondary">
-                            <span className="font-mono uppercase tracking-[0.16em] text-text-muted">
+                            <span className="uppercase tracking-[0.16em] text-text-muted">
                               Operator notes ·{" "}
                             </span>
                             {session.operatorNotes}
@@ -226,7 +226,7 @@ export function OfflineIntakePanel({
                   ) : null}
                   {doc.operatorNotes ? (
                     <p className="text-[11px] leading-relaxed text-text-secondary">
-                      <span className="font-mono uppercase tracking-[0.16em] text-text-muted">
+                      <span className="uppercase tracking-[0.16em] text-text-muted">
                         Notes ·{" "}
                       </span>
                       {doc.operatorNotes}
@@ -270,7 +270,7 @@ function ResponseRow({ response }: { response: OfflineStakeholderResponse }) {
       </p>
       {response.operatorNotes ? (
         <p className="text-[11px] leading-relaxed text-text-secondary">
-          <span className="font-mono uppercase tracking-[0.16em] text-text-muted">
+          <span className="uppercase tracking-[0.16em] text-text-muted">
             Operator notes ·{" "}
           </span>
           {response.operatorNotes}

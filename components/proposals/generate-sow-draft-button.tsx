@@ -154,7 +154,7 @@ function FailureNotice({
     <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-risk/40 bg-status-risk/10 p-3 text-[11px] leading-relaxed text-status-risk">
       <div className="flex items-center gap-2">
         <ShieldAlert aria-hidden className="h-3.5 w-3.5" />
-        <span className="font-mono uppercase tracking-[0.16em]">
+        <span className="uppercase tracking-[0.16em]">
           {translateError(result.error)}
         </span>
       </div>
