@@ -52,7 +52,7 @@ export function OpportunityCard({
         "flex w-full flex-col gap-2 rounded-lg border p-3 text-left transition-colors",
         selected
           ? "border-brand-primary/60 bg-brand-primary/[0.06]"
-          : "border-border-subtle bg-bg-surface hover:border-border-strong hover:bg-bg-elevated/60",
+          : "border-border-subtle bg-bg-surface hover:border-border-strong hover:bg-bg-elevated/80",
         isCompact ? "gap-2 p-3" : "gap-3 p-4",
       )}
     >

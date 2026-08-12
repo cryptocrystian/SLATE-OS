@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { cardInteractiveClass } from "@/components/ui/card";
 import {
   Card,
   CardHeader,
@@ -51,7 +52,7 @@ function StageTracker({ stage }: { stage: EngagementStage }) {
                 "h-1 flex-1 rounded-full transition-colors",
                 isComplete && "bg-brand-primary/70",
                 isCurrent && "bg-brand-primary",
-                !isComplete && !isCurrent && "bg-white/[0.05]",
+                !isComplete && !isCurrent && "bg-border-subtle",
               )}
             />
           </div>
@@ -90,7 +91,10 @@ export function ActiveEngagementsPanel({
             <li key={eng.id}>
               <button
                 type="button"
-                className="group block w-full rounded-lg border border-border-subtle bg-bg-elevated/50 p-4 text-left transition-colors hover:border-border-strong hover:bg-bg-elevated"
+                className={cn(
+                  "group block w-full rounded-lg p-4 text-left",
+                  cardInteractiveClass,
+                )}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex min-w-0 flex-col gap-1">

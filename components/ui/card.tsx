@@ -8,11 +8,17 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   as?: keyof JSX.IntrinsicElements;
 }
 
+/**
+ * Interactive surface treatment — exported so clickable rows that can't be a
+ * <Card> element (Link, button) share the same hover model. (Phase 1 / docs/63 W2)
+ */
+export const cardInteractiveClass =
+  "border border-border-subtle bg-bg-surface shadow-card transition-[border,background,transform] duration-150 hover:border-border-strong hover:bg-bg-elevated/80";
+
 const variants: Record<CardVariant, string> = {
   base: "bg-bg-surface border border-border-subtle shadow-card",
   elevated: "bg-bg-elevated border border-border-subtle shadow-elevated",
-  interactive:
-    "bg-bg-surface border border-border-subtle shadow-card transition-[border,background,transform] duration-150 hover:border-border-strong hover:bg-bg-elevated/80",
+  interactive: cardInteractiveClass,
 };
 
 export function Card({

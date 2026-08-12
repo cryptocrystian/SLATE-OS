@@ -2,6 +2,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { cardInteractiveClass } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EngagementStatusChip } from "./engagement-status-chip";
 import { STAGES, STAGE_LABEL, stageIndex } from "@/lib/engagements/helpers";
@@ -17,7 +18,7 @@ export function EngagementListItem({ engagement }: EngagementListItemProps) {
   return (
     <Link
       href={`/app/engagements/${engagement.id}`}
-      className="group block rounded-xl border border-border-subtle bg-bg-surface p-5 shadow-card transition-colors hover:border-border-strong hover:bg-bg-elevated/80 sm:p-6"
+      className={cn("group block rounded-xl p-5 sm:p-6", cardInteractiveClass)}
     >
       <div className="flex flex-col gap-5">
         {/* Top: name + status */}
