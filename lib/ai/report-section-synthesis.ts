@@ -293,7 +293,7 @@ const SECTION_CHARTERS: Record<string, string> = {
   recommended_next_step:
     "The single immediate next action that moves the engagement forward, and precisely what it unblocks. One clear ask — short and concrete.",
   appendix:
-    "A compact reference index of the findings, opportunities, and roadmap items behind the report. This is the ONE section that may enumerate. Keep it terse and factual — no new narrative.",
+    "A compact reference index of the findings, opportunities, and roadmap items behind the report. This is the ONE section that may enumerate. Keep it terse and factual — no new narrative. Begin directly with the index itself; do NOT open with \"This appendix…\" or any sentence describing what the appendix is.",
 };
 
 function charterFor(sectionType: string): string {

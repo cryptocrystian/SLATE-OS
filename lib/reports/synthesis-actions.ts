@@ -14,6 +14,18 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isUuid } from "./mappers";
 
 /**
+ * Section types whose client-facing heading is canonical and must not be
+ * overwritten by the model's `sectionTitle`. Keyed by DB `section_type`.
+ * The consolidation (SECTION_ORDER in ./helpers.ts) broadened
+ * `workflow_friction` to cover current-state + friction, so its heading
+ * is pinned rather than left to the model (which kept re-titling it
+ * "Workflow Friction Analysis").
+ */
+const LOCKED_SECTION_TITLES: Record<string, string> = {
+  workflow_friction: "Current State & Operating Friction",
+};
+
+/**
  * Operator-only AI synthesis entry point for **one report section at a
  * time** — AI Synthesis Step 3, per `docs/17` § Report Wiring Sequence.
  *
@@ -222,7 +234,9 @@ export async function generateReportSectionDraftAction(args: {
   const { error: updateError } = await supabase
     .from("report_sections")
     .update({
-      title: synthesisResult.candidate.sectionTitle,
+      title:
+        LOCKED_SECTION_TITLES[context.section.sectionType] ??
+        synthesisResult.candidate.sectionTitle,
       summary: synthesisResult.candidate.summary,
       draft_preview: synthesisResult.candidate.draftPreview,
       evidence_notes: evidenceNotesField,
