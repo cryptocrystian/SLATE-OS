@@ -5,18 +5,24 @@ import type {
   ReportStatus,
 } from "./types";
 
+// Consolidated advisory-report arc (was 12 sections; trimmed to 7 narrative
+// + appendix to remove the cross-section repetition and padding a 12-section
+// scaffold produced). Dropped types (systems-snapshot, readiness-assessment,
+// governance-risk, recommended-next-step) fold their job into a neighbor via
+// the per-section charters in `lib/ai/report-section-synthesis.ts`:
+//   - systems-snapshot + readiness-assessment → workflow-friction
+//     (now "Current State & Operating Friction")
+//   - governance-risk + recommended-next-step → priority-recommendations
+// The full `ReportSectionType` union is intentionally retained for backward
+// compatibility with reports scaffolded before this change.
 export const SECTION_ORDER: ReportSectionType[] = [
   "executive-summary",
   "business-context",
-  "systems-snapshot",
-  "readiness-assessment",
   "workflow-friction",
   "stakeholder-synthesis",
   "opportunity-portfolio",
   "priority-recommendations",
-  "governance-risk",
   "roadmap",
-  "recommended-next-step",
   "appendix",
 ];
 
@@ -25,7 +31,7 @@ export const SECTION_LABEL: Record<ReportSectionType, string> = {
   "business-context": "Business Context",
   "systems-snapshot": "Current-State Systems Snapshot",
   "readiness-assessment": "AI Readiness Assessment",
-  "workflow-friction": "Workflow Friction Analysis",
+  "workflow-friction": "Current State & Operating Friction",
   "stakeholder-synthesis": "Stakeholder Discovery Synthesis",
   "opportunity-portfolio": "AI Opportunity Portfolio",
   "priority-recommendations": "Priority Recommendations",

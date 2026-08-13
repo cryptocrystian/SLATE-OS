@@ -7,6 +7,7 @@ import { ChartFrame } from "@/components/charts/primitives/chart-frame";
 import { ChartWaterfallBar } from "@/components/charts/primitives/chart-waterfall-bar";
 import {
   CHART_FONT_MONO,
+  CHART_FONT_SANS,
   CHART_TICK_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -569,15 +570,14 @@ export function AISavingsWaterfall({
                   key={`cat-${i}`}
                   x={row.slotCenter}
                   y={0}
-                  fontFamily={CHART_FONT_MONO}
-                  fontSize={9}
-                  letterSpacing={1.2}
-                  fill="var(--color-text-muted)"
+                  fontFamily={CHART_FONT_SANS}
+                  fontSize={11}
+                  fill="var(--color-text-secondary)"
                   textAnchor="end"
                   verticalAnchor="middle"
                   angle={-35}
                 >
-                  {row.label.toUpperCase()}
+                  {row.label}
                 </Text>
               ))}
             </Group>

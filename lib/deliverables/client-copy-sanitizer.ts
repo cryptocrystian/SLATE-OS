@@ -141,6 +141,23 @@ export function sanitizeClientProse(
     out = out.replace(re, replacement);
   }
 
+  // Relabel a sanitized ID-ref that landed in bullet-label position.
+  // `• Finding <uuid>: X` sanitizes to `• the discovery findings: X`,
+  // which reads as a broken label; restore a clean category label.
+  // Only fires at the start of a bullet/line so mid-sentence
+  // "…the discovery findings…" prose is untouched.
+  out = out
+    .replace(/(^|\n)(\s*•?\s*)the discovery findings:/gi, "$1$2Finding:")
+    .replace(/(^|\n)(\s*•?\s*)the opportunity set:/gi, "$1$2Opportunity:")
+    .replace(/(^|\n)(\s*•?\s*)the roadmap:/gi, "$1$2Roadmap:");
+
+  // Drop dangling relational stubs left behind when a "linked to
+  // <Finding/Opportunity ID …>" target was stripped above, e.g.
+  // `… Practices linked to.` → `… Practices.`. Only fires when nothing
+  // meaningful follows (period / newline / end), so a real
+  // "linked to the discovery findings" attribution survives.
+  out = out.replace(/\s+linked\s+to\b\s*(?=[.\n]|$)/gi, "");
+
   // Whitespace cleanup: collapse runs of internal whitespace and tidy
   // punctuation gaps the strips can leave behind. Newlines are
   // preserved to keep paragraph structure intact.
@@ -151,6 +168,9 @@ export function sanitizeClientProse(
     .replace(/\s+([.,;:])/g, "$1")
     // Collapse double bullets / orphan separators
     .replace(/•\s*•/g, "•")
+    // Collapse a leftover leading dash after a bullet ("•- x" / "• - x"),
+    // left when an "ID: <uuid> - text" prefix was stripped.
+    .replace(/•[ \t]*-[ \t]+/g, "• ")
     // Collapse "·   ·" gaps
     .replace(/·\s+·/g, "·")
     // Trim per-line

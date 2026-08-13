@@ -10,6 +10,7 @@ import {
 } from "@/components/charts/primitives/chart-projection-line";
 import {
   CHART_FONT_MONO,
+  CHART_FONT_SANS,
   CHART_TICK_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -482,15 +483,14 @@ export function RoiBridge({
               <Text
                 x={-MARGINS.left + 14}
                 y={innerHeight / 2}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.4}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={11}
                 fill="var(--color-text-muted)"
                 textAnchor="middle"
                 verticalAnchor="middle"
                 angle={-90}
               >
-                MODELED RANGE · %
+                Modeled range · %
               </Text>
             </Group>
 
@@ -547,10 +547,10 @@ export function RoiBridge({
                   key={`period-${i}`}
                   x={pp.x}
                   y={0}
-                  fontFamily={CHART_FONT_MONO}
+                  fontFamily={CHART_FONT_SANS}
                   fontSize={11}
-                  letterSpacing={1.6}
-                  fill="var(--color-text-muted)"
+                  fontWeight={500}
+                  fill="var(--color-text-secondary)"
                   textAnchor="middle"
                   verticalAnchor="middle"
                 >

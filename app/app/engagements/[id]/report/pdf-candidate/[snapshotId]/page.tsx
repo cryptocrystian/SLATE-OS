@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ReportPdfCandidateDocument } from "@/components/reports/report-pdf-candidate-document";
+import { ClientReportDeliverable } from "@/components/reports/client-report-deliverable";
 import { ViewerModeToggle } from "@/components/reports/viewer-mode-toggle";
 import { viewerModeFromSearchParam } from "@/components/reports/viewer-mode";
 import type { ReportGroupAExhibitResults } from "@/components/reports/report-group-a-exhibits";
@@ -184,12 +185,20 @@ export default async function ReportPdfCandidatePage({
     <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
       <PageChrome reportHref={reportHref} />
 
-      <ReportPdfCandidateDocument
-        engagement={engagement}
-        snapshot={snapshot}
-        viewerMode={viewerMode}
-        liveExhibits={liveExhibits}
-      />
+      {viewerMode === "client-facing" ? (
+        <ClientReportDeliverable
+          engagement={engagement}
+          snapshot={snapshot}
+          liveExhibits={liveExhibits}
+        />
+      ) : (
+        <ReportPdfCandidateDocument
+          engagement={engagement}
+          snapshot={snapshot}
+          viewerMode={viewerMode}
+          liveExhibits={liveExhibits}
+        />
+      )}
     </div>
   );
 }

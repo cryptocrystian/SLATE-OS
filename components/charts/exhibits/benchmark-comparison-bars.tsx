@@ -7,6 +7,7 @@ import { ChartFrame } from "@/components/charts/primitives/chart-frame";
 import { ChartPercentileBand } from "@/components/charts/primitives/chart-percentile-band";
 import {
   CHART_FONT_MONO,
+  CHART_FONT_SANS,
   CHART_TICK_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -223,20 +224,21 @@ export function BenchmarkComparisonBars({
 
         return (
           <>
-            {/* Dimension labels in the left margin (mono uppercase) */}
+            {/* Dimension labels in the left margin */}
             {validPoints.map((point, ri) => (
               <Text
                 key={`row-${ri}`}
                 x={-(MARGINS.left - 12)}
                 y={ri * rowHeight + rowHeight / 2}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.2}
-                fill="var(--color-text-muted)"
+                width={MARGINS.left - 24}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={12}
+                fontWeight={500}
+                fill="var(--color-text-secondary)"
                 textAnchor="start"
                 verticalAnchor="middle"
               >
-                {point.dimension.toUpperCase()}
+                {point.dimension}
               </Text>
             ))}
 
@@ -305,15 +307,14 @@ export function BenchmarkComparisonBars({
               {/* Neutral axis caption — no "better" / "stronger" framing. */}
               <Text
                 x={innerWidth / 2}
-                y={34}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.6}
+                y={36}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={11}
                 fill="var(--color-text-muted)"
                 textAnchor="middle"
                 verticalAnchor="middle"
               >
-                {"SCORE · 0–100"}
+                {"Score · 0–100"}
               </Text>
             </Group>
           </>

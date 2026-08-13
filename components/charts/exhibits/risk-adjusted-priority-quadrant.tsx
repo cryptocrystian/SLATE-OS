@@ -10,9 +10,7 @@ import {
 } from "@/components/charts/primitives/chart-axis";
 import { ChartGrid } from "@/components/charts/primitives/chart-grid";
 import {
-  CHART_DATA_LABEL,
   CHART_FONT_MONO,
-  CHART_FONT_SANS,
   CHART_QUADRANT_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -59,6 +57,8 @@ export interface RiskAdjustedPriorityQuadrantProps {
   points: RiskAdjustedQuadrantPoint[];
   /** Required source attribution. The canon mandates one on every exhibit. */
   sourceNote: SourceNote;
+  /** Bare mode: chart + legend only, for deliverable embedding. */
+  bare?: boolean;
   /** Optional consultant takeaway. Defaults to a derived one-line summary. */
   takeaway?: string;
 }
@@ -110,29 +110,6 @@ function quadrantOf(p: RiskAdjustedQuadrantPoint): Quadrant {
   return "defer-avoid";
 }
 
-/**
- * Pick the highest-impact point in each quadrant. Up to 4 ids labeled,
- * ensuring readable callouts without label clutter when 8+ points exist.
- */
-function topByQuadrantIds(points: RiskAdjustedQuadrantPoint[]): Set<string> {
-  const best: Record<Quadrant, RiskAdjustedQuadrantPoint | null> = {
-    "quick-win": null,
-    "strategic-build": null,
-    "low-priority": null,
-    "defer-avoid": null,
-  };
-  for (const p of points) {
-    const q = quadrantOf(p);
-    const cur = best[q];
-    if (!cur || cur.impact < p.impact) best[q] = p;
-  }
-  return new Set(
-    Object.values(best)
-      .filter((p): p is RiskAdjustedQuadrantPoint => p !== null)
-      .map((p) => p.id),
-  );
-}
-
 function deriveTakeaway(points: RiskAdjustedQuadrantPoint[]): string {
   if (points.length === 0) {
     return "No opportunities scored yet. Score opportunities to populate the analytical view.";
@@ -161,9 +138,9 @@ export function RiskAdjustedPriorityQuadrant({
   points,
   sourceNote,
   takeaway,
+  bare = false,
 }: RiskAdjustedPriorityQuadrantProps) {
   // Pure server component — no hooks. These are computed once per render.
-  const labeledIds = topByQuadrantIds(points);
   const resolvedTakeaway = takeaway ?? deriveTakeaway(points);
 
   return (
@@ -173,8 +150,9 @@ export function RiskAdjustedPriorityQuadrant({
       eyebrow="Risk-Adjusted Priority Quadrant"
       title="Opportunity portfolio · impact × complexity, risk-banded"
       takeaway={resolvedTakeaway}
-      legend={<Legend />}
+      legend={<Legend points={points} />}
       sourceNote={sourceNote}
+      bare={bare}
     >
       {(innerWidth, innerHeight) => {
         const xScale = scaleLinear<number>({
@@ -194,9 +172,45 @@ export function RiskAdjustedPriorityQuadrant({
           domain: [0, 100],
           range: [MIN_RADIUS, MAX_RADIUS],
         });
+        const midX = xScale(MIDLINE_X);
+        const midY = yScale(MIDLINE_Y);
 
         return (
           <>
+            {/* Quadrant field tints — subtle structure */}
+            <rect
+              x={0}
+              y={0}
+              width={midX}
+              height={midY}
+              fill="var(--color-status-success)"
+              fillOpacity={0.05}
+            />
+            <rect
+              x={midX}
+              y={0}
+              width={innerWidth - midX}
+              height={midY}
+              fill="var(--color-brand-primary)"
+              fillOpacity={0.05}
+            />
+            <rect
+              x={0}
+              y={midY}
+              width={midX}
+              height={innerHeight - midY}
+              fill="var(--color-text-muted)"
+              fillOpacity={0.04}
+            />
+            <rect
+              x={midX}
+              y={midY}
+              width={innerWidth - midX}
+              height={innerHeight - midY}
+              fill="var(--color-status-warning)"
+              fillOpacity={0.05}
+            />
+
             <ChartGrid
               xScale={xScale}
               yScale={yScale}
@@ -270,41 +284,46 @@ export function RiskAdjustedPriorityQuadrant({
               DEFER · AVOID
             </Text>
 
-            {/* Bubbles + labels for the highest-impact item per quadrant */}
+            {/* Numbered bubbles — keyed below to avoid label collisions */}
             <Group>
-              {points.map((p) => {
+              {points.map((p, i) => {
                 const cx = xScale(p.complexity);
                 const cy = yScale(p.impact);
                 const r = radiusScale(p.impact);
                 const fill = CHART_TONE_VAR[riskTone(p.risk)];
-                const label = labeledIds.has(p.id);
                 const band = riskBandLabel(p.risk);
-                const ariaLabel = `${p.title}. Impact ${p.impact}. Complexity ${p.complexity}. ${band} risk.`;
                 return (
                   <g key={p.id}>
-                    <title>{ariaLabel}</title>
+                    <title>{`${p.title}. Impact ${p.impact}. Complexity ${p.complexity}. ${band} risk.`}</title>
+                    <Circle
+                      cx={cx}
+                      cy={cy}
+                      r={r}
+                      fill="none"
+                      stroke="var(--color-bg-surface)"
+                      strokeWidth={3}
+                    />
                     <Circle
                       cx={cx}
                       cy={cy}
                       r={r}
                       fill={fill}
-                      fillOpacity={0.18}
+                      fillOpacity={0.16}
                       stroke={fill}
-                      strokeWidth={1}
+                      strokeWidth={1.5}
                     />
-                    {label ? (
-                      <Text
-                        x={cx}
-                        y={cy - r - 8}
-                        fontFamily={CHART_FONT_SANS}
-                        fontSize={11}
-                        fill={CHART_DATA_LABEL}
-                        textAnchor="middle"
-                        verticalAnchor="end"
-                      >
-                        {p.title}
-                      </Text>
-                    ) : null}
+                    <Text
+                      x={cx}
+                      y={cy}
+                      fontFamily={CHART_FONT_MONO}
+                      fontSize={12}
+                      fontWeight={600}
+                      fill="var(--color-text-primary)"
+                      textAnchor="middle"
+                      verticalAnchor="middle"
+                    >
+                      {i + 1}
+                    </Text>
                   </g>
                 );
               })}
@@ -330,20 +349,40 @@ export function RiskAdjustedPriorityQuadrant({
   );
 }
 
-function Legend() {
+function Legend({ points }: { points: RiskAdjustedQuadrantPoint[] }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-text-muted">
-      <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
-        Risk
-      </span>
-      <LegendSwatch tone="success" label="Low" />
-      <LegendSwatch tone="info" label="Medium" />
-      <LegendSwatch tone="warning" label="Elevated" />
-      <LegendSwatch tone="risk" label="High" />
-      <span aria-hidden className="text-text-disabled">
-        ·
-      </span>
-      <span className="text-text-muted">Bubble size · business impact</span>
+    <div className="flex flex-col gap-3">
+      <ol className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2">
+        {points.map((p, i) => (
+          <li
+            key={p.id}
+            className="flex items-baseline gap-2 text-[12px] leading-snug"
+          >
+            <span className="w-4 shrink-0 font-mono text-[11px] font-semibold tabular-nums text-text-primary">
+              {i + 1}
+            </span>
+            <span
+              aria-hidden
+              className="inline-block h-2 w-2 shrink-0 translate-y-[2px] rounded-full"
+              style={{ backgroundColor: CHART_TONE_VAR[riskTone(p.risk)] }}
+            />
+            <span className="text-text-primary">{p.title}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border-subtle pt-2.5 text-[11px] text-text-muted">
+        <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
+          Risk
+        </span>
+        <LegendSwatch tone="success" label="Low" />
+        <LegendSwatch tone="info" label="Medium" />
+        <LegendSwatch tone="warning" label="Elevated" />
+        <LegendSwatch tone="risk" label="High" />
+        <span aria-hidden className="text-text-disabled">
+          ·
+        </span>
+        <span className="text-text-muted">Bubble size · business impact</span>
+      </div>
     </div>
   );
 }

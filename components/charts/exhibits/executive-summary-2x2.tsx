@@ -10,9 +10,7 @@ import {
 } from "@/components/charts/primitives/chart-axis";
 import { ChartGrid } from "@/components/charts/primitives/chart-grid";
 import {
-  CHART_DATA_LABEL,
   CHART_FONT_MONO,
-  CHART_FONT_SANS,
   CHART_QUADRANT_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -80,6 +78,8 @@ export interface ExecutiveSummaryPortfolioProps {
    * canon-safe neutral phrasing `"business impact"`.
    */
   bubbleSizeLabel?: string;
+  /** Bare mode: render chart + legend only, for embedding in a deliverable figure. */
+  bare?: boolean;
 }
 
 // Logical SVG canvas (viewBox). Aspect ratio is preserved by ChartFrame.
@@ -107,6 +107,7 @@ export function ExecutiveSummaryTwoByTwo({
   sourceNote,
   takeaway,
   bubbleSizeLabel = DEFAULT_BUBBLE_SIZE_LABEL,
+  bare = false,
 }: ExecutiveSummaryPortfolioProps) {
   const maxImpactSignal = points.reduce(
     (m, p) => Math.max(m, p.impactSignal),
@@ -120,8 +121,15 @@ export function ExecutiveSummaryTwoByTwo({
       eyebrow="Executive Summary · 2×2"
       title="Opportunity portfolio · impact × complexity"
       takeaway={takeaway ?? DEFAULT_TAKEAWAY}
-      legend={<Legend bubbleSizeLabel={bubbleSizeLabel} />}
+      legend={
+        <Legend
+          points={points}
+          recommendedId={recommendedId}
+          bubbleSizeLabel={bubbleSizeLabel}
+        />
+      }
       sourceNote={sourceNote}
+      bare={bare}
     >
       {(innerWidth, innerHeight) => {
         if (points.length === 0) {
@@ -155,8 +163,44 @@ export function ExecutiveSummaryTwoByTwo({
           range: [MIN_RADIUS, MAX_RADIUS],
         });
 
+        const midX = xScale(QUADRANT_THRESHOLD_X);
+        const midY = yScale(QUADRANT_THRESHOLD_Y);
         return (
           <>
+            {/* Quadrant field tints — subtle structure, not color-coding */}
+            <rect
+              x={0}
+              y={0}
+              width={midX}
+              height={midY}
+              fill="var(--color-status-success)"
+              fillOpacity={0.05}
+            />
+            <rect
+              x={midX}
+              y={0}
+              width={innerWidth - midX}
+              height={midY}
+              fill="var(--color-brand-primary)"
+              fillOpacity={0.05}
+            />
+            <rect
+              x={0}
+              y={midY}
+              width={midX}
+              height={innerHeight - midY}
+              fill="var(--color-text-muted)"
+              fillOpacity={0.04}
+            />
+            <rect
+              x={midX}
+              y={midY}
+              width={innerWidth - midX}
+              height={innerHeight - midY}
+              fill="var(--color-status-warning)"
+              fillOpacity={0.05}
+            />
+
             <ChartGrid
               xScale={xScale}
               yScale={yScale}
@@ -230,9 +274,9 @@ export function ExecutiveSummaryTwoByTwo({
               DEFER · AVOID
             </Text>
 
-            {/* Bubbles + per-point labels */}
+            {/* Numbered bubbles — keyed below to avoid label collisions */}
             <Group>
-              {points.map((p) => {
+              {points.map((p, i) => {
                 const cx = xScale(p.complexity);
                 const cy = yScale(p.impact);
                 const r = radiusScale(p.impactSignal);
@@ -246,33 +290,43 @@ export function ExecutiveSummaryTwoByTwo({
                       <Circle
                         cx={cx}
                         cy={cy}
-                        r={r + 5}
+                        r={r + 6}
                         fill="none"
                         stroke="var(--color-brand-primary)"
-                        strokeOpacity={0.7}
-                        strokeWidth={1}
+                        strokeOpacity={0.85}
+                        strokeWidth={1.25}
                         strokeDasharray="2 3"
                       />
                     ) : null}
+                    {/* Surface separation ring so overlapping bubbles stay legible */}
+                    <Circle
+                      cx={cx}
+                      cy={cy}
+                      r={r}
+                      fill="none"
+                      stroke="var(--color-bg-surface)"
+                      strokeWidth={3}
+                    />
                     <Circle
                       cx={cx}
                       cy={cy}
                       r={r}
                       fill={fill}
-                      fillOpacity={isRecommended ? 0.32 : 0.18}
+                      fillOpacity={isRecommended ? 0.26 : 0.16}
                       stroke={fill}
-                      strokeWidth={isRecommended ? 1.6 : 1}
+                      strokeWidth={1.5}
                     />
                     <Text
                       x={cx}
-                      y={cy - r - 8}
-                      fontFamily={CHART_FONT_SANS}
-                      fontSize={11}
-                      fill={CHART_DATA_LABEL}
+                      y={cy}
+                      fontFamily={CHART_FONT_MONO}
+                      fontSize={12}
+                      fontWeight={600}
+                      fill="var(--color-text-primary)"
                       textAnchor="middle"
-                      verticalAnchor="end"
+                      verticalAnchor="middle"
                     >
-                      {p.title}
+                      {i + 1}
                     </Text>
                   </g>
                 );
@@ -299,29 +353,56 @@ export function ExecutiveSummaryTwoByTwo({
   );
 }
 
-function Legend({ bubbleSizeLabel }: { bubbleSizeLabel: string }) {
+function Legend({
+  points,
+  recommendedId,
+  bubbleSizeLabel,
+}: {
+  points: ExecutiveSummaryPortfolioPoint[];
+  recommendedId?: string;
+  bubbleSizeLabel: string;
+}) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-text-muted">
-      <LegendSwatch tone="success" label="Strong evidence" />
-      <LegendSwatch tone="info" label="Adequate evidence" />
-      <LegendSwatch tone="warning" label="Thin evidence" />
-      <span aria-hidden className="text-text-disabled">
-        ·
-      </span>
-      <span className="inline-flex items-center gap-1.5">
-        <span
-          aria-hidden
-          className="inline-block h-2 w-2 rounded-full border border-dashed"
-          style={{ borderColor: "var(--color-brand-primary)" }}
-        />
-        Recommended
-      </span>
-      <span aria-hidden className="text-text-disabled">
-        ·
-      </span>
-      <span className="text-text-muted">
-        Bubble size · {bubbleSizeLabel}
-      </span>
+    <div className="flex flex-col gap-3">
+      <ol className="grid grid-cols-1 gap-x-8 gap-y-1.5 sm:grid-cols-2">
+        {points.map((p, i) => {
+          const isRec = recommendedId
+            ? p.id === recommendedId
+            : p.recommended === true;
+          return (
+            <li
+              key={p.id}
+              className="flex items-baseline gap-2 text-[12px] leading-snug"
+            >
+              <span className="w-4 shrink-0 font-mono text-[11px] font-semibold tabular-nums text-text-primary">
+                {i + 1}
+              </span>
+              <span
+                aria-hidden
+                className="inline-block h-2 w-2 shrink-0 translate-y-[2px] rounded-full"
+                style={{ backgroundColor: CHART_TONE_VAR[p.evidence] }}
+              />
+              <span className="text-text-primary">
+                {p.title}
+                {isRec ? (
+                  <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-brand-primary">
+                    Recommended
+                  </span>
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border-subtle pt-2.5 text-[11px] text-text-muted">
+        <LegendSwatch tone="success" label="Strong evidence" />
+        <LegendSwatch tone="info" label="Adequate evidence" />
+        <LegendSwatch tone="warning" label="Thin evidence" />
+        <span aria-hidden className="text-text-disabled">
+          ·
+        </span>
+        <span className="text-text-muted">Bubble size · {bubbleSizeLabel}</span>
+      </div>
     </div>
   );
 }

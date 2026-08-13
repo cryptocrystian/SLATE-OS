@@ -51,6 +51,8 @@ export interface ReportSectionTargetMeta {
   title: string;
   status: string;
   exhibitSlot: string | null;
+  /** Canonical order index. Used to feed only *preceding* section summaries into the prompt. */
+  position: number;
   /** Existing reviewer note, if any. Surfaced so the model can preserve operator intent. */
   reviewerNote: string | null;
 }
@@ -74,13 +76,17 @@ export interface ReportSectionSynthesisContext {
   } | null;
   /** Target section the prompt is drafting. */
   section: ReportSectionTargetMeta;
-  /** All other sections (id + type + title + slot) for cross-reference context. */
+  /** All other sections for cross-reference context, incl. their current summary + order. */
   siblingSections: Array<{
     sectionId: string;
     sectionType: string;
     title: string;
     status: string;
     exhibitSlot: string | null;
+    /** Canonical order index — lets the prompt use only *preceding* sections. */
+    position: number;
+    /** Current persisted summary (null if not yet drafted). Feeds sequential de-duplication. */
+    summary: string | null;
   }>;
   /** Approved / report-ready findings only. */
   findings: Array<{
@@ -246,7 +252,7 @@ export async function buildReportSectionSynthesisContext(args: {
   const { data: sectionsData, error: sectionsError } = await supabase
     .from("report_sections")
     .select(
-      "id, report_id, section_type, title, status, exhibit_slot, reviewer_note, position, created_at",
+      "id, report_id, section_type, title, status, exhibit_slot, reviewer_note, summary, position, created_at",
     )
     .eq("engagement_id", engagementId)
     .order("position", { ascending: true })
@@ -268,6 +274,7 @@ export async function buildReportSectionSynthesisContext(args: {
       status: string | null;
       exhibit_slot: string | null;
       reviewer_note: string | null;
+      summary: string | null;
       position: number | null;
       created_at: string;
     }>) ?? [];
@@ -323,6 +330,7 @@ export async function buildReportSectionSynthesisContext(args: {
         title: target.title,
         status: target.status ?? "not_started",
         exhibitSlot: target.exhibit_slot,
+        position: target.position ?? 0,
         reviewerNote,
       },
       siblingSections: sectionRows
@@ -333,6 +341,8 @@ export async function buildReportSectionSynthesisContext(args: {
           title: s.title,
           status: s.status ?? "not_started",
           exhibitSlot: s.exhibit_slot,
+          position: s.position ?? 0,
+          summary: clipString(s.summary, SUMMARY_LIMIT),
         })),
       findings,
       opportunities,

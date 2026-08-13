@@ -11,6 +11,7 @@ import {
 } from "@/components/charts/primitives/chart-dependency-arrow";
 import {
   CHART_FONT_MONO,
+  CHART_FONT_SANS,
   CHART_TICK_LABEL,
   CHART_TONE_VAR,
   type ChartTone,
@@ -57,6 +58,8 @@ export interface RoadmapGanttWithDependenciesProps {
   items: RoadmapGanttItem[];
   /** Required source attribution. */
   sourceNote: SourceNote;
+  /** Bare mode: chart + legend only, for deliverable embedding. */
+  bare?: boolean;
   /** Day offset of the "Today" marker. Default 0 (left edge). */
   todayOffset?: number;
   /** Optional consultant takeaway. Defaults to a derived one-line summary. */
@@ -159,6 +162,7 @@ export function RoadmapGanttWithDependencies({
   sourceNote,
   todayOffset = 0,
   takeaway,
+  bare = false,
 }: RoadmapGanttWithDependenciesProps) {
   const resolvedTakeaway = takeaway ?? deriveTakeaway(items);
   const safeToday = clampStartOffset(todayOffset);
@@ -172,6 +176,7 @@ export function RoadmapGanttWithDependencies({
       takeaway={resolvedTakeaway}
       legend={<Legend />}
       sourceNote={sourceNote}
+      bare={bare}
       margins={MARGINS}
     >
       {(innerWidth, innerHeight) => {
@@ -294,14 +299,14 @@ export function RoadmapGanttWithDependencies({
                 key={`row-${item.id}`}
                 x={-(MARGINS.left - 12)}
                 y={ri * rowHeight + rowHeight / 2}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.2}
-                fill="var(--color-text-muted)"
+                width={MARGINS.left - 28}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={12}
+                fill="var(--color-text-secondary)"
                 textAnchor="start"
                 verticalAnchor="middle"
               >
-                {item.title.toUpperCase()}
+                {item.title}
               </Text>
             ))}
 
@@ -428,14 +433,15 @@ function PhaseHeader({
     <Text
       x={x}
       y={y}
-      fontFamily={CHART_FONT_MONO}
+      fontFamily={CHART_FONT_SANS}
       fontSize={11}
-      letterSpacing={1.6}
-      fill="var(--color-text-muted)"
+      fontWeight={600}
+      letterSpacing={0.6}
+      fill="var(--color-text-secondary)"
       textAnchor="middle"
       verticalAnchor="middle"
     >
-      {label.toUpperCase()}
+      {label}
     </Text>
   );
 }

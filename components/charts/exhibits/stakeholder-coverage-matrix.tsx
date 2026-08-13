@@ -4,7 +4,7 @@ import { Text } from "@visx/text";
 import { ChartFrame } from "@/components/charts/primitives/chart-frame";
 import { ChartHeatmapCell } from "@/components/charts/primitives/chart-heatmap-cell";
 import {
-  CHART_FONT_MONO,
+  CHART_FONT_SANS,
   CHART_TONE_VAR,
   type ChartTone,
   type SourceNote,
@@ -54,6 +54,8 @@ export interface StakeholderCoverageMatrixProps {
   topics: string[];
   /** Required source attribution. */
   sourceNote: SourceNote;
+  /** Bare mode: chart + legend only, for deliverable embedding. */
+  bare?: boolean;
   /** Optional consultant takeaway. Defaults to a derived one-line summary. */
   takeaway?: string;
 }
@@ -112,6 +114,7 @@ export function StakeholderCoverageMatrix({
   topics,
   sourceNote,
   takeaway,
+  bare = false,
 }: StakeholderCoverageMatrixProps) {
   const resolvedTakeaway = takeaway ?? deriveTakeaway(cells);
 
@@ -128,6 +131,7 @@ export function StakeholderCoverageMatrix({
       takeaway={resolvedTakeaway}
       legend={<Legend />}
       sourceNote={sourceNote}
+      bare={bare}
       margins={MATRIX_MARGINS}
     >
       {(innerWidth, innerHeight) => {
@@ -142,14 +146,15 @@ export function StakeholderCoverageMatrix({
                 key={`col-${ci}`}
                 x={ci * cellWidth + cellWidth / 2}
                 y={-14}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.4}
-                fill="var(--color-text-muted)"
+                width={cellWidth - 8}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={11}
+                fontWeight={500}
+                fill="var(--color-text-secondary)"
                 textAnchor="middle"
                 verticalAnchor="end"
               >
-                {topic.toUpperCase()}
+                {topic}
               </Text>
             ))}
 
@@ -159,14 +164,15 @@ export function StakeholderCoverageMatrix({
                 key={`row-${ri}`}
                 x={-14}
                 y={ri * cellHeight + cellHeight / 2}
-                fontFamily={CHART_FONT_MONO}
-                fontSize={10}
-                letterSpacing={1.4}
-                fill="var(--color-text-muted)"
+                width={MATRIX_MARGINS.left - 24}
+                fontFamily={CHART_FONT_SANS}
+                fontSize={11}
+                fontWeight={500}
+                fill="var(--color-text-secondary)"
                 textAnchor="end"
                 verticalAnchor="middle"
               >
-                {role.toUpperCase()}
+                {role}
               </Text>
             ))}
 

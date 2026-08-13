@@ -55,12 +55,15 @@ import type { ReportSection, ReportSectionType } from "./types";
 // Types
 // ---------------------------------------------------------------------------
 
+// Required sections for proposal drafting. `recommended-next-step` was
+// folded into `priority-recommendations` in the section consolidation (see
+// SECTION_ORDER in ./helpers.ts), so the immediate-next-action requirement
+// is now carried by that section rather than a standalone one.
 export const PROPOSAL_REQUIRED_SECTIONS: ReadonlyArray<ReportSectionType> = [
   "executive-summary",
   "opportunity-portfolio",
   "priority-recommendations",
   "roadmap",
-  "recommended-next-step",
 ];
 
 export interface ProposalReadinessSignal {

@@ -22,6 +22,12 @@ export interface ChartFrameProps {
   /** Required source attribution. */
   sourceNote: SourceNote;
   /**
+   * Bare mode: render only the legend + SVG (no Card, no eyebrow/title/
+   * takeaway header, no source-note footer). Used inside client deliverables
+   * where the surrounding figure frame owns the caption, number, and source.
+   */
+  bare?: boolean;
+  /**
    * Render-prop receives the inner plot dimensions (post-margin). Children
    * draw inside an SVG `<g>` translated to the top-left of the inner area.
    */
@@ -47,10 +53,34 @@ export function ChartFrame({
   margins = DEFAULT_CHART_MARGINS,
   legend,
   sourceNote,
+  bare = false,
   children,
 }: ChartFrameProps) {
   const innerWidth = Math.max(0, width - margins.left - margins.right);
   const innerHeight = Math.max(0, height - margins.top - margins.bottom);
+
+  const plot = (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={title}
+      className="block h-auto w-full"
+    >
+      <g transform={`translate(${margins.left},${margins.top})`}>
+        {children(innerWidth, innerHeight)}
+      </g>
+    </svg>
+  );
+
+  if (bare) {
+    return (
+      <div className="flex flex-col gap-4">
+        {legend ? <div>{legend}</div> : null}
+        {plot}
+      </div>
+    );
+  }
 
   return (
     <Card variant="base">
@@ -71,17 +101,7 @@ export function ChartFrame({
 
         {legend ? <div className="-mt-1">{legend}</div> : null}
 
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          preserveAspectRatio="xMidYMid meet"
-          role="img"
-          aria-label={title}
-          className="block h-auto w-full"
-        >
-          <g transform={`translate(${margins.left},${margins.top})`}>
-            {children(innerWidth, innerHeight)}
-          </g>
-        </svg>
+        {plot}
 
         <ChartSourceNote note={sourceNote} />
       </CardBody>
