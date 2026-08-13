@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody } from "@/components/ui/card";
 import { ProposalCandidateDocument } from "@/components/proposals/proposal-candidate-document";
+import { ClientProposalDeliverable } from "@/components/proposals/client-proposal-deliverable";
 import { ViewerModeToggle } from "@/components/reports/viewer-mode-toggle";
 import { viewerModeFromSearchParam } from "@/components/reports/viewer-mode";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
@@ -119,11 +120,15 @@ export default async function ProposalCandidatePage({
     <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
       <PageChrome proposalHref={proposalHref} />
 
-      <ProposalCandidateDocument
-        engagement={engagement}
-        snapshot={snapshot}
-        viewerMode={viewerMode}
-      />
+      {viewerMode === "client-facing" ? (
+        <ClientProposalDeliverable engagement={engagement} snapshot={snapshot} />
+      ) : (
+        <ProposalCandidateDocument
+          engagement={engagement}
+          snapshot={snapshot}
+          viewerMode={viewerMode}
+        />
+      )}
     </div>
   );
 }

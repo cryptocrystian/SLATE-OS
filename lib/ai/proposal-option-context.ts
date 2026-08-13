@@ -71,6 +71,8 @@ export interface ProposalSiblingOption {
   title: string;
   recommended: boolean;
   position: number;
+  /** Current scope summary (null if not yet drafted). Feeds sequential de-duplication so each option differentiates against the others. */
+  scopeSummary: string | null;
 }
 
 export interface ProposalOptionSynthesisContext {
@@ -416,6 +418,7 @@ export async function buildProposalOptionSynthesisContext(args: {
           title: o.title,
           recommended: Boolean(o.recommended),
           position: o.position ?? 0,
+          scopeSummary: clipString(o.scope_summary, SUMMARY_LIMIT),
         })),
       findings,
       opportunities,
