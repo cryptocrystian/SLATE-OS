@@ -60,6 +60,10 @@ export type ActivityEventType =
   | "proposal_share_token_revoked"
   | "proposal_share_token_accessed"
   | "proposal_share_token_expired"
+  | "sow_share_token_created"
+  | "sow_share_token_revoked"
+  | "sow_share_token_accessed"
+  | "sow_share_token_expired"
   | "sow_draft_generated"
   | "sow_draft_failed"
   | "sow_draft_voided"
@@ -105,6 +109,7 @@ export type ActivityEntityType =
   | "report_share_token"
   | "proposal_delivery_snapshot"
   | "proposal_share_token"
+  | "sow_share_token"
   // Sprint I2 — Offline intake document entity (docs/37 § 3.3).
   | "engagement_intake_document"
   // Sprint S3-B — Account entity (docs/42 § 9.1). Used by the

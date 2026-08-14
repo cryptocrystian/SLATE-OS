@@ -70,7 +70,7 @@
 // Public types
 // ---------------------------------------------------------------------------
 
-export type PreDeliverySurface = "report" | "proposal";
+export type PreDeliverySurface = "report" | "proposal" | "sow";
 
 export type PreDeliverySeverity = "pass" | "warning" | "block";
 
@@ -426,14 +426,20 @@ export function evaluatePreDeliveryAudit(
     }
   }
 
-  if (input.surface === "proposal") {
+  // The SOW surface shares the proposal-side snapshot readiness gate: a
+  // shareable SOW derives from an approved Proposal Candidate whose
+  // commercial guard passed (docs/28 § 5 criterion 4 + docs/65). The
+  // SOW Draft's OWN approval + guard + source-approval are enforced by
+  // the mint action's `evaluateSowShareEligibility` re-check; this audit
+  // is the broader engagement-readiness gate.
+  if (input.surface === "proposal" || input.surface === "sow") {
     // C12 — Proposal Candidate fresh + approved (snapshot-side)
     if (!input.counts.hasApprovedProposalSnapshot) {
       blockingReasons.push({
         code: "proposal_snapshot_not_approved",
         severity: "block",
         message:
-          "Proposal Candidate: no approved, non-voided proposal delivery snapshot exists. Generate and Approve a candidate before minting a /p link.",
+          "Proposal Candidate: no approved, non-voided proposal delivery snapshot exists. Generate and Approve a candidate before minting.",
       });
     }
 

@@ -258,12 +258,20 @@ export async function generateSowDraftCandidateAction(args: {
 
   const sowSourceContext: ProposalSourceContextSnapshot & {
     sowDraft: SowDraftFields;
+    // Sprint P7-B (`docs/28` § 8) — the source Proposal Candidate
+    // snapshot id, captured so a future SOW share token can (a) verify
+    // the source is still approved at mint (`docs/28` § 5 criterion 4)
+    // and (b) be cascade-revoked when the source proposal is voided.
+    // Stored in the raw jsonb; read directly (not via the typed mapper,
+    // which drops unknown keys).
+    sowSourceProposalSnapshotId: string;
   } = {
     implementationCredit: { ...source.sourceContextSnapshot.implementationCredit },
     reportSnapshotId: source.sourceContextSnapshot.reportSnapshotId,
     linkedOpportunityIds: [...source.sourceContextSnapshot.linkedOpportunityIds],
     linkedRoadmapItemIds: [...source.sourceContextSnapshot.linkedRoadmapItemIds],
     sowDraft,
+    sowSourceProposalSnapshotId: source.id,
   };
 
   // Run the SOW commercial guard BEFORE the eligibility evaluator.

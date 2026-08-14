@@ -358,7 +358,11 @@ async function loadActiveShareTokensOnSurface(
   // a blocker because that's what the docs/35 § 5 row 14 wording
   // tracks.
   const table =
-    surface === "report" ? "report_share_tokens" : "proposal_share_tokens";
+    surface === "report"
+      ? "report_share_tokens"
+      : surface === "sow"
+        ? "sow_share_tokens"
+        : "proposal_share_tokens";
   const nowIso = new Date().toISOString();
   const { count } = await supabase
     .from(table)

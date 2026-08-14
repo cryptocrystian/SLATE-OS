@@ -15,6 +15,10 @@ import { isUuid } from "./mappers";
 import { getProposalForEngagementPersisted } from "./queries";
 import { cascadeRevokeActiveProposalShareTokensForSnapshot } from "./share-token-actions";
 import {
+  cascadeRevokeActiveSowShareTokensForSnapshot,
+  cascadeRevokeActiveSowShareTokensForSourceProposal,
+} from "./sow-share-actions";
+import {
   PROPOSAL_GROUP_B_OMISSION_ENTRY,
   type ProposalOptionSnapshot,
   type ProposalSourceContextSnapshot,
@@ -539,6 +543,26 @@ export async function voidProposalDeliverySnapshotAction(args: {
   // timeline needs the matching event type to render the SOW-shaped
   // label (`SOW Draft voided`) instead of the proposal-shaped label.
   const isSowDraft = row.delivery_surface === "sow_draft_candidate";
+
+  // Sprint P7-B (docs/28 § 8) — SOW share-token cascades. Voiding a SOW
+  // Draft snapshot revokes SOW tokens pointing at it; voiding a source
+  // Proposal Candidate revokes SOW tokens derived from it (without this,
+  // a voided proposal would leave descendant SOW tokens active — a
+  // coherency bug). Best-effort; never aborts the void.
+  const sowCascade = isSowDraft
+    ? await cascadeRevokeActiveSowShareTokensForSnapshot({
+        snapshotId,
+        engagementId: row.engagement_id,
+        proposalId: row.proposal_id,
+        reason: "sow_snapshot_voided",
+      })
+    : await cascadeRevokeActiveSowShareTokensForSourceProposal({
+        sourceProposalSnapshotId: snapshotId,
+        engagementId: row.engagement_id,
+        proposalId: row.proposal_id,
+        reason: "source_proposal_voided",
+      });
+
   await logActivityEvent({
     eventType: isSowDraft ? "sow_draft_voided" : "proposal_snapshot_voided",
     entityType: "proposal_delivery_snapshot",
@@ -557,6 +581,8 @@ export async function voidProposalDeliverySnapshotAction(args: {
       // the token id; this metadata is the rollup on the void event.
       cascadedRevokedTokenCount: cascade.revokedTokenIds.length,
       cascadedFailedTokenCount: cascade.failedTokenIds.length,
+      cascadedSowRevokedTokenCount: sowCascade.revokedTokenIds.length,
+      cascadedSowFailedTokenCount: sowCascade.failedTokenIds.length,
     },
   });
 
