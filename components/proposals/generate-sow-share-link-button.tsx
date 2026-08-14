@@ -1,0 +1,435 @@
+"use client";
+
+import * as React from "react";
+import { Copy, Eye, EyeOff, Link2, ShieldAlert } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
+import {
+  generateSowShareLinkAction,
+  type GenerateSowShareLinkResult,
+} from "@/lib/proposals/sow-share-actions";
+import type { SowShareEligibilityReason } from "@/lib/proposals/sow-share-types";
+import { PRE_DELIVERY_REASON_DISPLAY } from "@/lib/engagement-readiness/pre-delivery-audit";
+
+/**
+ * Sprint P7-B — operator-only Generate SOW Share Link button.
+ *
+ * The SOW lane carries the highest legal weight, so it differs from the
+ * proposal button in two canon-required ways (`docs/28` § 5 + § 7):
+ *   - Audience label is MANDATORY. The Generate button is disabled until
+ *     a non-empty audience is entered; the field is prominent, not
+ *     collapsed.
+ *   - An EXTRA confirm dialog stands between "Generate" and the mint —
+ *     the operator must acknowledge that this creates a public link the
+ *     recipient can view until revoked.
+ *
+ * The raw token / URL path is shown exactly once (copy-once panel) and
+ * never persisted, never logged, never sent by SLATE (Option A) — the
+ * operator copies `/s/<token>` and hand-delivers it.
+ */
+
+export interface GenerateSowShareLinkButtonProps {
+  snapshotId: string;
+  /** Empty array ⇔ eligible. */
+  ineligibilityReasons: SowShareEligibilityReason[];
+}
+
+export function GenerateSowShareLinkButton({
+  snapshotId,
+  ineligibilityReasons,
+}: GenerateSowShareLinkButtonProps) {
+  const [pending, startTransition] = React.useTransition();
+  const [result, setResult] =
+    React.useState<GenerateSowShareLinkResult | null>(null);
+  const [reveal, setReveal] = React.useState(false);
+  const [audienceLabel, setAudienceLabel] = React.useState("");
+  const [recipientEmail, setRecipientEmail] = React.useState("");
+  const [confirming, setConfirming] = React.useState(false);
+  const { toast } = useToast();
+
+  if (ineligibilityReasons.length > 0) {
+    return <IneligibleNotice reasons={ineligibilityReasons} />;
+  }
+
+  const audienceFilled = audienceLabel.trim().length > 0;
+
+  function onConfirmMint() {
+    setResult(null);
+    setReveal(true);
+    setConfirming(false);
+    const trimmedAudience = audienceLabel.trim();
+    const trimmedEmail = recipientEmail.trim();
+    startTransition(async () => {
+      try {
+        const r = await generateSowShareLinkAction({
+          snapshotId,
+          audienceLabel: trimmedAudience,
+          recipientEmail: trimmedEmail.length > 0 ? trimmedEmail : undefined,
+        });
+        setResult(r);
+        toast(
+          r.ok
+            ? {
+                title: "SOW share link created",
+                description: "Copy it and deliver through your own channel.",
+                variant: "success",
+              }
+            : {
+                title: "Couldn’t create link",
+                description: "See the details below.",
+                variant: "error",
+              },
+        );
+      } catch {
+        setResult({ ok: false, error: "service-error" });
+        toast({
+          title: "Couldn’t create link",
+          description: "Something went wrong. Please try again.",
+          variant: "error",
+        });
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <MintFields
+        disabled={pending || confirming}
+        audienceLabel={audienceLabel}
+        onAudienceLabelChange={setAudienceLabel}
+        recipientEmail={recipientEmail}
+        onRecipientEmailChange={setRecipientEmail}
+      />
+
+      {confirming ? (
+        <ConfirmPanel
+          audienceLabel={audienceLabel.trim()}
+          pending={pending}
+          onConfirm={onConfirmMint}
+          onCancel={() => setConfirming(false)}
+        />
+      ) : (
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          leadingIcon={<Link2 className="h-3.5 w-3.5" />}
+          disabled={pending || !audienceFilled}
+          onClick={() => setConfirming(true)}
+        >
+          Generate SOW Share Link
+        </Button>
+      )}
+      {!audienceFilled && !confirming ? (
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          Audience label required before sharing a SOW
+        </span>
+      ) : null}
+
+      {result?.ok ? (
+        <CopyOncePanel
+          shareUrlPath={result.shareUrlPath}
+          expiresAt={result.expiresAt}
+          reveal={reveal}
+          onToggleReveal={() => setReveal((p) => !p)}
+        />
+      ) : null}
+
+      {result && !result.ok ? <FailureNotice result={result} /> : null}
+    </div>
+  );
+}
+
+/**
+ * Mandatory audience label (docs/28 § 7) + optional hashed recipient
+ * email. Unlike the proposal button, the audience field is prominent and
+ * required — a SOW link in the wild without an audience is
+ * indistinguishable from a leak.
+ */
+function MintFields({
+  disabled,
+  audienceLabel,
+  onAudienceLabelChange,
+  recipientEmail,
+  onRecipientEmailChange,
+}: {
+  disabled: boolean;
+  audienceLabel: string;
+  onAudienceLabelChange: (v: string) => void;
+  recipientEmail: string;
+  onRecipientEmailChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex w-full max-w-md flex-col gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 px-3 py-2 text-[11px] text-text-secondary">
+      <label className="flex flex-col gap-1">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          Audience label <span className="text-status-warning">· required</span>
+        </span>
+        <input
+          type="text"
+          value={audienceLabel}
+          onChange={(e) => onAudienceLabelChange(e.target.value.slice(0, 80))}
+          disabled={disabled}
+          maxLength={80}
+          placeholder="Procurement · COO · Legal review"
+          className="rounded border border-border-subtle bg-bg-surface px-2 py-1 text-[11px] text-text-primary placeholder:text-text-disabled"
+        />
+        <span className="text-[10px] leading-relaxed text-text-muted">
+          Operator-visible only — never rendered on the client link. The
+          audit log must always answer &ldquo;who was this SOW shown
+          to?&rdquo;
+        </span>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-text-muted">
+          Recipient email (optional · hashed at rest)
+        </span>
+        <input
+          type="email"
+          value={recipientEmail}
+          onChange={(e) => onRecipientEmailChange(e.target.value.slice(0, 254))}
+          disabled={disabled}
+          maxLength={254}
+          placeholder="reviewer@client.example"
+          className="rounded border border-border-subtle bg-bg-surface px-2 py-1 text-[11px] text-text-primary placeholder:text-text-disabled"
+        />
+      </label>
+    </div>
+  );
+}
+
+function ConfirmPanel({
+  audienceLabel,
+  pending,
+  onConfirm,
+  onCancel,
+}: {
+  audienceLabel: string;
+  pending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-[11px] leading-relaxed text-status-warning">
+      <span className="uppercase tracking-[0.16em]">Confirm SOW share</span>
+      <p className="text-text-secondary">
+        This creates a public link to the SOW Draft for{" "}
+        <span className="font-medium text-text-primary">{audienceLabel}</span>.
+        The recipient can view the document until you revoke the link.
+        SLATE does not send it — you copy the link and deliver it through
+        your own channel. The document stays a draft; there is no
+        signature or execution step on the page. Continue?
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={pending}
+          onClick={onConfirm}
+        >
+          {pending ? "Creating…" : "Create SOW share link"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={pending}
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function IneligibleNotice({ reasons }: { reasons: SowShareEligibilityReason[] }) {
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      <Badge tone="neutral" variant="outline">
+        SOW share disabled
+      </Badge>
+      <ul className="flex max-w-md flex-col gap-1 text-[11px] leading-relaxed text-text-muted">
+        {reasons.slice(0, 4).map((r) => (
+          <li key={r.code} className="flex items-start gap-2">
+            <span
+              aria-hidden
+              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-text-muted"
+            />
+            <span>{r.operatorFacingNote}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function CopyOncePanel({
+  shareUrlPath,
+  expiresAt,
+  reveal,
+  onToggleReveal,
+}: {
+  shareUrlPath: string;
+  expiresAt: string;
+  reveal: boolean;
+  onToggleReveal: () => void;
+}) {
+  const [copied, setCopied] = React.useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(shareUrlPath);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2400);
+    } catch {
+      // fall through silently
+    }
+  }
+
+  return (
+    <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-success/40 bg-status-success/10 p-3 text-[11px] leading-relaxed text-status-success">
+      <span className="uppercase tracking-[0.16em]">
+        SOW share link generated — copy now
+      </span>
+      <p className="text-text-secondary">
+        This URL path is displayed exactly once. SLATE stores only its
+        SHA-256 hash; once you close this panel, the raw token cannot be
+        recovered. Hand it to the recipient out of band (no email, Slack,
+        or CRM send from SLATE). Expires{" "}
+        <span className="font-mono">{formatTimestamp(expiresAt)}</span>.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <code
+          className="select-all break-all rounded border border-border-subtle bg-bg-surface px-2 py-1 font-mono text-[11px] text-text-primary"
+          aria-label="SOW share URL path"
+        >
+          {reveal
+            ? shareUrlPath
+            : "•".repeat(Math.min(shareUrlPath.length, 48))}
+        </code>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          leadingIcon={<Copy className="h-3.5 w-3.5" />}
+          onClick={onCopy}
+        >
+          {copied ? "Copied" : "Copy URL"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          leadingIcon={
+            reveal ? (
+              <EyeOff className="h-3.5 w-3.5" />
+            ) : (
+              <Eye className="h-3.5 w-3.5" />
+            )
+          }
+          onClick={onToggleReveal}
+        >
+          {reveal ? "Hide" : "Reveal"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function FailureNotice({
+  result,
+}: {
+  result: Exclude<GenerateSowShareLinkResult, { ok: true }>;
+}) {
+  return (
+    <div className="flex max-w-md flex-col gap-2 rounded-md border border-status-risk/40 bg-status-risk/10 p-3 text-[11px] leading-relaxed text-status-risk">
+      <div className="flex items-center gap-2">
+        <ShieldAlert aria-hidden className="h-3.5 w-3.5" />
+        <span className="uppercase tracking-[0.16em]">
+          {translateError(result.error)}
+        </span>
+      </div>
+      {result.error === "snapshot-not-eligible" &&
+      result.ineligibilityReasons ? (
+        <ul className="flex flex-col gap-1 text-text-secondary">
+          {result.ineligibilityReasons.slice(0, 6).map((r, i) => (
+            <li key={`${r.code}-${i}`} className="flex items-start gap-2">
+              <span
+                aria-hidden
+                className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-status-risk"
+              />
+              <span>
+                <code className="font-mono text-[10px]">{r.code}</code> ·{" "}
+                <span className="text-text-muted">{r.note}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {result.error === "pre-delivery-audit-blocked" &&
+      result.preDeliveryAuditReasons ? (
+        <ul className="flex flex-col gap-1 text-text-secondary">
+          {result.preDeliveryAuditReasons.slice(0, 6).map((r, i) => {
+            const display = PRE_DELIVERY_REASON_DISPLAY[r.code];
+            return (
+              <li key={`${r.code}-${i}`} className="flex items-start gap-2">
+                <span
+                  aria-hidden
+                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-status-risk"
+                />
+                <span>
+                  <code className="font-mono text-[10px]">
+                    {display?.shortLabel ?? r.code}
+                  </code>{" "}
+                  · <span className="text-text-muted">{r.message}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function translateError(
+  code: Exclude<GenerateSowShareLinkResult, { ok: true }>["error"],
+): string {
+  switch (code) {
+    case "unauthenticated":
+      return "Session expired";
+    case "invalid-snapshot":
+      return "Invalid snapshot";
+    case "snapshot-not-found":
+      return "Snapshot not found";
+    case "audience-label-required":
+      return "Audience label is required";
+    case "snapshot-not-eligible":
+      return "SOW Draft is not share-eligible";
+    case "pre-delivery-audit-blocked":
+      return "Pre-delivery audit blocked mint";
+    case "invalid-expiry":
+      return "Requested expiry outside policy";
+    case "service-error":
+    default:
+      return "Generation failed";
+  }
+}
+
+function formatTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}

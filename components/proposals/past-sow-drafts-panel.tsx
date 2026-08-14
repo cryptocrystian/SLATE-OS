@@ -21,6 +21,12 @@ import type {
 import { GenerateSowDraftButton } from "./generate-sow-draft-button";
 import { VoidSowDraftButton } from "./void-sow-draft-button";
 import { ApproveSowDraftButton } from "./approve-sow-draft-button";
+import { GenerateSowShareLinkButton } from "./generate-sow-share-link-button";
+import { RevokeSowShareLinkButton } from "./revoke-sow-share-link-button";
+import { getSowShareTokensForSnapshot } from "@/lib/proposals/sow-share-queries";
+import { evaluateSowShareEligibility } from "@/lib/proposals/sow-share-eligibility";
+import type { SowShareToken } from "@/lib/proposals/sow-share-types";
+import type { SowShareEligibilityReason } from "@/lib/proposals/sow-share-types";
 
 /**
  * Phase 1B SOW Draft Sprint P6-C — operator-only Past SOW Drafts
@@ -115,6 +121,15 @@ export async function PastSowDraftsPanel({
     (s) => s.deliverySurface === "sow_draft_candidate",
   );
 
+  // Sprint P7-B — active + historical SOW share tokens per snapshot, and
+  // a best-effort share-eligibility hint. The precise source-proposal
+  // approval check runs authoritatively in the mint action; here we use
+  // "an approved Proposal Candidate exists" as the UI proxy.
+  const shareTokensBySnapshot = await Promise.all(
+    sowSnapshots.map((s) => getSowShareTokensForSnapshot(s.id)),
+  );
+  const sourceProposalApproved = Boolean(latestApprovedProposalCandidate);
+
   return (
     <Card variant="base" id="past-sow-drafts-panel">
       <CardBody className="flex flex-col gap-4 p-5 sm:p-6">
@@ -129,13 +144,16 @@ export async function PastSowDraftsPanel({
               </span>
             </div>
             <p className="max-w-prose text-[11px] leading-relaxed text-text-muted">
-              Operator-only history of SOW Draft snapshots derived from
-              approved Proposal Candidates. SLATE does not send these
-              artifacts to clients and there is no public SOW share
-              route in Sprint P6. Voided snapshots remain visible (not
-              deleted) so the audit trail is preserved. Pricing and
-              legal terms are intentionally omitted from every draft
-              until a commercial approval workflow advances.
+              History of SOW Draft snapshots derived from approved
+              Proposal Candidates. Approve a SOW Draft, then generate a
+              client SOW share link (<code className="font-mono">/s/[token]</code>)
+              — SLATE never sends it; you copy the link and hand-deliver
+              it (docs/29 Option A). A shared SOW stays a draft (DRAFT
+              watermark + &ldquo;not authorisation to begin work&rdquo;);
+              there is no signature or execution step. Voided snapshots
+              remain visible so the audit trail is preserved; pricing and
+              legal terms stay omitted until a commercial approval
+              workflow advances.
             </p>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -166,7 +184,7 @@ export async function PastSowDraftsPanel({
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
-            {sowSnapshots.map((s) => (
+            {sowSnapshots.map((s, i) => (
               <li key={s.id}>
                 <SnapshotRow
                   engagementId={engagementId}
@@ -188,6 +206,14 @@ export async function PastSowDraftsPanel({
                   selectedOptionIdCount={s.selectedOptionIds.length}
                   voidedAt={s.voidedAt}
                   voidReason={s.voidReason}
+                  shareTokens={shareTokensBySnapshot[i] ?? []}
+                  shareIneligibilityReasons={
+                    s.status === "voided"
+                      ? []
+                      : evaluateSowShareEligibility(s, {
+                          sourceProposalApproved,
+                        }).reasons
+                  }
                 />
               </li>
             ))}
@@ -214,6 +240,8 @@ interface SnapshotRowProps {
   selectedOptionIdCount: number;
   voidReason: string | null;
   voidedAt: string | null;
+  shareTokens: SowShareToken[];
+  shareIneligibilityReasons: SowShareEligibilityReason[];
 }
 
 function SnapshotRow(props: SnapshotRowProps) {
@@ -331,7 +359,66 @@ function SnapshotRow(props: SnapshotRowProps) {
           <VoidSowDraftButton snapshotId={props.snapshotId} />
         ) : null}
       </div>
+
+      {!isVoided ? (
+        <div className="flex flex-col gap-2 border-t border-border-subtle pt-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+            Client SOW share link · /s/[token]
+          </span>
+          <GenerateSowShareLinkButton
+            snapshotId={props.snapshotId}
+            ineligibilityReasons={props.shareIneligibilityReasons}
+          />
+          {props.shareTokens.length > 0 ? (
+            <ul className="flex flex-col gap-1.5">
+              {props.shareTokens.map((t) => (
+                <ShareTokenRow key={t.id} token={t} />
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+function ShareTokenRow({ token }: { token: SowShareToken }) {
+  const isActive = token.status === "active";
+  const tone: BadgeTone =
+    token.status === "active"
+      ? "success"
+      : token.status === "revoked"
+        ? "neutral"
+        : "warning";
+  return (
+    <li className="flex flex-wrap items-center gap-2 rounded-md border border-border-subtle bg-bg-surface/40 p-2 text-[11px] text-text-secondary">
+      <Badge tone={tone} variant="outline">
+        {token.status}
+      </Badge>
+      {token.audienceLabel ? (
+        <span>
+          <span className="uppercase tracking-[0.12em] text-text-muted">
+            Audience
+          </span>{" "}
+          {token.audienceLabel}
+        </span>
+      ) : null}
+      <span>
+        <span className="uppercase tracking-[0.12em] text-text-muted">
+          Expires
+        </span>{" "}
+        {formatTimestamp(token.expiresAt)}
+      </span>
+      {token.accessCount > 0 ? (
+        <span>
+          <span className="uppercase tracking-[0.12em] text-text-muted">
+            Accessed
+          </span>{" "}
+          {token.accessCount}×
+        </span>
+      ) : null}
+      {isActive ? <RevokeSowShareLinkButton tokenId={token.id} /> : null}
+    </li>
   );
 }
 
