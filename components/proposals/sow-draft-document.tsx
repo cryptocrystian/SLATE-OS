@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
-import type { Engagement } from "@/lib/engagements/types";
 import type {
   ProposalCommercialGuardResult,
   ProposalDeliverySnapshot,
@@ -56,8 +55,25 @@ const SERIF = "[font-family:var(--font-deliverable-serif)]";
  */
 
 export interface SowDraftDocumentProps {
-  engagement: Engagement;
+  /** Client / company display name (e.g. `engagement.companyName`). */
+  companyName: string;
+  /** Engagement type label (e.g. `engagement.engagementType`). */
+  engagementType: string;
   snapshot: ProposalDeliverySnapshot;
+  /**
+   * "operator" (default) renders the operator-internal draft at
+   * `/app/.../proposal/sow/[snapshotId]` with the "NOT SENT BY SLATE"
+   * banners + operator metadata.
+   *
+   * "public" renders the client-facing `/s/[token]` surface (Sprint
+   * P7-B): the operator-only banners + operator metadata are stripped,
+   * the canon-required public disclaimer (`docs/28` § 4) is added at the
+   * top with "not authorisation to begin work", the safety strip shows
+   * an affirmative-only line, and the DRAFT watermark + legal-boundary
+   * notice + mandatory footer stay. It remains a draft — never an
+   * executed contract.
+   */
+  mode?: "operator" | "public";
 }
 
 /**
@@ -78,9 +94,12 @@ function readSowDraftFromSnapshot(
 }
 
 export function SowDraftDocument({
-  engagement,
+  companyName,
+  engagementType,
   snapshot,
+  mode = "operator",
 }: SowDraftDocumentProps) {
+  const isPublic = mode === "public";
   const includedOptions = snapshot.optionSnapshot.filter(
     (o) => o.includedInArtifact,
   );
@@ -93,11 +112,18 @@ export function SowDraftDocument({
       data-deliverable-export="sow-draft"
       className={`${deliverableSerif.variable} mx-auto flex w-full max-w-[52rem] flex-col gap-8 text-text-primary print:max-w-none print:gap-6`}
     >
-      <OperatorSowHint />
+      {isPublic ? <PublicSowDisclaimer /> : <OperatorSowHint />}
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}
-      <SowBanner snapshot={snapshot} isApproved={isApproved} />
-      <IdentityHeader engagement={engagement} snapshot={snapshot} />
-      <SafetyStrip guard={snapshot.commercialGuardResult} />
+      {isPublic ? null : (
+        <SowBanner snapshot={snapshot} isApproved={isApproved} />
+      )}
+      <IdentityHeader
+        companyName={companyName}
+        engagementType={engagementType}
+        snapshot={snapshot}
+        isPublic={isPublic}
+      />
+      <SafetyStrip guard={snapshot.commercialGuardResult} isPublic={isPublic} />
       {snapshot.draftWatermark ? <DraftSowWatermark /> : null}
       <SowDisclosureNotice
         approvalState={snapshot.approvalState}
@@ -212,11 +238,15 @@ function SowBanner({
 }
 
 function IdentityHeader({
-  engagement,
+  companyName,
+  engagementType,
   snapshot,
+  isPublic = false,
 }: {
-  engagement: Engagement;
+  companyName: string;
+  engagementType: string;
   snapshot: ProposalDeliverySnapshot;
+  isPublic?: boolean;
 }) {
   return (
     <header className="flex flex-col gap-6 pb-2 print:break-after-avoid">
@@ -233,12 +263,12 @@ function IdentityHeader({
         <h1
           className={`${SERIF} text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.02em] text-text-primary sm:text-[3.25rem]`}
         >
-          {engagement.companyName}
+          {companyName}
         </h1>
         <div className="flex flex-col gap-3">
           <div className="h-px w-16 bg-brand-primary" aria-hidden />
           <p className="text-[0.8rem] font-medium uppercase tracking-[0.2em] text-text-secondary">
-            Statement of Work · Draft · {engagement.engagementType}
+            Statement of Work · Draft · {engagementType}
           </p>
           <p className="max-w-xl text-sm leading-relaxed text-text-muted">
             For internal review and planning only. Not binding until
@@ -247,16 +277,51 @@ function IdentityHeader({
         </div>
       </div>
 
-      <dl className="grid grid-cols-2 gap-x-10 gap-y-4 border-t border-border-subtle pt-6 sm:grid-cols-4">
-        <HeaderFact label="Generated" value={formatTimestamp(snapshot.generatedAt)} />
-        <HeaderFact label="Approval" value={snapshot.approvalState} />
-        <HeaderFact label="Pricing review" value={snapshot.pricingReviewState} />
-        <HeaderFact
-          label="Options"
-          value={`${snapshot.selectedOptionIds.length} included`}
-        />
-      </dl>
+      {isPublic ? (
+        // Client surface: show only the issue date. Approval / pricing
+        // review / option-count are operator-internal signals.
+        <dl className="grid grid-cols-2 gap-x-10 gap-y-4 border-t border-border-subtle pt-6 sm:grid-cols-4">
+          <HeaderFact label="Prepared for" value={companyName} />
+          <HeaderFact label="Prepared by" value="Saipien Labs" />
+          <HeaderFact label="Issued" value={formatTimestamp(snapshot.generatedAt)} />
+        </dl>
+      ) : (
+        <dl className="grid grid-cols-2 gap-x-10 gap-y-4 border-t border-border-subtle pt-6 sm:grid-cols-4">
+          <HeaderFact label="Generated" value={formatTimestamp(snapshot.generatedAt)} />
+          <HeaderFact label="Approval" value={snapshot.approvalState} />
+          <HeaderFact label="Pricing review" value={snapshot.pricingReviewState} />
+          <HeaderFact
+            label="Options"
+            value={`${snapshot.selectedOptionIds.length} included`}
+          />
+        </dl>
+      )}
     </header>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Public-only disclaimer — canon-required at the TOP of /s/[token]
+// (docs/28 § 4). "not authorisation to begin work" appears before any
+// scope detail; the final line disclaims any execution / signature step.
+// ---------------------------------------------------------------------------
+
+function PublicSowDisclaimer() {
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-after-avoid print:shadow-none">
+      <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+        Draft SOW · not executed · not authorisation to begin work
+      </span>
+      <p className="text-xs leading-relaxed">
+        This draft is for review and planning only. It is not a contract,
+        not an executed SOW, and not authorisation to begin work. Final
+        scope, pricing, timeline, and terms require written approval and
+        execution by authorised parties. SLATE provides no execution or
+        signature workflow on this page. Any approval, signature, or
+        commencement of work happens through your separate contract
+        process.
+      </p>
+    </div>
   );
 }
 
@@ -286,7 +351,27 @@ function SectionRule({ label }: { label: string }) {
   );
 }
 
-function SafetyStrip({ guard }: { guard: ProposalCommercialGuardResult }) {
+function SafetyStrip({
+  guard,
+  isPublic = false,
+}: {
+  guard: ProposalCommercialGuardResult;
+  isPublic?: boolean;
+}) {
+  // Public surface (docs/26 § 176): affirmative-only. Never expose guard
+  // internals — no field/pattern counts, no violation count. A shared
+  // SOW has already passed the guard (share eligibility requires it), so
+  // the public strip is always the affirmative line.
+  if (isPublic) {
+    return (
+      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] text-text-secondary print:break-inside-avoid print:shadow-none">
+        <span className="inline-flex items-center gap-2 font-mono uppercase tracking-[0.14em] text-text-muted">
+          <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
+          Content safety checks passed
+        </span>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] text-text-secondary print:break-inside-avoid print:shadow-none">
       <span className="inline-flex items-center gap-2 font-mono uppercase tracking-[0.14em] text-text-muted">

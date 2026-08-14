@@ -130,7 +130,11 @@ export default async function SowDraftPage({
     <div className="slate-print-light flex flex-col gap-6 px-2 py-4 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
       <BackLink proposalHref={proposalHref} />
 
-      <SowDraftDocument engagement={engagement} snapshot={snapshot} />
+      <SowDraftDocument
+        companyName={engagement.companyName}
+        engagementType={engagement.engagementType}
+        snapshot={snapshot}
+      />
     </div>
   );
 }

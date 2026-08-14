@@ -32,6 +32,18 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "no-referrer" },
         ],
       },
+      {
+        // Phase 1B SOW Share Route Sprint P7-B — public SOW share route.
+        // Same security posture as `/r` and `/p` (docs/28 § 9 mitigation
+        // 4). The `noindex,nofollow` also lands in the page's
+        // `generateMetadata`; this header is the belt-and-suspenders pair.
+        source: "/s/:token*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      },
     ];
   },
 };
