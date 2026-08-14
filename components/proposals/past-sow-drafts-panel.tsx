@@ -20,6 +20,7 @@ import type {
 } from "@/lib/proposals/delivery-snapshot-types";
 import { GenerateSowDraftButton } from "./generate-sow-draft-button";
 import { VoidSowDraftButton } from "./void-sow-draft-button";
+import { ApproveSowDraftButton } from "./approve-sow-draft-button";
 
 /**
  * Phase 1B SOW Draft Sprint P6-C — operator-only Past SOW Drafts
@@ -48,10 +49,12 @@ import { VoidSowDraftButton } from "./void-sow-draft-button";
  *     which itself renders snapshot-pure metadata.
  *   - Voided snapshots stay in the list (not deleted) and are visibly
  *     marked. The audit trail is preserved.
- *   - No SOW-side approval action in P6-C — the approval surface for
- *     SOW Drafts is reserved for a future sprint when a commercial
- *     approval workflow exists. The draft watermark always shows
- *     until that workflow lands.
+ *   - SOW-side approval (Sprint P7-B step 1, `docs/65` § 4.1) is now
+ *     available via the per-row Approve SOW Draft button. Approval gates
+ *     future shareability only; it does NOT clear the draft watermark
+ *     (a shared SOW stays a draft) and does NOT unlock client delivery
+ *     or Send to Client. Public SOW share (`/s/[token]`) is still not
+ *     built — it is the remainder of Sprint P7-B.
  *   - No e-sign, sign, accept, or agree controls.
  */
 
@@ -318,6 +321,12 @@ function SnapshotRow(props: SnapshotRowProps) {
             Open SOW Draft
           </Button>
         </Link>
+        {!isVoided && props.approvalState !== "approved" ? (
+          <ApproveSowDraftButton
+            snapshotId={props.snapshotId}
+            guardPassed={props.commercialGuardPassed}
+          />
+        ) : null}
         {!isVoided ? (
           <VoidSowDraftButton snapshotId={props.snapshotId} />
         ) : null}

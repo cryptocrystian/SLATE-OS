@@ -63,6 +63,7 @@ export type ActivityEventType =
   | "sow_draft_generated"
   | "sow_draft_failed"
   | "sow_draft_voided"
+  | "sow_snapshot_approved"
   | "report_share_token_sent_to_client"
   | "report_share_token_send_failed"
   | "proposal_share_token_sent_to_client"

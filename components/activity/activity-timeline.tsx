@@ -70,6 +70,7 @@ const EVENT_TONE: Record<ActivityEventType, BadgeTone> = {
   sow_draft_generated: "success",
   sow_draft_failed: "risk",
   sow_draft_voided: "neutral",
+  sow_snapshot_approved: "success",
   // Sprint C2-A — Send to Client foundation. These events record the
   // operator-mediated handoff of an existing share link; SLATE itself
   // never sends. Labels deliberately use "marked sent" (not "sent")
@@ -149,6 +150,7 @@ const EVENT_LABEL: Record<ActivityEventType, string> = {
   sow_draft_generated: "SOW Draft generated",
   sow_draft_failed: "SOW Draft generation failed",
   sow_draft_voided: "SOW Draft voided",
+  sow_snapshot_approved: "SOW Draft approved",
   // Sprint C2-A — Send to Client foundation. Labels deliberately use
   // "marked sent" not "sent" to avoid implying that SLATE delivered
   // the link via email or any other transport. The operator delivers

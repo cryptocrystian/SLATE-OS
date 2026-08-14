@@ -519,6 +519,133 @@ function deriveInitials(displayName: string): string {
     .join("");
 }
 
+// ---------------------------------------------------------------------------
+// SOW Draft snapshot approval — Sprint P7-B step 1 (`docs/65` § 4.1)
+//
+// A SOW Draft snapshot is born `approval_state='unreviewed'` and has,
+// until now, no way to be approved. `docs/65` § 4 names SOW-side approval
+// as the FIRST prerequisite for any public SOW share mint: eligibility
+// criterion 3 (`docs/28` § 5) — SOW `approval_state='approved'` — is
+// unsatisfiable without this action. It mirrors
+// `approveProposalDeliverySnapshotAction` but:
+//   - is scoped by `delivery_surface='sow_draft_candidate'` so it can
+//     never approve a proposal-candidate snapshot by mistake, and
+//   - does NOT clear `draft_watermark`. The DRAFT stripe is a
+//     canon-required e-signature-confusion mitigation on the eventual
+//     public SOW surface (`docs/28` § 9 mitigation 2); a SOW shared via
+//     `/s/[token]` remains a draft, never an executed contract.
+//
+// Approval gates shareability only. It is NOT client delivery, NOT a
+// Send-to-Client unlock, and NOT authorisation to begin work.
+// ---------------------------------------------------------------------------
+
+export type ApproveSowDraftSnapshotError =
+  | "unauthenticated"
+  | "invalid-snapshot"
+  | "snapshot-not-found"
+  | "not-a-sow-draft"
+  | "snapshot-voided"
+  | "already-approved"
+  | "commercial-guard-not-passed"
+  | "service-error";
+
+export type ApproveSowDraftSnapshotResult =
+  | { ok: true; snapshotId: string }
+  | { ok: false; error: ApproveSowDraftSnapshotError };
+
+export async function approveSowDraftSnapshotAction(args: {
+  snapshotId: string;
+}): Promise<ApproveSowDraftSnapshotResult> {
+  const { snapshotId } = args;
+  if (!isUuid(snapshotId)) {
+    return { ok: false, error: "invalid-snapshot" };
+  }
+
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "unauthenticated" };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .select(
+      "id, engagement_id, proposal_id, delivery_surface, status, approval_state, commercial_guard_result",
+    )
+    .eq("id", snapshotId)
+    .maybeSingle<{
+      id: string;
+      engagement_id: string;
+      proposal_id: string;
+      delivery_surface: string;
+      status: string;
+      approval_state: string;
+      commercial_guard_result: { passed?: boolean } | null;
+    }>();
+  if (fetchError) {
+    console.error("[proposals.sow-draft-actions] approve-fetch-failed", {
+      name: fetchError.name,
+      code: fetchError.code,
+      message: fetchError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+  if (!row?.id) return { ok: false, error: "snapshot-not-found" };
+  // Defense-in-depth: this action approves SOW Drafts only. A
+  // proposal-candidate snapshot must be approved via
+  // `approveProposalDeliverySnapshotAction`.
+  if (row.delivery_surface !== "sow_draft_candidate") {
+    return { ok: false, error: "not-a-sow-draft" };
+  }
+  if (row.status === "voided") {
+    return { ok: false, error: "snapshot-voided" };
+  }
+  if (row.approval_state === "approved") {
+    return { ok: false, error: "already-approved" };
+  }
+  if (!row.commercial_guard_result?.passed) {
+    return { ok: false, error: "commercial-guard-not-passed" };
+  }
+
+  const { error: updateError } = await supabase
+    .from("proposal_delivery_snapshots")
+    .update({
+      approval_state: "approved",
+      // draft_watermark is intentionally NOT cleared — a SOW remains a
+      // draft on the public surface (docs/28 § 9). Approval gates
+      // shareability, not execution.
+    })
+    .eq("id", snapshotId);
+  if (updateError) {
+    console.error("[proposals.sow-draft-actions] approve-update-failed", {
+      name: updateError.name,
+      code: updateError.code,
+      message: updateError.message,
+    });
+    return { ok: false, error: "service-error" };
+  }
+
+  await logActivityEvent({
+    eventType: "sow_snapshot_approved",
+    entityType: "proposal_delivery_snapshot",
+    entityId: snapshotId,
+    engagementId: row.engagement_id,
+    title: "SOW Draft approved",
+    summary:
+      "Operator approved a SOW Draft snapshot for sharing. This is not client delivery, not a Send to Client unlock, and not authorisation to begin work; the SOW remains a draft.",
+    metadata: {
+      proposalId: row.proposal_id,
+    },
+  });
+
+  revalidatePath(`/app/engagements/${row.engagement_id}/proposal`);
+  revalidatePath(
+    `/app/engagements/${row.engagement_id}/proposal/sow/${snapshotId}`,
+  );
+
+  return { ok: true, snapshotId };
+}
+
 // Re-export the eligibility reason shape for any P6-C consumer that
 // needs to surface the failure reasons in the UI.
 export type { SowDraftEligibilityReason };
