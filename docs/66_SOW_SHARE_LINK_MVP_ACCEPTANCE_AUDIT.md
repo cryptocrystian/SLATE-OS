@@ -159,15 +159,30 @@ company identity, and footer all persist. `tsc --noEmit` clean.
   on the public render. On a C-suite SOW this reads as internal QA-process
   noise. Not changed here (locked canon). Recommend revisiting whether the
   affirmative safety strip belongs on *any* client-facing surface.
-- **CF-4 — Disclaimer repetition / polish.** The public render repeats
-  near-identical "not a contract / not an executed SOW / not authorisation
-  to begin work" language across ~4 blocks (top disclaimer, identity chip,
-  draft watermark, disclosure notice, footer), and mixes British
-  ("authorisation") and American ("authorization") spelling (the footer is
-  canon-sourced from `docs/26`). Consolidate to one prominent statement
-  that preserves the canon-required phrases, and align spelling — pending
-  a canon-wording pass, since these are `docs/26`/`docs/28`-mandated
-  markings.
+- **CF-4 — Disclaimer repetition / spelling — RESOLVED (this audit).**
+  Root cause was a code deviation from canon, not a canon conflict: the
+  public surface is governed by `docs/28` § 4 (British "authorisation" /
+  "authorised", with the exact disclaimer strings hard-verbatim), while
+  the shared `SowFooter` and a paraphrased `SowDisclosureNotice` rendered
+  American spelling and a duplicate denial paragraph on `/s`. Fix:
+  - `SowFooter` is now mode-aware — `docs/28` § 4 verbatim (British) on
+    public, `docs/26` (American) on operator. This removes the
+    British-top / American-footer mismatch.
+  - The public render now uses the `docs/28` § 4 strings **verbatim**: the
+    header banner, the body note (single denial paragraph, below the H1),
+    the pricing notice, the legal-boundary notice, the closing footer, and
+    the additional public-only no-signature disclaimer.
+  - De-duplicated: the full comma-form denial paragraph now appears
+    **once** (the body note); the top block carries only the banner + the
+    no-signature disclaimer; the redundant `SowDisclosureNotice` label and
+    the operator draft-watermark callout are dropped on public.
+  - Re-verified live on a fresh token: 6 British / 0 American "authoris*"
+    hits on `/s`, all five canon strings present verbatim, denial
+    paragraph count = 1. `tsc --noEmit` clean.
+
+  Remaining note: the AI-synthesized **scope-summary body** still uses
+  American spelling ("prioritized", "standardizing") — that is generated
+  option content, not disclaimer copy, and is out of CF-4 scope.
 
 ## Fixture side-effects (this audit)
 
@@ -177,8 +192,11 @@ real records were created via the app and remain in production:
 - 3 additional manual findings (Meridian: 5 → 8 findings).
 - 1 supporting document (`input_assets`, "Work Order Lifecycle Notes").
 - SOW snapshot `c5e2e108` voided (retained for the audit trail per canon).
-- SOW tokens `9788a448` (revoked) and `e2df11a2` (cascade-revoked) — audit
-  artifacts.
+- SOW draft `06eba1ba` approved (generated to re-verify the CF-4 disclaimer
+  fix); left approved and un-voided — a legitimate state.
+- SOW tokens `9788a448` (revoked), `e2df11a2` (cascade-revoked), and
+  `bBIYz6…`→`06eba1ba` (revoked after the CF-4 re-verify) — all revoked;
+  no active token remains.
 
 The approved Proposal Candidate `897fe797` and the older SOW draft
 `a43cc869` are untouched. The added findings + document are legitimate

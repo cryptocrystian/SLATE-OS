@@ -132,16 +132,19 @@ export function SowDraftDocument({
         isPublic={isPublic}
       />
       <SafetyStrip guard={snapshot.commercialGuardResult} isPublic={isPublic} />
-      {snapshot.draftWatermark ? (
-        <DraftSowWatermark isPublic={isPublic} />
-      ) : null}
+      {/* The operator draft watermark restates draft/not-executed status
+          for internal review. On the public surface that message is
+          already carried, verbatim per docs/28 § 4, by the header banner
+          + body note + closing footer, so the extra callout would only
+          duplicate canon copy — it is operator-only. */}
+      {!isPublic && snapshot.draftWatermark ? <DraftSowWatermark /> : null}
       <SowDisclosureNotice
         approvalState={snapshot.approvalState}
         pricingReviewState={snapshot.pricingReviewState}
         sowDraft={sowDraft}
         isPublic={isPublic}
       />
-      <LegalBoundaryNotice sowDraft={sowDraft} />
+      <LegalBoundaryNotice sowDraft={sowDraft} isPublic={isPublic} />
       <SowScopeSection sowDraft={sowDraft} isPublic={isPublic} />
       <SowResponsibilitiesSection sowDraft={sowDraft} />
       <SowOpenQuestionsSection sowDraft={sowDraft} />
@@ -153,7 +156,7 @@ export function SowDraftDocument({
       {isPublic ? null : (
         <OmittedContentAppendix omissions={snapshot.omittedContent} />
       )}
-      <SowFooter />
+      <SowFooter isPublic={isPublic} />
     </div>
   );
 }
@@ -322,19 +325,22 @@ function IdentityHeader({
 // ---------------------------------------------------------------------------
 
 function PublicSowDisclaimer() {
+  // docs/28 § 4 — canonical, hard-verbatim public copy. The header banner
+  // (§ 4 "Header / banner") puts "not authorisation to begin work" before
+  // any scope detail; the paragraph is the § 4 "Additional public-only
+  // disclaimer" (execution/signature boundary). The § 4 "Body note" is
+  // rendered once, below the H1, by SowDisclosureNotice — it is not
+  // repeated here.
   return (
     <div className="flex flex-col gap-1 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-after-avoid print:shadow-none">
       <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
         Draft SOW · not executed · not authorisation to begin work
       </span>
       <p className="text-xs leading-relaxed">
-        This draft is for review and planning only. It is not a contract,
-        not an executed SOW, and not authorisation to begin work. Final
-        scope, pricing, timeline, and terms require written approval and
-        execution by authorised parties. SLATE provides no execution or
-        signature workflow on this page. Any approval, signature, or
-        commencement of work happens through your separate contract
-        process.
+        This document is for review by the named recipient. SLATE provides
+        no execution or signature workflow on this page. Any approval,
+        signature, or commencement of work happens through your separate
+        contract process.
       </p>
     </div>
   );
@@ -409,29 +415,11 @@ function SafetyStrip({
   );
 }
 
-function DraftSowWatermark({ isPublic = false }: { isPublic?: boolean }) {
-  if (isPublic) {
-    // Client surface: a draft marking without any operator-workflow
-    // language ("operator-approved" / "operator review pending" would be
-    // both internal and — for an approved-but-still-draft SOW — factually
-    // misleading to the recipient).
-    return (
-      <div className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-inside-avoid print:shadow-none">
-        <FileSignature className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-        <div className="flex flex-col gap-0.5">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
-            Draft SOW · for review only
-          </span>
-          <p className="text-xs leading-relaxed">
-            This Statement of Work is a draft shared for your review and
-            planning. Scope, deliverables, and timeline may change before
-            any final, executed agreement. Pricing and legal terms are
-            intentionally omitted from this draft.
-          </p>
-        </div>
-      </div>
-    );
-  }
+// Operator-only. On the public `/s` surface the draft/not-executed
+// message is carried verbatim by the docs/28 § 4 header banner + body
+// note + closing footer, so this callout is not rendered there (it would
+// only duplicate canon copy).
+function DraftSowWatermark() {
   return (
     <div className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-inside-avoid print:shadow-none">
       <FileSignature className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -475,12 +463,19 @@ function SowDisclosureNotice({
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-2 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Draft SOW · not executed
-        </span>
+        {/* The "Draft SOW · not executed" label repeats the top header
+            banner; on the public surface it is dropped so the label
+            appears once. */}
+        {isPublic ? null : (
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+            Draft SOW · not executed
+          </span>
+        )}
         <p className="text-xs leading-relaxed text-text-secondary">
           {isPublic
-            ? "This document is a draft Statement of Work for review and planning. It is not a contract, not an executed SOW, not a binding quote, and not authorisation to begin work. Final scope, pricing, timeline, and terms require written approval and execution by authorised parties."
+            ? // docs/28 § 4 "Body note (canon-required first paragraph
+              // below the H1)" — hard-verbatim.
+              "This draft is for review and planning only. It is not a contract, not an executed SOW, and not authorisation to begin work. Final scope, pricing, timeline, and terms require written approval and execution by authorised parties."
             : "This document is a draft Statement of Work for internal review and planning. It is not a contract, not an executed SOW, not a binding quote, and not authorization to begin work. Final scope, pricing, timeline, and terms require written approval and execution by authorized parties."}
         </p>
         <p className="text-[11px] leading-relaxed text-text-muted">
@@ -495,17 +490,24 @@ function SowDisclosureNotice({
 
 function LegalBoundaryNotice({
   sowDraft,
+  isPublic = false,
 }: {
   sowDraft: SowDraftFields | null;
+  isPublic?: boolean;
 }) {
-  // Fallback wording mirrors `LEGAL_BOUNDARY_NOTICE` in
+  // Public surface: docs/28 § 4 "Legal-boundary notice" is hard-verbatim
+  // and always rendered — it wins over any snapshot override so the client
+  // copy is exactly the canonical string.
+  //
+  // Operator surface: fallback wording mirrors `LEGAL_BOUNDARY_NOTICE` in
   // `lib/proposals/sow-draft-eligibility.ts` — kept inline (rather than
   // imported) so this component remains a pure server component with
   // no cross-module string coupling. Updated alongside the canon source
   // of truth when the wording changes.
-  const note =
-    sowDraft?.legalBoundaryNotice ??
-    "Legal terms are intentionally omitted from this draft. Any legal terms will be provided separately during execution review.";
+  const note = isPublic
+    ? "Legal terms (governing law, indemnification, liability, warranty, termination) are intentionally omitted from this draft. They will be provided separately during the execution review process."
+    : sowDraft?.legalBoundaryNotice ??
+      "Legal terms are intentionally omitted from this draft. Any legal terms will be provided separately during execution review.";
   return (
     <div className="flex items-start gap-2 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] leading-relaxed text-text-secondary print:break-inside-avoid print:shadow-none">
       <Scale className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
@@ -927,7 +929,28 @@ function OmittedContentAppendix({
 // Mandatory SOW footer — per docs/26 § Required Markings / Disclaimers
 // ---------------------------------------------------------------------------
 
-function SowFooter() {
+function SowFooter({ isPublic = false }: { isPublic?: boolean }) {
+  // The closing footer is canon-mandated on both surfaces, but each
+  // surface has its own governing canon and spelling:
+  //   - Public `/s`: docs/28 § 4 "Closing footer" — hard-verbatim,
+  //     British ("authorisation" / "authorised"), single statement.
+  //   - Operator: docs/26 § Required Markings mandatory footer — American
+  //     ("authorization" / "authorized").
+  // Keeping them per-surface is what makes each render internally
+  // consistent; a single shared string would violate one canon or the
+  // other (this was the British-top / American-footer mismatch on `/s`).
+  if (isPublic) {
+    return (
+      <footer className="flex flex-col gap-1 border-t border-border-subtle pt-4 text-[11px] leading-relaxed text-text-muted print:break-inside-avoid">
+        <p>
+          Not a contract. Not an executed SOW. Not a binding quote. Not
+          authorisation to begin work. Final scope, pricing, timeline, and
+          terms require written approval and execution by authorised
+          parties.
+        </p>
+      </footer>
+    );
+  }
   return (
     <footer className="flex flex-col gap-1 border-t border-border-subtle pt-4 text-[11px] leading-relaxed text-text-muted print:break-inside-avoid">
       <p>
