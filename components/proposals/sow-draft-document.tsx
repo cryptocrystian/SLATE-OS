@@ -27,10 +27,18 @@ const SERIF = "[font-family:var(--font-deliverable-serif)]";
  * document renderer.
  *
  * Renders a `proposal_delivery_snapshots` row whose `delivery_surface`
- * is `sow_draft_candidate` as a print-ready artifact for operator
- * review. This is the operator-only surface; there is intentionally
- * NO public SOW share route in Sprint P6 (canon `docs/26`
- * § Out-of-Scope item 1).
+ * is `sow_draft_candidate` as a print-ready artifact.
+ *
+ * Two modes (see the `mode` prop): the default `"operator"` surface at
+ * `/app/.../proposal/sow/[snapshotId]` and, as of Sprint P7-B (canon
+ * `docs/28` + `docs/65`), the client-facing `"public"` surface at
+ * `/s/[token]`. The public mode strips ALL operator-workflow chrome —
+ * operator banners/hints, approval-state metadata, guard internals,
+ * "for audit and operator review" notes, the intentionally-not-included
+ * appendix, and any internal state names / canon refs / code
+ * identifiers — while keeping the DRAFT marking, the canon-required
+ * public disclaimer, the legal-boundary notice, and the mandatory
+ * footer. It remains a draft — never an executed contract.
  *
  * Snapshot purity:
  *   - Renders ONLY from `option_snapshot` /
@@ -124,21 +132,27 @@ export function SowDraftDocument({
         isPublic={isPublic}
       />
       <SafetyStrip guard={snapshot.commercialGuardResult} isPublic={isPublic} />
-      {snapshot.draftWatermark ? <DraftSowWatermark /> : null}
+      {snapshot.draftWatermark ? (
+        <DraftSowWatermark isPublic={isPublic} />
+      ) : null}
       <SowDisclosureNotice
         approvalState={snapshot.approvalState}
         pricingReviewState={snapshot.pricingReviewState}
         sowDraft={sowDraft}
+        isPublic={isPublic}
       />
       <LegalBoundaryNotice sowDraft={sowDraft} />
-      <SowScopeSection sowDraft={sowDraft} />
+      <SowScopeSection sowDraft={sowDraft} isPublic={isPublic} />
       <SowResponsibilitiesSection sowDraft={sowDraft} />
       <SowOpenQuestionsSection sowDraft={sowDraft} />
       <OptionsList
         options={includedOptions}
         pricingReviewState={snapshot.pricingReviewState}
+        isPublic={isPublic}
       />
-      <OmittedContentAppendix omissions={snapshot.omittedContent} />
+      {isPublic ? null : (
+        <OmittedContentAppendix omissions={snapshot.omittedContent} />
+      )}
       <SowFooter />
     </div>
   );
@@ -271,8 +285,9 @@ function IdentityHeader({
             Statement of Work · Draft · {engagementType}
           </p>
           <p className="max-w-xl text-sm leading-relaxed text-text-muted">
-            For internal review and planning only. Not binding until
-            reviewed, approved, and executed by authorized parties.
+            {isPublic
+              ? "For review and planning only. Not binding until reviewed, approved, and executed by authorised parties."
+              : "For internal review and planning only. Not binding until reviewed, approved, and executed by authorized parties."}
           </p>
         </div>
       </div>
@@ -394,7 +409,29 @@ function SafetyStrip({
   );
 }
 
-function DraftSowWatermark() {
+function DraftSowWatermark({ isPublic = false }: { isPublic?: boolean }) {
+  if (isPublic) {
+    // Client surface: a draft marking without any operator-workflow
+    // language ("operator-approved" / "operator review pending" would be
+    // both internal and — for an approved-but-still-draft SOW — factually
+    // misleading to the recipient).
+    return (
+      <div className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-inside-avoid print:shadow-none">
+        <FileSignature className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+        <div className="flex flex-col gap-0.5">
+          <span className="font-mono text-[11px] uppercase tracking-[0.16em]">
+            Draft SOW · for review only
+          </span>
+          <p className="text-xs leading-relaxed">
+            This Statement of Work is a draft shared for your review and
+            planning. Scope, deliverables, and timeline may change before
+            any final, executed agreement. Pricing and legal terms are
+            intentionally omitted from this draft.
+          </p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-start gap-2 rounded-md border border-status-warning/40 bg-status-warning/10 p-3 text-status-warning print:break-inside-avoid print:shadow-none">
       <FileSignature className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -417,10 +454,12 @@ function SowDisclosureNotice({
   approvalState,
   pricingReviewState,
   sowDraft,
+  isPublic = false,
 }: {
   approvalState: ProposalDeliverySnapshot["approvalState"];
   pricingReviewState: ProposalPricingReviewState;
   sowDraft: SowDraftFields | null;
+  isPublic?: boolean;
 }) {
   const fallbackPricingNote = (() => {
     switch (pricingReviewState) {
@@ -440,14 +479,14 @@ function SowDisclosureNotice({
           Draft SOW · not executed
         </span>
         <p className="text-xs leading-relaxed text-text-secondary">
-          This document is a draft Statement of Work for internal review
-          and planning. It is not a contract, not an executed SOW, not a
-          binding quote, and not authorization to begin work. Final
-          scope, pricing, timeline, and terms require written approval
-          and execution by authorized parties.
+          {isPublic
+            ? "This document is a draft Statement of Work for review and planning. It is not a contract, not an executed SOW, not a binding quote, and not authorisation to begin work. Final scope, pricing, timeline, and terms require written approval and execution by authorised parties."
+            : "This document is a draft Statement of Work for internal review and planning. It is not a contract, not an executed SOW, not a binding quote, and not authorization to begin work. Final scope, pricing, timeline, and terms require written approval and execution by authorized parties."}
         </p>
         <p className="text-[11px] leading-relaxed text-text-muted">
-          Approval state · {approvalState}. {pricingNote}
+          {/* Approval state is an operator-internal signal — never surfaced
+              on the client `/s` render. */}
+          {isPublic ? pricingNote : `Approval state · ${approvalState}. ${pricingNote}`}
         </p>
       </CardBody>
     </Card>
@@ -484,7 +523,13 @@ function LegalBoundaryNotice({
 // SOW-specific sections
 // ---------------------------------------------------------------------------
 
-function SowScopeSection({ sowDraft }: { sowDraft: SowDraftFields | null }) {
+function SowScopeSection({
+  sowDraft,
+  isPublic = false,
+}: {
+  sowDraft: SowDraftFields | null;
+  isPublic?: boolean;
+}) {
   if (!sowDraft) return null;
   return (
     <section
@@ -498,7 +543,11 @@ function SowScopeSection({ sowDraft }: { sowDraft: SowDraftFields | null }) {
             <SectionBlock
               label="Scope statement"
               body={sowDraft.scopeStatement}
-              note="Promoted from the source Proposal Candidate's recommended option. Operator may edit in a future SOW editor."
+              note={
+                isPublic
+                  ? undefined
+                  : "Promoted from the source Proposal Candidate's recommended option. Operator may edit in a future SOW editor."
+              }
             />
           ) : (
             <PlaceholderBlock
@@ -637,9 +686,11 @@ function SowOpenQuestionsSection({
 function OptionsList({
   options,
   pricingReviewState,
+  isPublic = false,
 }: {
   options: ProposalOptionSnapshot[];
   pricingReviewState: ProposalPricingReviewState;
+  isPublic?: boolean;
 }) {
   return (
     <section
@@ -649,10 +700,9 @@ function OptionsList({
       <header className="flex flex-col gap-2">
         <SectionRule label={`Included option detail (${options.length})`} />
         <p className="max-w-prose text-[11px] leading-relaxed text-text-muted">
-          Per-option content carried forward from the source Proposal
-          Candidate snapshot. The SOW Draft scope above is the
-          consolidated view; this section preserves the per-option
-          breakdown for audit and operator review.
+          {isPublic
+            ? "Scope, deliverables, assumptions, dependencies, and risks for the included option(s)."
+            : "Per-option content carried forward from the source Proposal Candidate snapshot. The SOW Draft scope above is the consolidated view; this section preserves the per-option breakdown for audit and operator review."}
         </p>
       </header>
 
@@ -677,6 +727,7 @@ function OptionsList({
             key={option.optionId}
             option={option}
             pricingReviewState={pricingReviewState}
+            isPublic={isPublic}
           />
         ))
       )}
@@ -687,9 +738,11 @@ function OptionsList({
 function OptionCard({
   option,
   pricingReviewState,
+  isPublic = false,
 }: {
   option: ProposalOptionSnapshot;
   pricingReviewState: ProposalPricingReviewState;
+  isPublic?: boolean;
 }) {
   const showPricing = pricingReviewState !== "placeholder";
   return (
@@ -746,9 +799,19 @@ function OptionCard({
             <span className="font-mono uppercase tracking-[0.14em]">
               Pricing
             </span>{" "}
-            · intentionally omitted from this draft. Pricing review state
-            is <code className="font-mono">{pricingReviewState}</code>;
-            final pricing requires a commercial-approval workflow.
+            {isPublic ? (
+              <>
+                · intentionally omitted from this draft. Final pricing is
+                provided separately during commercial review.
+              </>
+            ) : (
+              <>
+                · intentionally omitted from this draft. Pricing review
+                state is{" "}
+                <code className="font-mono">{pricingReviewState}</code>;
+                final pricing requires a commercial-approval workflow.
+              </>
+            )}
           </div>
         )}
       </CardBody>
