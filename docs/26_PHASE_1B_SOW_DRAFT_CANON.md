@@ -173,7 +173,7 @@ A new `SOW_DRAFT_FINALITY_PATTERNS` family adds SOW-finality patterns that would
 
 4. **Activity metadata must NEVER contain violation text.** Same rule as the proposal guard — log counts + codes only; the banned phrase must not be smuggled into the audit feed.
 
-5. **Public / client artifact must NEVER expose guard internals.** If Sprint P7 ships a public SOW share route, it surfaces only the affirmative `Commercial safety checks passed` strip — same pattern as Sprint P5's `/p/[token]`.
+5. **Public / client artifact must NEVER expose guard internals.** The commercial-guard strip (counts, pattern totals, violation text) is operator-only. **Amended (Sprint P7-B acceptance, `docs/66` CF-3):** the public `/s/[token]` render surfaces **no** safety strip at all — not even the affirmative `Commercial safety checks passed` line. On a C-suite SOW that affirmation reads as internal QA process-noise the recipient cannot act on, and share eligibility already requires a passed guard, so the affirmative line carries no client-facing signal. The original wording ("surfaces only the affirmative strip") reflected the Sprint P5 `/p/[token]` pattern; the SOW client surface deliberately drops it. Guard internals remain non-exposed either way — this amendment only removes the affirmative strip, it never adds guard detail.
 
 ## Required Markings / Disclaimers
 

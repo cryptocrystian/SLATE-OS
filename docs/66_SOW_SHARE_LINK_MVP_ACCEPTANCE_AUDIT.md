@@ -17,11 +17,14 @@
   - `c782481` — P7-B step 5: SOW share mint button + revoke + panel wiring
   - _(this audit)_ — `sow-draft-document.tsx` public-mode operator-chrome
     leak fixes surfaced by the live E2E; this doc.
-- **Outcome:** **Accepted with fixes** — the full happy path and every
-  negative path were live-verified end-to-end against production. The
-  live public render surfaced a **cluster of operator-chrome leaks** on
-  the client `/s` surface; all were fixed during this audit and
-  re-verified clean. Four carry-forward items recorded; none blocking.
+- **Outcome:** **Accepted — all follow-ups resolved.** The full happy path
+  and every negative path were live-verified end-to-end against production.
+  The live public render surfaced a **cluster of operator-chrome leaks** on
+  the client `/s` surface; all were fixed during this audit and re-verified
+  clean. All four carry-forward items (CF-1 source-void cascade, CF-2
+  docs-gate asymmetry, CF-3 client safety strip, CF-4 disclaimer
+  alignment) were subsequently **resolved and live-verified** — see the
+  Carry-forward section. Nothing blocking remains.
 - **Migration state:** `0021_sow_share_tokens.sql` **applied to
   production** (`hhglrcvsmwaheikdvijw`) this session, verified on an
   isolated Postgres 17 branch first (21 cols / 5 CHECK / 7 FK / 8 indexes
@@ -50,7 +53,7 @@
 | Do revoked / voided / unknown links render the generic-unavailable page? | Yes. Live-verified for a revoked token and a cascade-revoked+voided token: identical generic body ("This SOW link is unavailable… Contact the sender for an updated link."), no reason disclosed, zero SOW content leak. |
 | Does operator revoke work? | Yes. `revokeSowShareTokenAction` (two-step confirm) flipped the active token to `status='revoked'`; subsequent `/s` access → generic-unavailable. Live-verified. |
 | Does the SOW-snapshot-void cascade work? | Yes, live-verified. Voiding SOW snapshot `c5e2e108` auto-revoked its active token via `cascadeRevokeActiveSowShareTokensForSnapshot` (`status='revoked'`, `revoke_reason='sow_snapshot_voided'`). |
-| Does the source-Proposal-Candidate-void cascade work? | **Code + data + branch verified** (not live-triggered, to preserve Meridian's approved candidate). `source_proposal_snapshot_id` is denormalised on every token (confirmed `897fe797` on both minted tokens); `voidProposalDeliverySnapshotAction` invokes `cascadeRevokeActiveSowShareTokensForSourceProposal`; the migration-branch test confirmed the by-source query selects active and excludes revoked. See carry-forward CF-1. |
+| Does the source-Proposal-Candidate-void cascade work? | **Yes — live-verified** (CF-1, resolved). Voiding the source proposal candidate `231dad8b` (SOW snapshot left un-voided) auto-revoked token `1b5b0746` with `revoke_reason='source_proposal_voided'` via `cascadeRevokeActiveSowShareTokensForSourceProposal`. Distinct from the snapshot cascade (`sow_snapshot_voided`), which is also live-proven. |
 | Are the `/s` security headers correct? | Yes. Live `curl`: `Cache-Control: no-store, must-revalidate`, `X-Robots-Tag: noindex, nofollow`, `Referrer-Policy: no-referrer`. |
 | Blockers before declaring the SOW Share Link MVP complete? | **No.** The one serious defect (P7B-1) was fixed and re-verified this session. Four carry-forward items recorded; none blocking. |
 
@@ -140,25 +143,32 @@ company identity, and footer all persist. `tsc --noEmit` clean.
 
 ## Carry-forward items (non-blocking)
 
-- **CF-1 — Source-proposal-void cascade not live-triggered.** The
-  `cascadeRevokeActiveSowShareTokensForSourceProposal` path is verified at
-  code + data + migration-branch level but was not fired live, to avoid
-  voiding Meridian's approved Proposal Candidate `897fe797`. Recommend a
-  dedicated fixture run (or a throwaway approved candidate) to fire it
-  end-to-end before broad rollout.
-- **CF-2 — SOW lane has no "no documents needed" acknowledgement.**
-  `generateSowShareLinkAction` calls `loadPreDeliveryAudit` **without**
-  `documentsClearedOrAcknowledged`, so — unlike the report/proposal lanes
-  — a SOW can never be shared for an engagement that legitimately had no
-  supporting documents unless one is uploaded. This is arguably correct
-  for the highest-weight lane, but it is an **asymmetry** vs. the other
-  surfaces; confirm it is intentional (and, if so, document it in
-  `docs/28`/`docs/65`), or expose a docs-ack affordance on the SOW mint.
-- **CF-3 — Canon-mandated "Content safety checks passed" on the client
-  surface.** `docs/26` § 176 prescribes an affirmative-only safety strip
-  on the public render. On a C-suite SOW this reads as internal QA-process
-  noise. Not changed here (locked canon). Recommend revisiting whether the
-  affirmative safety strip belongs on *any* client-facing surface.
+- **CF-1 — Source-proposal-void cascade — RESOLVED (live-verified, this
+  audit).** Fired end-to-end on a throwaway approved candidate rather than
+  Meridian's operative `897fe797`: approved existing candidate `231dad8b`,
+  generated + approved SOW draft `49f87f56` sourced from it, minted token
+  `1b5b0746`, then voided the **source** proposal candidate `231dad8b`
+  (leaving SOW snapshot `49f87f56` un-voided). Result: token auto-revoked
+  with `revoke_reason='source_proposal_voided'` (distinct from the
+  snapshot cascade's `sow_snapshot_voided`); `897fe797` untouched. The
+  source cascade and the snapshot cascade are now both live-proven.
+- **CF-2 — SOW-lane supporting-docs asymmetry — RESOLVED as intentional
+  (this audit).** Confirmed the stricter gate is deliberate, not an
+  oversight: the SOW is the highest-legal-weight client artifact, so
+  requiring ≥1 real supporting document before external share is a
+  purposeful stronger bar. Documented as binding prerequisite **7** in
+  `docs/65` § 4 (no code change). An engagement that gathered everything
+  via interviews satisfies the gate with a short operator-authored summary
+  upload; parity with the report/proposal no-docs-ack path would be a
+  deliberate future canon amendment, never a silent addition.
+- **CF-3 — Client-surface safety strip — RESOLVED (removed, this audit).**
+  The affirmative "Content safety checks passed" strip is now dropped from
+  the public `/s` render entirely; it remains on the operator surface.
+  Guard internals never leaked either way. `docs/26` § 176 amended to
+  scope the strip operator-only. Live-verified on a fresh token: the strip
+  is gone while the header banner, body note, legal-boundary notice,
+  footer, and option detail all remain; spelling stays 6-British /
+  0-American. `tsc --noEmit` clean.
 - **CF-4 — Disclaimer repetition / spelling — RESOLVED (this audit).**
   Root cause was a code deviation from canon, not a canon conflict: the
   public surface is governed by `docs/28` § 4 (British "authorisation" /
@@ -191,13 +201,16 @@ real records were created via the app and remain in production:
 
 - 3 additional manual findings (Meridian: 5 → 8 findings).
 - 1 supporting document (`input_assets`, "Work Order Lifecycle Notes").
-- SOW snapshot `c5e2e108` voided (retained for the audit trail per canon).
-- SOW draft `06eba1ba` approved (generated to re-verify the CF-4 disclaimer
-  fix); left approved and un-voided — a legitimate state.
-- SOW tokens `9788a448` (revoked), `e2df11a2` (cascade-revoked), and
-  `bBIYz6…`→`06eba1ba` (revoked after the CF-4 re-verify) — all revoked;
-  no active token remains.
+- Several SOW draft snapshots generated across the E2E + CF re-verifications
+  (`c5e2e108`, `3e82f17b`, `49f87f56` voided/approved as noted; `06eba1ba`,
+  `8d3b6bbe` left approved). Voided snapshots are retained for the audit
+  trail per canon; approved-but-unshared drafts are a legitimate state.
+- Throwaway proposal candidate `231dad8b` approved then voided during the
+  CF-1 source-cascade test (was previously an unreviewed candidate).
+- 6 SOW share tokens minted across the E2E + CF-1/CF-3/CF-4 verifications —
+  **all revoked** (via operator revoke, snapshot cascade, or source
+  cascade). No active token remains.
 
-The approved Proposal Candidate `897fe797` and the older SOW draft
-`a43cc869` are untouched. The added findings + document are legitimate
-enrichments that leave Meridian delivery-ready.
+The operative approved Proposal Candidate `897fe797` and the older SOW
+draft `a43cc869` are untouched. The added findings + document are
+legitimate enrichments that leave Meridian delivery-ready.

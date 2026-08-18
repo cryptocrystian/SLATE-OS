@@ -131,7 +131,14 @@ export function SowDraftDocument({
         snapshot={snapshot}
         isPublic={isPublic}
       />
-      <SafetyStrip guard={snapshot.commercialGuardResult} isPublic={isPublic} />
+      {/* Operator-only. The commercial-guard affirmation is internal QA
+          signal; on the client `/s` surface it reads as process noise and
+          adds nothing the recipient can act on (docs/26 § 176, amended to
+          scope the strip operator-only). Guard internals never leak either
+          way — share eligibility already requires a passed guard. */}
+      {isPublic ? null : (
+        <SafetyStrip guard={snapshot.commercialGuardResult} />
+      )}
       {/* The operator draft watermark restates draft/not-executed status
           for internal review. On the public surface that message is
           already carried, verbatim per docs/28 § 4, by the header banner
@@ -372,27 +379,14 @@ function SectionRule({ label }: { label: string }) {
   );
 }
 
+// Operator-only (see the call site). Never exposes guard internals to a
+// client — but the whole strip is scoped out of the public render, so
+// this always renders the operator form.
 function SafetyStrip({
   guard,
-  isPublic = false,
 }: {
   guard: ProposalCommercialGuardResult;
-  isPublic?: boolean;
 }) {
-  // Public surface (docs/26 § 176): affirmative-only. Never expose guard
-  // internals — no field/pattern counts, no violation count. A shared
-  // SOW has already passed the guard (share eligibility requires it), so
-  // the public strip is always the affirmative line.
-  if (isPublic) {
-    return (
-      <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] text-text-secondary print:break-inside-avoid print:shadow-none">
-        <span className="inline-flex items-center gap-2 font-mono uppercase tracking-[0.14em] text-text-muted">
-          <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
-          Content safety checks passed
-        </span>
-      </div>
-    );
-  }
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] text-text-secondary print:break-inside-avoid print:shadow-none">
       <span className="inline-flex items-center gap-2 font-mono uppercase tracking-[0.14em] text-text-muted">
