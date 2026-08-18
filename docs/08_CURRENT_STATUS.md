@@ -26,6 +26,48 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## Current Status Refresh + Catch-Up (2026-08-18)
+
+**Authoritative current snapshot: `docs/67_CURRENT_STATUS_REFRESH.md`.** This log
+was last appended 2026-06-18; the entries below catch it up for the interim so it
+stops reading as stale. See `docs/67` for the full "you are here" map, the two
+finish-line definitions, the live engagement roster, and the canon reconciliation.
+
+Catch-up (2026-06-18 → 2026-08-18), newest first:
+
+- **P7-B — Public SOW share route `/s/[token]` (built + acceptance-audited).**
+  Reverses the earlier "public SOW share forbidden" posture: `docs/65` flipped
+  `docs/28`'s deferral to a conditional authorization, then P7-B shipped the lane —
+  `approveSowDraftSnapshotAction` + approval UI; migration `0021_sow_share_tokens`;
+  the `lib/proposals/sow-share-*` module set; `/s/[token]` public route + public
+  `SowDraftDocument` render; mint button (mandatory audience + extra confirm) +
+  revoke + panel wiring; pre-delivery audit extended to the `sow` surface; both
+  void cascades (SOW-snapshot + source-proposal). Full live E2E on the Meridian
+  fixture surfaced a cluster of operator-chrome leaks on the public render, all
+  fixed; disclaimers aligned to `docs/28` §4 verbatim (British) with de-dup; the
+  client safety strip removed; the docs-gate asymmetry documented as intentional
+  (`docs/65` §4 prereq 7). Evidence: `docs/28`, `docs/65`, `docs/66` (acceptance
+  audit — "Accepted, all follow-ups resolved"). Migration `0021` applied to prod.
+- **Operator app UI redesign — Phase 0 + Phase 1 (shipped + QA-approved).**
+  Phase 0 swept dead chrome + scaffolding copy; Phase 1 built the operator design
+  system (sans typography, surface/interaction consistency, focus/dialog a11y,
+  filter tabs). Live authenticated visual QA verdict ✅ Approve (~4.2/5;
+  "AI-slop signature gone from operator surfaces"). Client-facing document
+  redesign (T10) deliberately deferred to Phase 2. Evidence: `docs/62`, `docs/63`,
+  `docs/64`.
+- **Client deliverable presentation + anti-slop passes.** Client-copy sanitizer +
+  `viewerMode` redaction, report-section/proposal-option prompt overhaul, and the
+  multi-pass presentation cleanup. Evidence: `docs/61` + commits this window.
+- **Synthetic ICP pilot run — Meridian Field Services.** Operator-driven QA
+  fixture exercised end-to-end (NOT a real client; must never appear in client
+  comms). Evidence: `docs/59`, `docs/60`.
+
+Roadmap status unchanged in substance: the S1–S13 critical path is ~92% built but
+its terminal milestone — **a first real client delivered** — is still open
+(live-confirmed: all engagements are synthetic/internal). See `docs/67` §4–§5.
+
+---
+
 ## Client Deliverable Presentation Pass · Pass 3 — Client Content Redaction Layer (2026-06-18)
 
 ✅ **PASS — client deliverable presentation cleared. Client-mode content sanitation cleared. Minimum real-pilot readiness cleared.** Closes the operator-vocabulary leak that surfaced after Pass 2-Fix unblocked the SSR crash. Output is `docs/61` § 16. Lint + production build + disclaimer check clean ✅.
