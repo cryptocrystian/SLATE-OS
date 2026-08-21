@@ -1,0 +1,283 @@
+/*
+ * SLATE — Client Deliverable Design System ("The Opportunity Brief")
+ * =================================================================
+ * Phase 2 / T10, now skinned to the Saipien "Register" v1.0 design
+ * system (the marketing site + SLATE product + deliverables share type,
+ * accent, and discipline). Applied to the client-facing report /
+ * proposal / SOW and their /r /p /s renders.
+ *
+ * Register foundations honored here:
+ *   - Warm-tonal ground, ONE restrained two-tone MINT accent.
+ *   - Archivo display/reading voice against JetBrains Mono for
+ *     labels/data/measurement (mono as instrument, never costume).
+ *   - Flat, matte. Separation = hairline (14% ink) / change of ground /
+ *     grain — never glow, halo, or gradient.
+ *   - No eyebrow-kickers above headings. Headings carry themselves.
+ *   - Accent: mint fills/brightest on dark; mint-line for marks on
+ *     light; green for accent TEXT on light (AA); mint-ink on mint fills.
+ *
+ * Brand skin lives entirely in the `--doc-*` tokens on `.slate-doc`.
+ * Everything is scoped under `.slate-doc`; no leakage to the operator app.
+ */
+
+.slate-doc {
+  /* ---- Register ground & ink (light) ---- */
+  --doc-paper: #EFEDE7;         /* primary page ground */
+  --doc-paper-2: #E7E4DB;       /* raised panels / cards / wells */
+  --doc-plate: #E7E4DB;         /* exhibit plate ground */
+  --doc-ink: #17150F;           /* headings, body — 13.7:1 */
+  --doc-ink-2: #57534A;         /* secondary text — 6.2:1, warm */
+  --doc-ink-3: #8A8477;         /* muted labels / mono metadata */
+  --doc-rule: rgba(23, 21, 15, 0.14);   /* 1px hairline seam */
+  --doc-rule-2: rgba(23, 21, 15, 0.26); /* stronger hairline */
+
+  /* ---- Register accent — two-tone mint ---- */
+  --doc-accent: #1FBE85;        /* mint line — marks & graphic strokes on light */
+  --doc-accent-text: #0B5A3E;   /* green — accent TEXT on light (6.0:1 AA) */
+  --doc-accent-bright: #A2FDCB; /* mint — fills / brightest, on dark */
+  --doc-mint-ink: #06231A;      /* text on a mint fill */
+  --doc-accent-soft: #DCF4E7;   /* light mint tint field */
+
+  /* ---- Register committed dark (brand panel / product surface) ---- */
+  --doc-dark: #131210;
+  --doc-dark-raised: #1C1A15;
+
+  /* ---- Register status — functional set, never the accent ---- */
+  --doc-good: #0E8A5C;
+  --doc-warn: #B47C21;
+  --doc-risk: #B24528;
+
+  /* ---- Register type ---- */
+  --doc-sans: var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --doc-mono: var(--font-mono), "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --doc-measure: 68ch;
+
+  /* ----------------------------------------------------------------
+   * Bridge: re-theme the app's --color-* set to the Register light
+   * palette WITHIN the document scope, so existing SLATE chart
+   * primitives + exhibit components render on-brand without prop
+   * threading. Mint is the chart accent; grounds are warm.
+   * ---------------------------------------------------------------- */
+  --color-bg-page: var(--doc-paper);
+  --color-bg-shell: var(--doc-paper);
+  --color-bg-surface: var(--doc-paper-2);
+  --color-bg-elevated: #E1DDD2;
+  --color-bg-panel: #DAD5C9;
+  --color-border-subtle: var(--doc-rule);
+  --color-border-strong: var(--doc-rule-2);
+  --color-text-primary: var(--doc-ink);
+  --color-text-secondary: var(--doc-ink-2);
+  --color-text-muted: var(--doc-ink-3);
+  --color-text-disabled: #A7A197;
+  --color-text-inverse: var(--doc-paper);
+  --color-brand-primary: var(--doc-accent);
+  --color-practice-ai: var(--doc-accent);
+  --color-practice-dev: var(--doc-good);
+  --color-practice-studio: var(--doc-warn);
+  --color-status-success: var(--doc-good);
+  --color-status-warning: var(--doc-warn);
+  --color-status-risk: var(--doc-risk);
+  --color-status-critical: #8F2A1A;
+  /* Distinct from success (#0E8A5C): the evidence scale needs strong
+     (deep green) / adequate (mint) / thin (amber) to separate — validated
+     via the dataviz palette check. */
+  --color-status-info: var(--doc-accent);
+  --color-status-neutral: var(--doc-ink-3);
+
+  background: var(--doc-paper);
+  color: var(--doc-ink);
+  font-family: var(--doc-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- print: flat + ink-economical ---- */
+@media print {
+  .slate-doc .doc-page { box-shadow: none !important; }
+}
+
+/* -------------------------------------------------------------------- */
+/* Page canvas                                                          */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-page { position: relative; background: var(--doc-paper); padding: 56px 60px; }
+.slate-doc .doc-reg { position: absolute; width: 13px; height: 13px; pointer-events: none; }
+.slate-doc .doc-reg::before, .slate-doc .doc-reg::after { content: ""; position: absolute; background: var(--doc-rule-2); }
+.slate-doc .doc-reg::before { left: 6px; top: 0; width: 1px; height: 13px; }
+.slate-doc .doc-reg::after { top: 6px; left: 0; height: 1px; width: 13px; }
+.slate-doc .doc-reg.tl { left: 20px; top: 20px; } .slate-doc .doc-reg.tr { right: 20px; top: 20px; }
+.slate-doc .doc-reg.bl { left: 20px; bottom: 20px; } .slate-doc .doc-reg.br { right: 20px; bottom: 20px; }
+
+/* -------------------------------------------------------------------- */
+/* Shared atoms                                                         */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-meta { font-family: var(--doc-mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--doc-ink-3); }
+.slate-doc svg text { font-family: var(--doc-sans); }
+.slate-doc .doc-ax { font-family: var(--doc-mono); font-size: 10px; fill: var(--doc-ink-3); letter-spacing: .06em; text-transform: uppercase; }
+
+/* Wordmark — Register typographic lockup: "Saipien" + mint period. */
+.slate-doc .doc-wordmark { display: flex; align-items: baseline; }
+.slate-doc .doc-wordmark .wm-word { font-family: var(--doc-sans); font-weight: 700; font-size: 20px; letter-spacing: -.03em; color: var(--doc-ink); line-height: 1; }
+.slate-doc .doc-wordmark .wm-dot { color: var(--doc-accent); font-weight: 700; }
+.slate-doc .doc-wordmark--light .wm-word { color: var(--doc-paper); }
+.slate-doc .doc-wordmark--light .wm-dot { color: var(--doc-accent-bright); }
+
+/* -------------------------------------------------------------------- */
+/* Decision-journey spread + rail                                       */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-spread { display: grid; grid-template-columns: 224px 1fr; gap: 0; }
+.slate-doc .doc-rail { border-right: 1px solid var(--doc-rule); padding-right: 30px; }
+.slate-doc .doc-rail-top { margin-bottom: 34px; }
+.slate-doc .doc-railid { font-family: var(--doc-mono); font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--doc-accent-text); margin-top: 12px; }
+.slate-doc .doc-toc-h { font-family: var(--doc-mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--doc-ink-3); margin-bottom: 16px; }
+.slate-doc .doc-toc { list-style: none; margin: 0; padding: 0; }
+.slate-doc .doc-toc li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--doc-rule); }
+.slate-doc .doc-toc li:first-child { border-top: none; }
+.slate-doc .doc-toc .num { font-family: var(--doc-mono); font-size: 11px; color: var(--doc-ink-3); }
+.slate-doc .doc-toc .nm { font-size: 13px; font-weight: 500; color: var(--doc-ink-2); line-height: 1.3; }
+.slate-doc .doc-toc .pg { font-family: var(--doc-mono); font-size: 11px; color: var(--doc-ink-3); }
+.slate-doc .doc-toc li.active .nm { color: var(--doc-accent-text); font-weight: 600; }
+.slate-doc .doc-toc li.active .num { color: var(--doc-accent-text); }
+.slate-doc .doc-main { padding-left: 40px; min-width: 0; }
+
+/* -------------------------------------------------------------------- */
+/* Cover — committed warm-dark brand panel + warm-light title block      */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-cover { min-height: 1020px; display: flex; flex-direction: column; }
+.slate-doc .doc-cover .doc-spread { flex: 1; }
+.slate-doc .doc-cover .doc-main { display: flex; flex-direction: column; padding-left: 48px; }
+/* Anchor the title block to the lower portion of the column (breathing
+   room above), so it balances the full-height brand panel rather than
+   leaving a dead void mid-page. */
+.slate-doc .doc-cover .doc-h1 { margin-top: auto; }
+.slate-doc .doc-cover .doc-cover-meta { margin-top: 34px; }
+.slate-doc .doc-h1 { font-family: var(--doc-sans); font-size: 66px; line-height: .98; letter-spacing: -.035em; font-weight: 800; color: var(--doc-ink); }
+.slate-doc .doc-cover-sub { font-size: 20px; line-height: 1.34; color: var(--doc-ink-2); font-weight: 500; margin-top: 22px; max-width: 34ch; }
+.slate-doc .doc-cover-rule { height: 2px; background: var(--doc-accent); width: 60px; margin: 30px 0; }
+.slate-doc .doc-cover-meta { margin-top: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 32px; border-top: 1px solid var(--doc-rule); padding-top: 22px; max-width: 34rem; }
+.slate-doc .doc-cover-meta dt { font-family: var(--doc-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-ink-3); }
+.slate-doc .doc-cover-meta dd { font-size: 14px; font-weight: 500; color: var(--doc-ink); margin-top: 5px; }
+.slate-doc .doc-synthetic { margin-top: 22px; font-family: var(--doc-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-ink-3); opacity: .7; }
+
+/* Brand panel (cover rail) — warm-dark, reversed, mint accents. */
+.slate-doc .doc-cover .doc-rail {
+  background: var(--doc-dark);
+  color: var(--doc-paper);
+  border-right: none;
+  margin: -56px 0 -56px -60px;   /* bleed to page edges (padding 56/60) */
+  padding: 56px 30px 56px 60px;
+  display: flex;
+  flex-direction: column;
+}
+.slate-doc .doc-cover .doc-rail .doc-railid { color: var(--doc-accent-bright); }
+.slate-doc .doc-cover .doc-rail .doc-toc-h { color: rgba(239, 237, 231, .55); }
+.slate-doc .doc-cover .doc-rail .doc-toc li { border-top-color: rgba(239, 237, 231, .14); }
+.slate-doc .doc-cover .doc-rail .doc-toc .num { color: rgba(239, 237, 231, .5); }
+.slate-doc .doc-cover .doc-rail .doc-toc .nm { color: rgba(239, 237, 231, .9); font-weight: 500; }
+.slate-doc .doc-cover .doc-rail .doc-toc .pg { color: rgba(239, 237, 231, .4); }
+.slate-doc .doc-cover .doc-rail-spacer { flex: 1; }
+.slate-doc .doc-cover .doc-rail-foot { font-family: var(--doc-mono); font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: rgba(239, 237, 231, .45); }
+
+/* -------------------------------------------------------------------- */
+/* Section head + reading column                                        */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--doc-rule-2); padding-bottom: 12px; margin-bottom: 26px; }
+.slate-doc .doc-sec-title { display: inline-flex; align-items: center; gap: 12px; font-family: var(--doc-sans); font-size: 23px; font-weight: 700; letter-spacing: -.025em; color: var(--doc-ink); }
+.slate-doc .doc-sec-title::before { content: ""; width: 8px; height: 8px; background: var(--doc-accent); border-radius: 2px; flex: none; }
+.slate-doc .doc-sec-note { font-family: var(--doc-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--doc-ink-3); white-space: nowrap; }
+.slate-doc .doc-lede { font-family: var(--doc-sans); font-size: 25px; line-height: 1.3; letter-spacing: -.02em; font-weight: 600; color: var(--doc-ink); max-width: 26ch; }
+.slate-doc .doc-lede em { font-style: normal; color: var(--doc-accent-text); }
+.slate-doc .doc-body { margin-top: 18px; font-size: 14px; line-height: 1.62; color: var(--doc-ink-2); max-width: var(--doc-measure); }
+.slate-doc .doc-body p + p { margin-top: 12px; }
+
+/* at-a-glance data band */
+.slate-doc .doc-glance { margin-top: 34px; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--doc-ink); border-bottom: 1px solid var(--doc-rule); }
+.slate-doc .doc-glance > div { padding: 18px 20px 20px 0; }
+.slate-doc .doc-glance > div + div { padding-left: 22px; border-left: 1px solid var(--doc-rule); }
+.slate-doc .doc-glance .k { font-family: var(--doc-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-ink-3); }
+.slate-doc .doc-glance .v { font-family: var(--doc-sans); font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 12px; color: var(--doc-ink); line-height: 1.05; }
+.slate-doc .doc-glance .v small { font-size: 14px; font-weight: 600; color: var(--doc-ink-3); letter-spacing: 0; }
+.slate-doc .doc-glance .n { font-size: 12px; color: var(--doc-ink-3); margin-top: 8px; line-height: 1.35; }
+
+/* -------------------------------------------------------------------- */
+/* Exhibit plate                                                        */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-plate { margin-top: 32px; background: var(--doc-plate); border: 1px solid var(--doc-rule); border-radius: 12px; padding: 24px 26px 22px; }
+.slate-doc .doc-plate-fig { font-family: var(--doc-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-accent-text); }
+.slate-doc .doc-plate-t { font-family: var(--doc-sans); font-size: 16px; font-weight: 700; letter-spacing: -.015em; margin: 2px 0 2px; color: var(--doc-ink); }
+.slate-doc .doc-plate-cap { font-size: 12.5px; color: var(--doc-ink-3); max-width: 62ch; line-height: 1.5; margin-bottom: 6px; }
+.slate-doc .doc-sowhat { margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; background: var(--doc-accent-soft); border-radius: 8px; padding: 12px 15px; border-left: 2px solid var(--doc-accent); }
+.slate-doc .doc-sowhat .lbl { font-family: var(--doc-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-accent-text); white-space: nowrap; padding-top: 2px; }
+.slate-doc .doc-sowhat p { font-size: 13.5px; font-weight: 500; color: var(--doc-ink); line-height: 1.45; margin: 0; }
+
+/* -------------------------------------------------------------------- */
+/* Exhibit: 30/60/90 roadmap gantt (comp primitives)                    */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-gantt-scalerow { display: grid; grid-template-columns: 150px 1fr; gap: 14px; margin-bottom: 6px; }
+.slate-doc .doc-gantt-scale { display: grid; grid-template-columns: repeat(3, 1fr); font-family: var(--doc-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--doc-ink-3); border-bottom: 1px solid var(--doc-rule-2); padding-bottom: 5px; }
+.slate-doc .doc-gantt-scale span:nth-child(2) { text-align: center; } .slate-doc .doc-gantt-scale span:nth-child(3) { text-align: right; }
+.slate-doc .doc-gantt-row { display: grid; grid-template-columns: 150px 1fr; align-items: center; gap: 14px; padding: 7px 0; }
+.slate-doc .doc-gantt-row + .doc-gantt-row { border-top: 1px solid var(--doc-rule); }
+.slate-doc .doc-gantt-lab { font-size: 12.5px; font-weight: 600; color: var(--doc-ink); }
+.slate-doc .doc-gantt-lab small { display: block; font-family: var(--doc-mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--doc-ink-3); font-weight: 500; margin-top: 2px; }
+.slate-doc .doc-track { position: relative; height: 22px; }
+.slate-doc .doc-bar { position: absolute; height: 22px; border-radius: 3px; display: flex; align-items: center; padding: 0 9px; font-family: var(--doc-mono); font-size: 10px; font-weight: 500; white-space: nowrap; }
+.slate-doc .doc-bar.qw { background: var(--doc-accent); color: var(--doc-mint-ink); }
+.slate-doc .doc-bar.sb { background: var(--doc-accent-text); color: var(--doc-paper); }
+.slate-doc .doc-bar.ret { background: var(--doc-ink-2); color: var(--doc-paper); }
+
+/* -------------------------------------------------------------------- */
+/* Exhibit: maturity (current vs target)                               */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-mat-row { display: grid; grid-template-columns: 150px 1fr; gap: 16px; align-items: center; padding: 9px 0; }
+.slate-doc .doc-mat-row + .doc-mat-row { border-top: 1px solid var(--doc-rule); }
+.slate-doc .doc-mat-lab { font-size: 12.5px; font-weight: 600; color: var(--doc-ink); }
+.slate-doc .doc-mat-track { position: relative; height: 10px; background: var(--doc-rule); border-radius: 5px; }
+.slate-doc .doc-mat-fill { position: absolute; left: 0; top: 0; height: 10px; border-radius: 5px; background: var(--doc-accent); }
+.slate-doc .doc-mat-target { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--doc-ink); }
+.slate-doc .doc-mat-legend { display: flex; gap: 20px; margin-top: 14px; font-family: var(--doc-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--doc-ink-3); }
+.slate-doc .doc-mat-legend span { display: flex; align-items: center; gap: 6px; }
+.slate-doc .doc-mat-legend .sw { width: 14px; height: 8px; border-radius: 2px; background: var(--doc-accent); }
+.slate-doc .doc-mat-legend .tk { width: 2px; height: 12px; background: var(--doc-ink); }
+
+/* -------------------------------------------------------------------- */
+/* Tiered proposal comparison (good / better / best)                   */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-tiers { margin-top: 4px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border: 1px solid var(--doc-rule); border-radius: 12px; overflow: hidden; }
+.slate-doc .doc-tier { padding: 22px 20px; position: relative; }
+.slate-doc .doc-tier + .doc-tier { border-left: 1px solid var(--doc-rule); }
+.slate-doc .doc-tier.rec { background: var(--doc-accent-soft); }
+.slate-doc .doc-tier-flag { font-family: var(--doc-mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-accent-text); height: 14px; }
+.slate-doc .doc-tier-name { font-family: var(--doc-sans); font-size: 17px; font-weight: 700; letter-spacing: -.02em; margin-top: 8px; color: var(--doc-ink); }
+.slate-doc .doc-tier-fit { font-size: 12.5px; color: var(--doc-ink-3); margin-top: 6px; line-height: 1.4; min-height: 52px; }
+.slate-doc .doc-tier-price { font-family: var(--doc-mono); font-size: 15px; font-weight: 600; color: var(--doc-ink); margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--doc-rule); }
+.slate-doc .doc-tier-price small { display: block; font-size: 10px; letter-spacing: .06em; color: var(--doc-ink-3); text-transform: uppercase; margin-top: 4px; font-weight: 400; }
+.slate-doc .doc-tier ul { list-style: none; margin: 14px 0 0; padding: 0; }
+.slate-doc .doc-tier li { font-size: 12.5px; color: var(--doc-ink-2); line-height: 1.4; padding: 6px 0 6px 16px; position: relative; }
+.slate-doc .doc-tier li::before { content: ""; position: absolute; left: 0; top: 11px; width: 5px; height: 5px; border-radius: 50%; background: var(--doc-accent); }
+
+/* -------------------------------------------------------------------- */
+/* Footer / disclaimer                                                  */
+/* -------------------------------------------------------------------- */
+.slate-doc .doc-footer { margin-top: 40px; border-top: 1px solid var(--doc-rule); padding-top: 16px; }
+.slate-doc .doc-footer p { font-size: 11px; line-height: 1.55; color: var(--doc-ink-3); margin: 0; }
+.slate-doc .doc-footer p + p { margin-top: 4px; }
+
+/* -------------------------------------------------------------------- */
+/* Responsive — rail collapses to a top strip on narrow screens        */
+/* -------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  .slate-doc .doc-page { padding: 32px 24px; }
+  .slate-doc .doc-spread { grid-template-columns: 1fr; }
+  .slate-doc .doc-rail { border-right: none; border-bottom: 1px solid var(--doc-rule-2); padding-right: 0; padding-bottom: 20px; margin-bottom: 24px; }
+  .slate-doc .doc-cover .doc-rail { margin: -32px -24px 24px; padding: 32px 24px; }
+  .slate-doc .doc-toc { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+  .slate-doc .doc-main, .slate-doc .doc-cover .doc-main { padding-left: 0; }
+  .slate-doc .doc-h1 { font-size: 44px; }
+  .slate-doc .doc-cover { min-height: 0; }
+  .slate-doc .doc-cover-meta { grid-template-columns: 1fr 1fr; }
+  .slate-doc .doc-glance { grid-template-columns: 1fr 1fr; }
+  .slate-doc .doc-glance > div + div:nth-child(odd) { border-left: none; }
+  .slate-doc .doc-tiers { grid-template-columns: 1fr; }
+  .slate-doc .doc-tier + .doc-tier { border-left: none; border-top: 1px solid var(--doc-rule); }
+}

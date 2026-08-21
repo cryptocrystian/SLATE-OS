@@ -9,24 +9,28 @@ import {
   sanitizeClientProse,
   sanitizeClientBullets,
 } from "@/lib/deliverables/client-copy-sanitizer";
-import { deliverableSerif } from "@/lib/deliverable-fonts";
-
-/** Serif display face for deliverable headings (see lib/deliverable-fonts). */
-const SERIF = "[font-family:var(--font-deliverable-serif)]";
+import {
+  Reg,
+  Rail,
+  DocPage,
+  formatDeliverableDate,
+} from "@/components/deliverables/doc-kit";
 
 /*
-THESIS: A client-facing engagement proposal that reads as top-firm output — a
-composed cover, a short "how to read this" opening, and each commercial option
-presented as a first-class, comparable offer with a clear "choose this when",
-scoped workstreams, and honest planning caveats. It refuses the
-stacked-identical-cards + mono-eyebrow "app screen" arrangement.
-OWN-WORLD: Light executive document. White ground, slate ink, one confident
-indigo accent (--color-brand-primary) as hairline rules and option numerals.
-Matches ClientReportDeliverable so a client sees one coherent Saipien Labs house style.
-STORY: A buyer opens to a composed cover, understands how the options differ,
-and reads three genuinely distinct offers — concluding this firm is worth the
-engagement and knowing which option fits.
-FORM: executive print document.
+THESIS: A client-facing engagement proposal as top-firm output — "The
+Opportunity Brief" system: a composed cover + brand panel, a short "how to read
+this" opening, an options-at-a-glance tiered comparison (good / better / best
+with a recommended tier), then each option as a first-class detailed offer. It
+refuses the stacked-identical-cards + mono-eyebrow "app screen" arrangement.
+OWN-WORLD: Saipien "Register" light executive plate document (styles/
+deliverable.css, .slate-doc) — warm ground, committed warm-dark brand panel,
+one two-tone mint accent, Archivo display vs JetBrains Mono labels. Shares the
+system with the report so a client sees one coherent Saipien house style.
+STORY: A buyer opens to a composed cover, sees the tiers side by side, then reads
+three genuinely distinct offers — concluding this firm is worth the engagement
+and knowing which option fits.
+FORM: executive print document (decision-journey plate document). Roll seed f8d282d4.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
 */
 
 export interface ClientProposalDeliverableProps {
@@ -41,7 +45,6 @@ const OPTION_TYPE_LABEL: Record<string, string> = {
 };
 
 function optionTypeLabel(optionType: string): string {
-  // Accept either the hyphenated union form or the underscored DB form.
   const key = optionType.replace(/_/g, "-");
   return (
     OPTION_TYPE_LABEL[key] ??
@@ -56,225 +59,222 @@ export function ClientProposalDeliverable({
   const options = snapshot.optionSnapshot
     .filter((o) => o.includedInArtifact)
     .sort((a, b) => a.position - b.position);
-
   const hasRecommended = options.some((o) => o.recommended);
+  // The at-a-glance comparison only makes sense with 2+ options; a single
+  // option goes straight to its detail (no "Good · Better · Best" header
+  // over one full-width card).
+  const showTiers = options.length >= 2;
+
+  const rail: string[] = ["How to read this"];
+  if (showTiers) rail.push("Options at a glance");
+  options.forEach((o) => rail.push(optionTypeLabel(o.optionType)));
 
   return (
-    <article
-      data-deliverable-export="client-proposal"
-      className={`${deliverableSerif.variable} mx-auto w-full max-w-[52rem] text-text-primary`}
-    >
-      <Cover
-        engagement={engagement}
-        generatedAt={snapshot.generatedAt}
-        optionCount={options.length}
-      />
-
-      <ProposalOpening
-        engagement={engagement}
-        optionCount={options.length}
-        hasRecommended={hasRecommended}
-      />
-
-      {options.length > 0 ? (
-        <section aria-label="Engagement options" className="mt-14 print:mt-10">
-          <SectionRule label="Engagement options" />
-          <div className="mt-8 flex flex-col gap-12 print:gap-10">
-            {options.map((option, i) => (
-              <OptionPlate
-                key={option.optionId}
-                index={i + 1}
-                option={option}
-              />
-            ))}
+    <div className="slate-doc" data-deliverable-export="client-proposal">
+      {/* -------- Cover -------- */}
+      <section className="doc-page doc-cover">
+        <Reg />
+        <div className="doc-spread">
+          <Rail
+            items={rail}
+            variant="cover"
+            docId="Engagement Proposal"
+            companyName={engagement.companyName}
+          />
+          <div className="doc-main">
+            <h1 className="doc-h1">{engagement.companyName}</h1>
+            <p className="doc-cover-sub">
+              {options.length > 1
+                ? `${capitalize(numberWord(options.length))} ways to move the priorities from discovery into delivery — with the scope, sequencing, and trade-offs of each.`
+                : `A recommended engagement to move the priorities from discovery into delivery — scope, sequencing, and trade-offs laid out.`}
+            </p>
+            <div className="doc-cover-rule" />
+            <dl className="doc-cover-meta">
+              <div><dt>Prepared for</dt><dd>{engagement.companyName}</dd></div>
+              <div><dt>Prepared by</dt><dd>Saipien Labs</dd></div>
+              <div><dt>Issued</dt><dd>{formatDeliverableDate(snapshot.generatedAt)}</dd></div>
+              <div><dt>Status</dt><dd>Draft for review</dd></div>
+            </dl>
           </div>
-        </section>
-      ) : null}
+        </div>
+      </section>
 
-      <DeliverableFooter companyName={engagement.companyName} />
-    </article>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Cover
-// ---------------------------------------------------------------------------
-
-function Cover({
-  engagement,
-  generatedAt,
-  optionCount,
-}: {
-  engagement: Engagement;
-  generatedAt: string;
-  optionCount: number;
-}) {
-  return (
-    <header className="flex min-h-[34rem] flex-col justify-between gap-16 pb-16 print:min-h-0 print:break-after-page">
-      <div className="flex items-center justify-between border-t-2 border-brand-primary pt-4">
-        <span className="text-[0.9rem] font-semibold tracking-[0.02em] text-text-primary">
-          Saipien&nbsp;Labs
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-muted">
-          Confidential
-        </span>
-      </div>
-
-      <div className="flex flex-col gap-7">
-        <h1
-          className={`${SERIF} text-[3.25rem] font-semibold leading-[0.98] tracking-[-0.02em] text-text-primary sm:text-[4.25rem]`}
-        >
-          {engagement.companyName}
-        </h1>
-        <div className="flex flex-col gap-4">
-          <div className="h-px w-16 bg-brand-primary" aria-hidden />
-          <p className="text-[0.8rem] font-medium uppercase tracking-[0.2em] text-text-secondary">
-            AI Opportunity Sprint · Engagement Proposal
+      {/* -------- How to read this -------- */}
+      <DocPage rail={rail} active={0}>
+        <div className="doc-sec-head">
+          <div className="doc-sec-title">How to read this proposal</div>
+        </div>
+        <p className="doc-lede">
+          {options.length === 1
+            ? "The option below turns the priorities identified during discovery into a delivery engagement."
+            : `The ${numberWord(options.length)} options below each turn the priorities from discovery into a delivery engagement — they differ in depth, commitment, and how much Saipien Labs owns over time.`}
+        </p>
+        <div className="doc-body">
+          <p>
+            Each option lists the situation it best fits, what the engagement
+            delivers, its timeline, and the assumptions and dependencies it
+            rests on.{" "}
+            {hasRecommended
+              ? "The option marked Recommended is where most organizations at this stage get the strongest result relative to effort. "
+              : ""}
+            Pricing and final scope are confirmed during scoping.
           </p>
-          <p className="max-w-xl text-base leading-relaxed text-text-muted">
-            {optionCount > 1
-              ? `${capitalize(numberWord(optionCount))} ways to move the priorities from discovery into delivery — with the scope, sequencing, and trade-offs of each laid out so ${engagement.companyName} can choose the right fit.`
-              : `A recommended engagement to move the priorities from discovery into delivery, with the scope, sequencing, and trade-offs laid out for ${engagement.companyName}.`}
+          <p>
+            Prepared for the leadership team at {engagement.companyName} and
+            reviewed by a Saipien Labs consultant before release.
           </p>
         </div>
-      </div>
+      </DocPage>
 
-      <dl className="grid grid-cols-2 gap-x-10 gap-y-4 border-t border-border-subtle pt-6 sm:grid-cols-4">
-        <CoverFact label="Prepared for" value={engagement.companyName} />
-        <CoverFact label="Engagement" value={engagement.engagementType} />
-        <CoverFact label="Prepared by" value="Saipien Labs" />
-        <CoverFact label="Issued" value={formatDate(generatedAt)} />
-      </dl>
-    </header>
-  );
-}
+      {/* -------- Options at a glance — tiered comparison (2+ only) -------- */}
+      {showTiers ? (
+        <DocPage rail={rail} active={1}>
+          <div className="doc-sec-head">
+            <div className="doc-sec-title">Options at a glance</div>
+            <div className="doc-sec-note">
+              {options.length >= 3 ? "Good · Better · Best" : "Compare the options"}
+            </div>
+          </div>
+          <TieredComparison options={options} />
+        </DocPage>
+      ) : null}
 
-function CoverFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-        {label}
-      </dt>
-      <dd className="text-sm font-medium text-text-primary">{value}</dd>
+      {/* -------- Per-option detail -------- */}
+      {options.map((option, i) => (
+        <DocPage
+          key={option.optionId}
+          rail={rail}
+          active={(showTiers ? 2 : 1) + i}
+        >
+          <OptionDetail option={option} />
+        </DocPage>
+      ))}
+
+      {/* -------- Footer -------- */}
+      <DocPage rail={rail}>
+        <DeliverableFooter companyName={engagement.companyName} />
+      </DocPage>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Opening
+// Tiered comparison (good / better / best)
 // ---------------------------------------------------------------------------
 
-function ProposalOpening({
-  engagement,
-  optionCount,
-  hasRecommended,
-}: {
-  engagement: Engagement;
-  optionCount: number;
-  hasRecommended: boolean;
-}) {
+function TieredComparison({ options }: { options: ProposalOptionSnapshot[] }) {
+  const cols = Math.min(options.length, 3);
   return (
-    <section aria-label="How to read this proposal" className="mt-4">
-      <SectionRule label="How to read this" />
-      <p className="mt-6 max-w-[42rem] text-xl font-normal leading-[1.5] text-text-primary">
-        {optionCount === 1
-          ? "The option below turns the priorities identified during discovery into a delivery engagement."
-          : `The ${numberWord(optionCount)} options below each turn the priorities identified during discovery into a delivery engagement — they differ in depth, commitment, and how much Saipien Labs owns over time.`}
-      </p>
-      <p className="mt-5 max-w-[38rem] text-[0.975rem] leading-[1.75] text-text-secondary">
-        Each option lists the situation it best fits, what the engagement
-        delivers, its timeline, and the assumptions and dependencies it rests
-        on.{" "}
-        {hasRecommended
-          ? "The option marked Recommended is where most organizations at this stage get the strongest result relative to effort."
-          : ""}{" "}
-        Pricing and final scope are confirmed during scoping.
-      </p>
-      <p className="mt-6 max-w-[38rem] text-sm leading-relaxed text-text-muted">
-        Prepared for the leadership team at {engagement.companyName} and reviewed
-        by a Saipien Labs consultant before release.
-      </p>
-    </section>
+    <div
+      className="doc-tiers"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
+    >
+      {options.map((o) => {
+        const fit = toClientVoice(sanitizeClientProse(o.bestFitScenario));
+        const price = cleanPricing(o.pricingPlaceholder);
+        const deliverables = sanitizeClientBullets(o.deliverables).slice(0, 4);
+        return (
+          <div key={o.optionId} className={`doc-tier${o.recommended ? " rec" : ""}`}>
+            <div className="doc-tier-flag">
+              {o.recommended ? "Recommended" : ""}
+            </div>
+            <div className="doc-tier-name">{optionTypeLabel(o.optionType)}</div>
+            <div className="doc-tier-fit">{fit ?? o.title}</div>
+            <div className="doc-tier-price">
+              {price ?? "Scoped to fit"}
+              <small>Planning estimate · confirmed in scoping</small>
+            </div>
+            {deliverables.length > 0 ? (
+              <ul>
+                {deliverables.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Option
+// Per-option detail
 // ---------------------------------------------------------------------------
 
-function OptionPlate({
-  index,
-  option,
-}: {
-  index: number;
-  option: ProposalOptionSnapshot;
-}) {
-  const bestFit = sanitizeClientProse(option.bestFitScenario);
-  const scope = sanitizeClientProse(option.scopeSummary);
+function OptionDetail({ option }: { option: ProposalOptionSnapshot }) {
+  const bestFit = toClientVoice(sanitizeClientProse(option.bestFitScenario));
+  const scope = toClientVoice(sanitizeClientProse(option.scopeSummary));
   const timeline = sanitizeClientProse(option.timeline);
   const deliverables = sanitizeClientBullets(option.deliverables);
   const assumptions = sanitizeClientBullets(option.assumptions);
   const dependencies = sanitizeClientBullets(option.dependencies);
   const risks = sanitizeClientBullets(option.risks);
-  const pricing = sanitizeClientProse(option.pricingPlaceholder);
+  const pricing = cleanPricing(option.pricingPlaceholder);
 
   return (
-    <section className="print:break-inside-avoid-page">
-      <div className="flex items-baseline gap-3">
-        <span className="font-mono text-[11px] font-medium tabular-nums tracking-[0.1em] text-brand-primary">
-          Option&nbsp;{String(index).padStart(2, "0")}
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
+    <>
+      <div className="doc-sec-head">
+        <div className="doc-sec-title">{option.title}</div>
+        <div className="doc-sec-note">
           {optionTypeLabel(option.optionType)}
-        </span>
-        {option.recommended ? (
-          <span className="rounded-sm border border-brand-primary px-1.5 py-px font-mono text-[10px] uppercase tracking-[0.14em] text-brand-primary">
-            Recommended
-          </span>
-        ) : null}
+          {option.recommended ? " · Recommended" : ""}
+        </div>
       </div>
 
-      <h3
-        className={`${SERIF} mt-2 text-[1.55rem] font-semibold leading-[1.12] tracking-[-0.015em] text-text-primary`}
-      >
-        {option.title}
-      </h3>
-
+      {/* "Best fit" is the glance-table's line; here it is a compact
+          labeled note (not a repeated full lede), and the scope thesis
+          carries the page. */}
       {bestFit ? (
-        <p className="mt-3 max-w-[42rem] text-[1.05rem] font-medium leading-[1.55] text-text-primary">
+        <p
+          className="doc-body"
+          style={{ marginTop: "2px", fontSize: "15px", fontWeight: 600, color: "var(--doc-ink)", maxWidth: "42rem" }}
+        >
+          <span className="doc-sec-note">Best fit · </span>
           {bestFit}
         </p>
       ) : null}
-
       {scope ? (
-        <div className="mt-3 max-w-[38rem] whitespace-pre-line text-[0.975rem] leading-[1.75] text-text-secondary">
-          {scope}
+        <div className="doc-body">
+          {scope.split(/\n{2,}/).map((p, i) => (
+            <p key={i} style={{ whiteSpace: "pre-line" }}>{p}</p>
+          ))}
         </div>
       ) : null}
 
       {timeline ? (
-        <p className="mt-4 max-w-[38rem] text-[0.9rem] leading-relaxed text-text-secondary">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            Timeline&nbsp;·&nbsp;
-          </span>
+        <p className="doc-body" style={{ marginTop: "16px" }}>
+          <span className="doc-sec-note">Timeline · </span>
           {timeline}
         </p>
       ) : null}
 
       {deliverables.length > 0 ? (
-        <div className="mt-5 max-w-[40rem]">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            What it delivers
-          </p>
-          <ul className="mt-2 flex flex-col gap-1.5">
+        <div className="doc-plate">
+          <div className="doc-plate-fig">What it delivers</div>
+          <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0 }}>
             {deliverables.map((d, i) => (
               <li
                 key={i}
-                className="flex gap-2.5 text-[0.925rem] leading-relaxed text-text-secondary"
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  fontSize: "13.5px",
+                  lineHeight: 1.5,
+                  color: "var(--doc-ink-2)",
+                  padding: "5px 0",
+                }}
               >
                 <span
                   aria-hidden
-                  className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-brand-primary"
+                  style={{
+                    marginTop: "7px",
+                    width: "5px",
+                    height: "5px",
+                    flex: "none",
+                    borderRadius: "50%",
+                    background: "var(--doc-accent)",
+                  }}
                 />
                 <span>{d}</span>
               </li>
@@ -284,7 +284,14 @@ function OptionPlate({
       ) : null}
 
       {assumptions.length > 0 || dependencies.length > 0 || risks.length > 0 ? (
-        <div className="mt-5 grid max-w-[42rem] gap-x-8 gap-y-4 border-l border-brand-primary/40 pl-4 sm:grid-cols-3">
+        <div
+          style={{
+            marginTop: "24px",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: "24px",
+          }}
+        >
           <OptionAside label="Assumptions" items={assumptions} />
           <OptionAside label="Dependencies" items={dependencies} />
           <OptionAside label="Risks" items={risks} />
@@ -292,33 +299,23 @@ function OptionPlate({
       ) : null}
 
       {pricing ? (
-        <p className="mt-5 max-w-[38rem] text-[0.85rem] leading-relaxed text-text-muted">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-            Investment&nbsp;·&nbsp;
-          </span>
-          {pricing}{" "}
-          <span className="text-text-disabled">
-            (planning estimate — confirmed during scoping)
-          </span>
+        <p className="doc-body" style={{ marginTop: "24px", fontSize: "12.5px", color: "var(--doc-ink-3)" }}>
+          <span className="doc-sec-note">Investment · </span>
+          {pricing} (planning estimate — confirmed during scoping)
         </p>
       ) : null}
-    </section>
+    </>
   );
 }
 
 function OptionAside({ label, items }: { label: string; items: string[] }) {
   if (items.length === 0) return null;
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
-        {label}
-      </p>
-      <ul className="flex flex-col gap-1">
+    <div>
+      <div className="doc-sec-note" style={{ marginBottom: "8px" }}>{label}</div>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
         {items.map((it, i) => (
-          <li
-            key={i}
-            className="text-[0.8rem] leading-relaxed text-text-muted"
-          >
+          <li key={i} style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--doc-ink-3)" }}>
             {it}
           </li>
         ))}
@@ -328,49 +325,51 @@ function OptionAside({ label, items }: { label: string; items: string[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Shared bits
+// Footer
 // ---------------------------------------------------------------------------
-
-function SectionRule({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="h-px w-8 bg-brand-primary" aria-hidden />
-      <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-brand-primary">
-        {label}
-      </span>
-    </div>
-  );
-}
 
 function DeliverableFooter({ companyName }: { companyName: string }) {
   return (
-    <footer className="mt-16 border-t border-border-subtle pt-6 print:mt-12 print:break-inside-avoid">
-      <p className="max-w-[42rem] text-[0.8rem] leading-relaxed text-text-muted">
+    <footer className="doc-footer" style={{ marginTop: 0 }}>
+      <p>
         This proposal is a planning document. It is not a statement of work, a
         binding quote, or a contract. Scope, timeline, and pricing are
-        directional and are confirmed during scoping before any engagement
-        begins.
+        directional and confirmed during scoping before any engagement begins.
       </p>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
-        <span className="text-sm font-semibold tracking-[0.02em] text-text-primary">
-          Saipien&nbsp;Labs
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
-          Confidential · Prepared for {companyName}
-        </span>
-      </div>
+      <p>Saipien Labs · Confidential · Prepared for {companyName}.</p>
     </footer>
   );
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+/**
+ * Client-safe pricing: sanitize, then strip operator-internal pricing
+ * phrasing ("pricing placeholder for internal planning only", "…placeholder",
+ * trailing separators) so only the planning range/label reaches the client.
+ * The planning-estimate caveat is added by the caller.
+ */
+function cleanPricing(raw: string | null | undefined): string | null {
+  const t = sanitizeClientProse(raw);
+  if (!t) return null;
+  const cleaned = t
+    .replace(/\s*[·|,-]?\s*pricing placeholder\b.*$/i, "")
+    .replace(/\s*for internal planning only\.?/gi, "")
+    .replace(/\s*[·|,-]\s*$/,"")
+    .replace(/\bplaceholder\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+/**
+ * Client voice: the buyer is reading their own document, so operator/third-
+ * person "the client" phrasing becomes second person. AI-drafted best-fit
+ * copy tends to say "the client"; this keeps it from reading as a template.
+ */
+function toClientVoice(t: string | null): string | null {
+  if (!t) return t;
+  return t
+    .replace(/\bthe client's\b/gi, "your organization's")
+    .replace(/\bthe client\b/gi, "your organization");
 }
 
 function numberWord(n: number): string {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Archivo, Inter, JetBrains_Mono } from "next/font/google";
 import "@/styles/globals.css";
+import "@/styles/deliverable.css";
 
 const sans = Inter({
   subsets: ["latin"],
@@ -11,6 +12,13 @@ const sans = Inter({
 const mono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  display: "swap",
+});
+
+// Saipien "Register" display + reading face for client deliverables.
+const display = Archivo({
+  subsets: ["latin"],
+  variable: "--font-archivo",
   display: "swap",
 });
 
@@ -35,7 +43,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${sans.variable} ${mono.variable}`}>
+    <html
+      lang="en"
+      className={`${sans.variable} ${mono.variable} ${display.variable}`}
+    >
       <body className="min-h-screen font-sans antialiased">{children}</body>
     </html>
   );

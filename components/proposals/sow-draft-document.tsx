@@ -20,7 +20,10 @@ import type { SowDraftFields } from "@/lib/proposals/commercial-guard";
 import { deliverableSerif } from "@/lib/deliverable-fonts";
 
 /** Serif display face for headings — matches the report/proposal house style. */
-const SERIF = "[font-family:var(--font-deliverable-serif)]";
+// Saipien "Register" display voice (Archivo). The SOW shares the client
+// deliverable house style; on the public `/s` surface the whole document
+// is additionally wrapped in `.slate-doc` for the warm/mint Register skin.
+const SERIF = "[font-family:var(--font-archivo)]";
 
 /**
  * Phase 1B SOW Draft Sprint P6-C — operator-internal SOW Draft
@@ -118,7 +121,7 @@ export function SowDraftDocument({
   return (
     <div
       data-deliverable-export="sow-draft"
-      className={`${deliverableSerif.variable} mx-auto flex w-full max-w-[52rem] flex-col gap-8 text-text-primary print:max-w-none print:gap-6`}
+      className={`${deliverableSerif.variable} ${isPublic ? "slate-doc" : ""} mx-auto flex w-full max-w-[52rem] flex-col gap-8 text-text-primary print:max-w-none print:gap-6`}
     >
       {isPublic ? <PublicSowDisclaimer /> : <OperatorSowHint />}
       {isVoided ? <VoidedBanner snapshot={snapshot} /> : null}

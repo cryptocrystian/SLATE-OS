@@ -167,38 +167,19 @@ export function ExecutiveSummaryTwoByTwo({
         const midY = yScale(QUADRANT_THRESHOLD_Y);
         return (
           <>
-            {/* Quadrant field tints — subtle structure, not color-coding */}
+            {/*
+              Upper band (above the impact midline) gets one faint neutral
+              wash to mark "actionable" territory — a single ground, not
+              four color-coded quadrants. Keeps mint the only accent and
+              stops warn-toned marks from vanishing on a matching field.
+            */}
             <rect
               x={0}
               y={0}
-              width={midX}
+              width={innerWidth}
               height={midY}
-              fill="var(--color-status-success)"
-              fillOpacity={0.05}
-            />
-            <rect
-              x={midX}
-              y={0}
-              width={innerWidth - midX}
-              height={midY}
-              fill="var(--color-brand-primary)"
-              fillOpacity={0.05}
-            />
-            <rect
-              x={0}
-              y={midY}
-              width={midX}
-              height={innerHeight - midY}
-              fill="var(--color-text-muted)"
-              fillOpacity={0.04}
-            />
-            <rect
-              x={midX}
-              y={midY}
-              width={innerWidth - midX}
-              height={innerHeight - midY}
-              fill="var(--color-status-warning)"
-              fillOpacity={0.05}
+              fill="var(--color-text-primary)"
+              fillOpacity={0.03}
             />
 
             <ChartGrid
@@ -305,16 +286,16 @@ export function ExecutiveSummaryTwoByTwo({
                       r={r}
                       fill="none"
                       stroke="var(--color-bg-surface)"
-                      strokeWidth={3}
+                      strokeWidth={4}
                     />
                     <Circle
                       cx={cx}
                       cy={cy}
                       r={r}
                       fill={fill}
-                      fillOpacity={isRecommended ? 0.26 : 0.16}
+                      fillOpacity={isRecommended ? 0.62 : 0.48}
                       stroke={fill}
-                      strokeWidth={1.5}
+                      strokeWidth={2}
                     />
                     <Text
                       x={cx}
