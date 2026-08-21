@@ -279,6 +279,15 @@ export async function generateReportSectionDraftAction(args: {
     .update({ last_activity_at: now })
     .eq("id", engagementRow.id);
 
+  // Copy-slop critique — sanitized to counts/bands only (no raw prose,
+  // no matched text) so it is safe to persist in run + activity metadata.
+  const copySlopMeta = {
+    severity: synthesisResult.candidate.copySlop.severity,
+    flagCount: synthesisResult.candidate.copySlop.flags.length,
+    density: synthesisResult.candidate.copySlop.density,
+    categories: synthesisResult.candidate.copySlop.categories,
+  };
+
   const completedSummary = {
     runType: "report_section_draft",
     sectionId,
@@ -290,6 +299,7 @@ export async function generateReportSectionDraftAction(args: {
     sourceFindingCount: linkCounts.findings,
     sourceOpportunityCount: linkCounts.opportunities,
     sourceRoadmapItemCount: linkCounts.roadmapItems,
+    copySlop: copySlopMeta,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
   };
@@ -323,6 +333,7 @@ export async function generateReportSectionDraftAction(args: {
       sourceFindingCount: linkCounts.findings,
       sourceOpportunityCount: linkCounts.opportunities,
       sourceRoadmapItemCount: linkCounts.roadmapItems,
+      copySlop: copySlopMeta,
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },

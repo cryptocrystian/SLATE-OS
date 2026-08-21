@@ -206,7 +206,7 @@
 .slate-doc .doc-plate-fig { font-family: var(--doc-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-accent-text); }
 .slate-doc .doc-plate-t { font-family: var(--doc-sans); font-size: 16px; font-weight: 700; letter-spacing: -.015em; margin: 2px 0 2px; color: var(--doc-ink); }
 .slate-doc .doc-plate-cap { font-size: 12.5px; color: var(--doc-ink-3); max-width: 62ch; line-height: 1.5; margin-bottom: 6px; }
-.slate-doc .doc-sowhat { margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; background: var(--doc-accent-soft); border-radius: 8px; padding: 12px 15px; border-left: 2px solid var(--doc-accent); }
+.slate-doc .doc-sowhat { margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; background: var(--doc-accent-soft); border-radius: 8px; padding: 12px 15px; }
 .slate-doc .doc-sowhat .lbl { font-family: var(--doc-mono); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--doc-accent-text); white-space: nowrap; padding-top: 2px; }
 .slate-doc .doc-sowhat p { font-size: 13.5px; font-weight: 500; color: var(--doc-ink); line-height: 1.45; margin: 0; }
 

@@ -11,6 +11,7 @@ import {
 } from "./provider";
 import type { ReportSectionSynthesisContext } from "./report-section-context";
 import type { AiProviderConfig } from "./types";
+import { critiqueCopySlopFields, type CopySlopResult } from "./copy-slop";
 
 /**
  * Report-section synthesis pipeline — AI Synthesis Step 3.
@@ -74,6 +75,14 @@ export interface ReportSectionDraftCandidate {
   groundedFindingIds: string[];
   groundedOpportunityIds: string[];
   groundedRoadmapItemIds: string[];
+  /**
+   * Deterministic copy-slop critique of the generated prose (summary +
+   * draft + evidence notes). Not a hard gate — the model's anti-slop
+   * VOICE guidance prevents most tells upstream; this surfaces whatever
+   * survives so the operator can see slop density before approving the
+   * section for a client. See {@link critiqueCopySlopFields}.
+   */
+  copySlop: CopySlopResult;
 }
 
 export interface ReportSectionSynthesisOk {
@@ -451,6 +460,12 @@ function validateCandidate(
     MAX_GROUNDED_ROADMAP_ITEMS,
   );
 
+  const copySlop = critiqueCopySlopFields([
+    summary,
+    draftPreview,
+    ...evidenceNotes,
+  ]);
+
   return {
     sectionTitle,
     summary,
@@ -460,6 +475,7 @@ function validateCandidate(
     groundedFindingIds,
     groundedOpportunityIds,
     groundedRoadmapItemIds,
+    copySlop,
   };
 }
 

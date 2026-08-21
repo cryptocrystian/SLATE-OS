@@ -13,6 +13,7 @@ import {
 } from "./provider";
 import type { ProposalOptionSynthesisContext } from "./proposal-option-context";
 import type { AiProviderConfig } from "./types";
+import { critiqueCopySlopFields, type CopySlopResult } from "./copy-slop";
 
 /**
  * Proposal-option synthesis pipeline — AI Synthesis Step 4.
@@ -78,6 +79,15 @@ export interface ProposalOptionDraftCandidate {
    */
   groundedOpportunityIds: string[];
   groundedRoadmapItemIds: string[];
+  /**
+   * Deterministic copy-slop critique of the generated client-facing
+   * prose (best-fit + scope + timeline + deliverables). Not a hard gate
+   * — the model's anti-slop VOICE guidance prevents most tells upstream;
+   * this surfaces whatever survives so the operator sees slop density
+   * before approving the option for a client. See
+   * {@link critiqueCopySlopFields}.
+   */
+  copySlop: CopySlopResult;
 }
 
 export interface ProposalOptionSynthesisOk {
@@ -434,6 +444,13 @@ function validateCandidate(
     MAX_GROUNDED_ROADMAP_ITEMS,
   );
 
+  const copySlop = critiqueCopySlopFields([
+    bestFitScenario,
+    scopeNarrative,
+    timeline,
+    ...deliverables,
+  ]);
+
   return {
     optionTitle,
     bestFitScenario,
@@ -445,6 +462,7 @@ function validateCandidate(
     risks,
     groundedOpportunityIds,
     groundedRoadmapItemIds,
+    copySlop,
   };
 }
 

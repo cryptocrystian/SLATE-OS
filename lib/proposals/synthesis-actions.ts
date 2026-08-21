@@ -253,6 +253,15 @@ export async function generateProposalOptionDraftAction(args: {
     .update({ last_activity_at: now })
     .eq("id", engagementRow.id);
 
+  // Copy-slop critique — sanitized to counts/bands only (no raw prose,
+  // no matched text) so it is safe to persist in run + activity metadata.
+  const copySlopMeta = {
+    severity: candidate.copySlop.severity,
+    flagCount: candidate.copySlop.flags.length,
+    density: candidate.copySlop.density,
+    categories: candidate.copySlop.categories,
+  };
+
   const completedSummary = {
     runType: "proposal_option_draft",
     optionId,
@@ -266,6 +275,7 @@ export async function generateProposalOptionDraftAction(args: {
     sourceFindingCount: context.findings.length,
     sourceOpportunityCount: linkCounts.opportunities,
     sourceRoadmapItemCount: linkCounts.roadmapItems,
+    copySlop: copySlopMeta,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
   };
@@ -299,6 +309,7 @@ export async function generateProposalOptionDraftAction(args: {
       sourceFindingCount: context.findings.length,
       sourceOpportunityCount: linkCounts.opportunities,
       sourceRoadmapItemCount: linkCounts.roadmapItems,
+      copySlop: copySlopMeta,
       provider: synthesisResult.providerMeta.provider,
       model: synthesisResult.providerMeta.model,
     },
