@@ -18,6 +18,25 @@ import type {
 } from "@/lib/proposals/delivery-snapshot-types";
 import type { SowDraftFields } from "@/lib/proposals/commercial-guard";
 import { deliverableSerif } from "@/lib/deliverable-fonts";
+import { sanitizeClientProse } from "@/lib/deliverables/client-copy-sanitizer";
+
+/**
+ * Client voice for the public `/s` render: rewrite operator/third-person
+ * "the client" phrasing (carried in AI-drafted option copy) to second
+ * person, so the recipient does not read about themselves in the third
+ * person. Operator mode renders the source copy verbatim.
+ */
+function sowClientProse(
+  raw: string | null | undefined,
+  isPublic: boolean,
+): string | null {
+  if (!isPublic) return raw ?? null;
+  const t = sanitizeClientProse(raw);
+  if (!t) return null;
+  return t
+    .replace(/\bthe client's\b/gi, "your organization's")
+    .replace(/\bthe client\b/gi, "your organization");
+}
 
 /** Serif display face for headings — matches the report/proposal house style. */
 // Saipien "Register" display voice (Archivo). The SOW shares the client
@@ -744,6 +763,11 @@ function OptionCard({
   isPublic?: boolean;
 }) {
   const showPricing = pricingReviewState !== "placeholder";
+  // Public `/s` render is client-facing: sanitize + client-voice the prose.
+  // Operator mode renders the source copy verbatim.
+  const bestFit = sowClientProse(option.bestFitScenario, isPublic);
+  const scope = sowClientProse(option.scopeSummary, isPublic);
+  const timeline = sowClientProse(option.timeline, isPublic);
   return (
     <Card variant="base">
       <CardBody className="flex flex-col gap-3 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
@@ -760,18 +784,18 @@ function OptionCard({
         >
           {option.title}
         </h3>
-        {option.bestFitScenario ? (
+        {bestFit ? (
           <p className="text-sm leading-relaxed text-text-secondary">
-            {option.bestFitScenario}
+            {bestFit}
           </p>
         ) : null}
-        {option.scopeSummary ? (
-          <SectionBlock label="Scope summary" body={option.scopeSummary} />
+        {scope ? (
+          <SectionBlock label="Scope summary" body={scope} />
         ) : null}
-        {option.timeline ? (
+        {timeline ? (
           <SectionBlock
             label="Estimated timeline"
-            body={option.timeline}
+            body={timeline}
             note="Proposed range only — not a delivery guarantee."
           />
         ) : null}
