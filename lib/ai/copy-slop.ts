@@ -88,6 +88,29 @@ export interface CopySlopResult {
   categories: CopySlopCategory[];
 }
 
+/**
+ * Sanitized, persistable projection of a critique — counts + bands only,
+ * never raw prose or matched text. This is the shape that is safe to write
+ * into `ai_synthesis_runs.output_summary` / activity metadata and to read
+ * back for operator-facing UI (the copy-check chip).
+ */
+export interface CopySlopSummary {
+  severity: CopySlopResult["severity"];
+  flagCount: number;
+  density: number;
+  categories: CopySlopCategory[];
+}
+
+/** Project a full critique to its sanitized, persistable summary. */
+export function summarizeCopySlop(result: CopySlopResult): CopySlopSummary {
+  return {
+    severity: result.severity,
+    flagCount: result.flags.length,
+    density: result.density,
+    categories: result.categories,
+  };
+}
+
 const EMPTY: CopySlopResult = {
   flags: [],
   wordCount: 0,

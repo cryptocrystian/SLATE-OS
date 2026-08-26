@@ -12,6 +12,8 @@ import { Card, CardBody } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { ReportSectionStatusChip } from "./report-status-chip";
 import { ReportSectionActionBar } from "./report-section-action-bar";
+import { CopyCheckChip } from "@/components/ai/copy-check-chip";
+import type { CopySlopSummary } from "@/lib/ai/copy-slop";
 import {
   CONFIDENCE_LABEL,
   CONFIDENCE_TONE,
@@ -56,6 +58,14 @@ export interface ReportWorkspaceProps {
    * hidden in unconfigured environments. JSON-safe boolean.
    */
   aiAvailable?: boolean;
+  /**
+   * Latest deterministic copy-slop critique per section, keyed by
+   * `report_sections.id` (see `getSectionCopySlopMap`). A plain
+   * JSON-safe record so it can cross the server → client boundary.
+   * Sections with no recent AI draft simply have no entry; the chip is
+   * advisory and never blocks review.
+   */
+  copySlopBySectionId?: Record<string, CopySlopSummary>;
 }
 
 export function ReportWorkspace({
@@ -66,6 +76,7 @@ export function ReportWorkspace({
   roadmap,
   showActionBar = false,
   aiAvailable = false,
+  copySlopBySectionId = {},
 }: ReportWorkspaceProps) {
   const sections = report.sections;
   const [active, setActive] = React.useState<ReportFilterId>("all");
@@ -253,6 +264,9 @@ export function ReportWorkspace({
                 Consultant-authored
               </Badge>
             )}
+            {copySlopBySectionId[section.id] ? (
+              <CopyCheckChip summary={copySlopBySectionId[section.id]} />
+            ) : null}
             <Badge
               tone={
                 CONFIDENCE_TONE_MAP[CONFIDENCE_TONE[section.confidence]] ??

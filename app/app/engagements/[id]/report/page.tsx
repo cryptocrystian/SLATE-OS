@@ -23,7 +23,11 @@ import { EngagementContextCard } from "@/components/engagements/engagement-conte
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { getReportForEngagement } from "@/lib/reports/mock-reports";
-import { getReportForEngagementPersisted } from "@/lib/reports/queries";
+import {
+  getReportForEngagementPersisted,
+  getSectionCopySlopMap,
+} from "@/lib/reports/queries";
+import type { CopySlopSummary } from "@/lib/ai/copy-slop";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { getFindingsForEngagementPersisted } from "@/lib/findings/queries";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
@@ -85,14 +89,22 @@ export default async function EngagementReportPage({
   // exhibit-slot section entirely.
   let intakeRecord: Awaited<ReturnType<typeof getIntakeRecordForEngagement>> = null;
 
+  // Copy-slop critique per section (latest AI draft), keyed by section id.
+  // Persisted engagements only; advisory chip in the review workspace.
+  let copySlopBySectionId: Record<string, CopySlopSummary> = {};
+
   if (isPersisted) {
-    [report, findings, opportunities, roadmap, intakeRecord] = await Promise.all([
-      getReportForEngagementPersisted(engagement.id),
-      getFindingsForEngagementPersisted(engagement.id),
-      getOpportunitiesForEngagementPersisted(engagement.id),
-      getRoadmapForEngagementPersisted(engagement.id),
-      getIntakeRecordForEngagement(engagement.id),
-    ]);
+    let copySlopMap: Map<string, CopySlopSummary>;
+    [report, findings, opportunities, roadmap, intakeRecord, copySlopMap] =
+      await Promise.all([
+        getReportForEngagementPersisted(engagement.id),
+        getFindingsForEngagementPersisted(engagement.id),
+        getOpportunitiesForEngagementPersisted(engagement.id),
+        getRoadmapForEngagementPersisted(engagement.id),
+        getIntakeRecordForEngagement(engagement.id),
+        getSectionCopySlopMap(engagement.id),
+      ]);
+    copySlopBySectionId = Object.fromEntries(copySlopMap);
   } else {
     report = getReportForEngagement(engagement.id);
     findings = getFindingsForEngagement(engagement.id);
@@ -433,6 +445,7 @@ export default async function EngagementReportPage({
               // rendered inside the (client) workspace.
               showActionBar={isPersisted}
               aiAvailable={aiAvailable}
+              copySlopBySectionId={copySlopBySectionId}
             />
           )}
 

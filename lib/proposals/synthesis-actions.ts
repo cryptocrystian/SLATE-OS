@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { logActivityEvent } from "@/lib/activity/log";
 import { isAiConfigured } from "@/lib/ai/provider";
+import { summarizeCopySlop } from "@/lib/ai/copy-slop";
 import { buildProposalOptionSynthesisContext } from "@/lib/ai/proposal-option-context";
 import {
   synthesizeProposalOptionDraft,
@@ -255,12 +256,7 @@ export async function generateProposalOptionDraftAction(args: {
 
   // Copy-slop critique — sanitized to counts/bands only (no raw prose,
   // no matched text) so it is safe to persist in run + activity metadata.
-  const copySlopMeta = {
-    severity: candidate.copySlop.severity,
-    flagCount: candidate.copySlop.flags.length,
-    density: candidate.copySlop.density,
-    categories: candidate.copySlop.categories,
-  };
+  const copySlopMeta = summarizeCopySlop(candidate.copySlop);
 
   const completedSummary = {
     runType: "proposal_option_draft",

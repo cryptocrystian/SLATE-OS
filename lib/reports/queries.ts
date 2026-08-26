@@ -11,6 +11,7 @@ import {
 } from "./mappers";
 import { SECTION_ORDER } from "./helpers";
 import type { Report, ReportSection } from "./types";
+import type { CopySlopSummary } from "@/lib/ai/copy-slop";
 
 /**
  * Server-only query layer for persisted reports.
@@ -291,5 +292,77 @@ export async function getReportStatusSummary(
     final,
     evidenceLinks,
     exportStatus: reportData.export_status ?? "locked",
+  };
+}
+
+/**
+ * Latest copy-slop critique per section, keyed by `report_sections.id`.
+ *
+ * The copy-slop summary is written into `ai_synthesis_runs.output_summary`
+ * at draft time (see `lib/reports/synthesis-actions.ts`). There is no
+ * dedicated column — the section linkage lives in the JSON `sectionId`
+ * field — so we read the completed `report_section_draft` runs newest-first
+ * and keep the first (latest) summary seen per section. Sections whose most
+ * recent draft predates the copy-slop feature simply have no entry.
+ *
+ * Returns an empty map on any error or for non-persisted engagements; the
+ * chip is advisory and must never block the workspace from rendering.
+ */
+export async function getSectionCopySlopMap(
+  engagementId: string,
+): Promise<Map<string, CopySlopSummary>> {
+  const map = new Map<string, CopySlopSummary>();
+  if (!isUuid(engagementId)) return map;
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("ai_synthesis_runs")
+    .select("output_summary, completed_at")
+    .eq("engagement_id", engagementId)
+    .eq("run_type", "report_section_draft")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false });
+  if (error) {
+    console.error("[reports.queries] copy-slop-map-failed", {
+      name: error.name,
+      code: error.code,
+      message: error.message,
+    });
+    return map;
+  }
+
+  for (const row of (data as { output_summary: unknown }[] | null) ?? []) {
+    const summary = row.output_summary;
+    if (!summary || typeof summary !== "object") continue;
+    const sectionId = (summary as { sectionId?: unknown }).sectionId;
+    const copySlop = (summary as { copySlop?: unknown }).copySlop;
+    if (typeof sectionId !== "string") continue;
+    if (map.has(sectionId)) continue; // newest-first: keep the first seen
+    const parsed = parseCopySlopSummary(copySlop);
+    if (parsed) map.set(sectionId, parsed);
+  }
+  return map;
+}
+
+/** Defensive parse of a persisted copy-slop summary (unknown JSON → typed). */
+function parseCopySlopSummary(raw: unknown): CopySlopSummary | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const severity = o.severity;
+  if (
+    severity !== "none" &&
+    severity !== "low" &&
+    severity !== "elevated" &&
+    severity !== "high"
+  ) {
+    return null;
+  }
+  return {
+    severity,
+    flagCount: typeof o.flagCount === "number" ? o.flagCount : 0,
+    density: typeof o.density === "number" ? o.density : 0,
+    categories: Array.isArray(o.categories)
+      ? (o.categories.filter((c) => typeof c === "string") as CopySlopSummary["categories"])
+      : [],
   };
 }
