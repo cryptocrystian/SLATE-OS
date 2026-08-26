@@ -82,20 +82,18 @@ export default async function ClientReportShareRoutePage({
   // Pull the engagement display fields via the service-role client so
   // the client-facing title shows the company name (the client viewer
   // already knows who they are). No engagement UUID surfaces.
-  const reportTitle = await resolveClientReportTitle(
-    lookup.snapshot.engagementId,
-  );
+  const { title: reportTitle, companyName } =
+    await resolveClientReportIdentity(lookup.snapshot.engagementId);
 
   await recordShareTokenAccess(lookup.token.id, captureRequestMetadata());
 
   return (
-    <div className="slate-print-light min-h-screen bg-bg-canvas px-4 py-10 print:bg-white print:p-0 sm:px-6">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 print:max-w-none">
-        <ClientReportShareDocument
-          snapshot={lookup.snapshot}
-          reportTitle={reportTitle}
-        />
-      </div>
+    <div className="slate-print-light flex min-h-screen flex-col gap-6 px-2 py-4 print:min-h-0 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
+      <ClientReportShareDocument
+        snapshot={lookup.snapshot}
+        reportTitle={reportTitle}
+        companyName={companyName ?? undefined}
+      />
     </div>
   );
 }
@@ -136,7 +134,9 @@ function UnavailablePage() {
 // Helpers — engagement-name fetch + request capture
 // ---------------------------------------------------------------------------
 
-async function resolveClientReportTitle(engagementId: string): Promise<string> {
+async function resolveClientReportIdentity(
+  engagementId: string,
+): Promise<{ title: string; companyName: string | null }> {
   // Sprint H1 — fixed engagement-title fallback. The previous query
   // selected `engagements.company_name`, which does not exist on the
   // `engagements` table (canon: company name lives on
@@ -147,6 +147,11 @@ async function resolveClientReportTitle(engagementId: string): Promise<string> {
   // resolves the company name from `accounts.name`. Both queries run
   // under the service-role client and surface only display strings —
   // no UUIDs ever reach the rendered DOM.
+  //
+  // Returns both the composed title (fallback surface) and the bare
+  // company name so the Register cover can set the company as the hero
+  // and the composed string as a fallback.
+  const fallback = { title: "Client Report", companyName: null };
   try {
     const supabase = createSupabaseServiceClient();
     const { data: engagement, error: engagementError } = await supabase
@@ -159,7 +164,7 @@ async function resolveClientReportTitle(engagementId: string): Promise<string> {
         account_id: string | null;
       }>();
     if (engagementError || !engagement) {
-      return "Client Report";
+      return fallback;
     }
     let companyName: string | null = null;
     if (engagement.account_id) {
@@ -172,14 +177,17 @@ async function resolveClientReportTitle(engagementId: string): Promise<string> {
     }
     const displayName = companyName ?? engagement.name?.trim() ?? null;
     if (!displayName) {
-      return "Client Report";
+      return fallback;
     }
     const type = engagement.engagement_type
       ? engagement.engagement_type.replace(/_/g, " ")
       : "Engagement";
-    return `${displayName} · ${capitalize(type)} · Report`;
+    return {
+      title: `${displayName} · ${capitalize(type)} · Report`,
+      companyName: displayName,
+    };
   } catch {
-    return "Client Report";
+    return fallback;
   }
 }
 
