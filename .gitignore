@@ -59,3 +59,10 @@ logs/
 .playwright-mcp/
 supabase/.temp/
 /*.png
+
+# Local agent + tooling scratch — probe scripts, dev-server logs,
+# Impeccable local config/caches, and ad-hoc build/eval artifacts.
+# All machine-local; never part of the shipped app.
+.claude/
+.impeccable/
+artifacts/
