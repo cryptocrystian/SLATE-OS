@@ -233,7 +233,7 @@ checkpoint. Score every artifact on five dimensions.
 **Pass bar to approve an artifact:** no dimension below **3**. A single **2**
 blocks approval until edited/redrafted; any **1** is a stop.
 
-## B.1 The five dimensions
+## B.1 The six dimensions
 
 - **D1 — Grounding & truth.** Every claim traces to real supplied evidence; no
   invention; thin-evidence items are visibly hedged (assumption flag / conservative
@@ -249,6 +249,12 @@ blocks approval until edited/redrafted; any **1** is a stop.
   in B.2.
 - **D5 — Voice & polish.** Human-produced register; no AI-slop tells; right tone
   for a decision document. *(Copy-slop chip assists; the human confirms.)*
+- **D6 — Commercial realism.** The scope, timeline, and pricing placeholder are
+  something a real buyer in *this* client's situation would actually accept — the
+  engagement is sellable and deliverable, not aspirational. Timelines are
+  achievable, scope matches the evidenced need (not gold-plated or thin), and the
+  recommended proposal option is the one a rational buyer here would pick. *(Ratified
+  as a dimension by the founder, 2026-09-23. Fully human judgment — no code proxy.)*
 
 ## B.2 Per-stage D4 (methodology-adherence) specifics
 
@@ -293,6 +299,7 @@ watermark + pricing/legal notices are present; nothing reads as binding.
 | Style slop | ⚠ copy-slop chip (soft) | Confirm it reads human (D5) |
 | Insight, specificity, data value | ❌ | **All human (D2, D3)** |
 | Methodology adherence (charter jobs, archetypes) | ⚠ prompt-instructed | **Confirm each artifact did its job (D4)** |
+| Commercial realism (sellable scope/timeline/pricing) | ❌ | **All human (D6)** |
 
 The rightmost column is what your checkpoints exist to catch.
 
@@ -310,7 +317,7 @@ An engagement is deliverable only when **both** gates pass:
    guard passed · disciplined audience label.
 
 2. **Qualitative bar** (this rubric, human-enforced at checkpoints): every approved
-   artifact scored **≥3 on all five dimensions**.
+   artifact scored **≥3 on all six dimensions**.
 
 The hard gate proves the pipeline is *complete*; the rubric proves it is *good*. A
 run can clear the counts and still fail the rubric — that is exactly the failure
@@ -329,8 +336,8 @@ feedback loop, i.e. the deferred S14–S20 work).
 | # | Checkpoint | Score | Go/No-go |
 |---|---|---|---|
 | CP-0 | **Intake complete** | Enough substantive, attributed signal to support findings? (drives everything downstream) | Proceed only if intake is real, not thin. |
-| CP-1 | **Findings approved** | Each finding on D1–D5 + B.2 findings checks | Approve only ≥3-all; flag generic/unfounded. |
-| CP-2 | **Opportunities selected** | Each on D1–D5; **quadrant placement sanity** | Select only defensible, well-placed opportunities. |
+| CP-1 | **Findings approved** | Each finding on D1–D6 + B.2 findings checks | Approve only ≥3-all; flag generic/unfounded. |
+| CP-2 | **Opportunities selected** | Each on D1–D6; **quadrant placement sanity** | Select only defensible, well-placed opportunities. |
 | CP-3 | **Roadmap ready** | Sequencing logic + phase grounding | Ready only if `first_30` is genuinely grounded. |
 | CP-4 | **Report sections approved** | Per-section D4 **and** the report-level checks (exec synthesizes; sections distinct; summaries cohere) | Approve section-by-section; hold the report to the narrative-coherence bar. |
 | CP-5 | **Proposal approved** | 3-options-differ + recommended-defensible + no invented pricing | Approve only if the options are a real choice. |
@@ -343,30 +350,32 @@ first-ever evidence base for a greenlight decision on real clients.
 
 ---
 
-## 7. Gaps for founder review (drafted-from-code — ratify or correct)
+## 7. Founder ratification (2026-09-23)
 
-These are the method choices only you can authoritatively confirm. Each is
-currently encoded as shown; tell me where the real Saipien method differs and I'll
-correct this doc (and, where warranted, the synthesis charters/thresholds in code).
+The six method choices drafted from code were reviewed and ratified by the founder.
+Outcomes:
 
-1. **Evidence lane hierarchy (A.1).** Is live-link > transcript > CRM-enrichment >
-   offline-operator the right confidence ordering? Is CRM correctly "framing only,
-   never a finding"?
-2. **Opportunity scoring thresholds (A.2).** Impact ≥ 70 = "high," complexity ≥ 60
-   = "high," risk ≥ 85 = auto-defer. Do these cut points match how you actually
-   judge an opportunity? Are the six axes the right ones?
-3. **The 12-section report shape + charters (A.4).** Is this the canonical Saipien
-   deliverable, and does each charter describe the section's job the way you'd
-   brief an analyst? (Notably: workflow_friction folds in current-state; governance
-   is split between its own section and priority_recommendations.)
-4. **The 3 proposal archetypes (A.5)** — quick-win-build / ai-workflow-system /
-   managed-ai-partner, with ai-workflow-system as the default recommendation. Is
-   that the real commercial model?
-5. **Count bounds** — 3–7 findings, 2–6 opportunities, 2–6 roadmap items. Right
-   ranges for a real engagement?
-6. **The qualitative bar itself (Part B).** Do D1–D5 and the pass bar (≥3 all)
-   capture how *you* judge "good"? What would you add — e.g., a client-outcome or
-   commercial-realism dimension?
+1. **Evidence lane hierarchy (A.1)** — **ratified as-is.** live-link > transcript >
+   CRM-enrichment > offline-operator; CRM is framing-only, never a finding.
+2. **Opportunity scoring thresholds (A.2)** — **ratified provisionally.** Impact ≥ 70,
+   complexity ≥ 60, risk ≥ 85 auto-defer, and the six axes stand for now. The
+   founder will **sanity-check the numbers during the self-test** (do opportunities
+   land in the right buckets?) and we adjust thresholds then if they feel off.
+3. **12-section report shape + charters (A.4)** — **ratified as-is** for the test;
+   revisit only if a section reads redundant or missing against a real report.
+4. **3 proposal archetypes (A.5)** — **ratified as-is.** quick-win-build /
+   ai-workflow-system (default recommendation) / managed-ai-partner is the
+   commercial model.
+5. **Count bounds** — **ratified as-is.** 3–7 findings, 2–6 opportunities, 2–6
+   roadmap items.
+6. **The qualitative bar (Part B)** — **ratified with one addition:** the founder
+   added **D6 — Commercial realism** (is the scope/timeline/pricing something a real
+   buyer would accept?). Now folded into B.1, B.3, Part C (≥3 on all six), and the
+   CP-1/CP-2 checkpoints.
+
+No threshold or charter code changes were required by this ratification (item 2 is
+a during-test observation, not a change). D6 is a human-only rubric dimension with
+no code proxy.
 
 ---
 
