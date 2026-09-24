@@ -1,8 +1,15 @@
 import * as React from "react";
-import { ShieldCheck } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardBody } from "@/components/ui/card";
+import {
+  sanitizeClientProse,
+  sanitizeClientBullets,
+} from "@/lib/deliverables/client-copy-sanitizer";
+import {
+  Reg,
+  Rail,
+  DocPage,
+  formatDeliverableDate,
+} from "@/components/deliverables/doc-kit";
 import type {
   ProposalDeliverySnapshot,
   ProposalOmittedContent,
@@ -10,310 +17,343 @@ import type {
   ProposalPricingReviewState,
 } from "@/lib/proposals/delivery-snapshot-types";
 
-/**
- * Phase 1B Proposal/SOW Delivery Sprint P5 — client-facing proposal
- * share document.
- *
- * Renders the same `proposal_delivery_snapshots` payload as the
- * operator candidate document but stripped of every operator-only
- * surface:
- *
- *   - No internal UUIDs (engagement / proposal / snapshot / option).
- *   - No commercial-guard codes / pattern families / violation
- *     surface; the scan is shown as the affirmative phrase
- *     "Commercial safety checks passed" only.
- *   - No "operator-only", "candidate", or "not sent by SLATE"
- *     framing — those are operator-internal disclaimers, not client
- *     copy.
- *   - No `generated_by_label` initials.
- *   - No reviewer notes / activity log.
- *   - No "Draft Candidate" or void state — ineligible snapshots
- *     never reach this component because the public route's
- *     eligibility re-check rejects them.
- *   - No raw token, no token hash, no audience-label leak in plain
- *     text (the audience label is operator-internal).
- *   - No approval controls / e-signature / acceptance affirmatives.
- *   - No SOW draft content; the proposal candidate surface is a
- *     discussion artifact only.
- *   - Pricing is hidden whenever `pricing_review_state='placeholder'`;
- *     surfaces with "Estimated · subject to final approval" framing
- *     when `manually_approved` or `workflow_approved`. The placeholder
- *     value never reaches the client surface as if it were final
- *     pricing.
- *   - Implementation credit hidden until commercial approval exists
- *     (canon § Pricing / Terms Policy).
- *
- * Snapshot-pure: every field comes from the snapshot's jsonb columns;
- * no live row re-query. Same `slate-print-light` CSS-variable scope
- * the operator candidate route uses, so client print/save renders
- * against the print-safe palette.
- *
- * Mandatory disclaimers per `docs/24` § Required Disclaimers /
- * Markings — Proposal Candidate surface — are non-negotiable on every
- * render.
- *
- * Pure server component. SVG-free in this sprint.
- */
+/*
+THESIS: The proposal a client actually opens through their /p share link — the
+same "Opportunity Brief" system as the operator preview, at design parity: a
+composed cover + brand panel, a "how to read this" opening, an options-at-a-glance
+tiered comparison, then each option as a first-class detailed offer. It refuses
+the stacked-plain-cards + mono-eyebrow layout the earlier share document shipped.
+OWN-WORLD: Saipien "Register" light executive plate document (styles/
+deliverable.css, .slate-doc), shared with the flagship client-proposal-deliverable,
+the report share document, and the public SOW.
+CONSTRAINT (docs/24 § Required Disclaimers + Content Rendering Policy):
+snapshot-pure (every field from the snapshot jsonb; no live re-query), no internal
+UUIDs, no operator-only framing, no approval/e-signature controls, SVG-free.
+Pricing is HIDDEN whenever pricingReviewState='placeholder' and only surfaces as
+"estimated · subject to final approval" once approved. The commercial-guard scan
+surfaces only as the affirmative phrase; the discussion-draft disclosure and the
+mandatory not-a-binding-quote/not-a-SOW/not-a-contract footer stay on every render.
+STORY: A buyer opens to a composed cover, compares the tiers, reads genuinely
+distinct offers, and knows which option fits — concluding this firm is worth it.
+FORM: executive print document (decision-journey plate document).
+*/
 
 export interface ClientProposalShareDocumentProps {
-  /**
-   * The full snapshot. The document treats it as the only source of
-   * truth — no live data hits the public surface.
-   */
+  /** The full snapshot — the only source of truth; no live data. */
   snapshot: ProposalDeliverySnapshot;
-  /**
-   * Display title for the proposal card. Provided by the route so the
-   * component never reads the engagement row directly.
-   */
+  /** Display title for the cover fallback. Provided by the route. */
   proposalTitle: string;
+  /**
+   * Client company name for the cover hero + rail foot (the client viewer
+   * already knows who they are). Falls back to proposalTitle. No UUID.
+   */
+  companyName?: string;
+}
+
+const OPTION_TYPE_LABEL: Record<string, string> = {
+  "quick-win-build": "Quick-Win Build",
+  "ai-workflow-system": "AI Workflow System",
+  "managed-ai-partner": "Managed AI Partner",
+};
+
+function optionTypeLabel(optionType: string): string {
+  const key = optionType.replace(/_/g, "-");
+  return (
+    OPTION_TYPE_LABEL[key] ??
+    optionType.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+  );
 }
 
 export function ClientProposalShareDocument({
   snapshot,
   proposalTitle,
+  companyName,
 }: ClientProposalShareDocumentProps) {
-  const includedOptions = snapshot.optionSnapshot.filter(
-    (o) => o.includedInArtifact,
-  );
+  const options = snapshot.optionSnapshot
+    .filter((o) => o.includedInArtifact)
+    .sort((a, b) => a.position - b.position);
+  const hasRecommended = options.some((o) => o.recommended);
+  const showTiers = options.length >= 2;
+  const pricingHidden = snapshot.pricingReviewState === "placeholder";
+  const omissions = snapshot.omittedContent;
+  const heroName = companyName?.trim() || proposalTitle;
+
+  const rail: string[] = ["How to read this"];
+  if (showTiers) rail.push("Options at a glance");
+  options.forEach((o) => rail.push(optionTypeLabel(o.optionType)));
+  if (omissions.length > 0) rail.push("Appendix");
+
+  const optionBase = showTiers ? 2 : 1;
+  const appendixActive = omissions.length > 0 ? rail.length - 1 : undefined;
 
   return (
-    <div
-      data-deliverable-export="client-proposal-share"
-      className="flex flex-col gap-8 print:max-w-none print:gap-6"
-    >
-      <ProposalHeader
-        proposalTitle={proposalTitle}
-        generatedAt={snapshot.generatedAt}
-      />
-      <SafetyStrip />
-      <DisclosureNotice pricingReviewState={snapshot.pricingReviewState} />
-      <OptionsList
-        options={includedOptions}
-        pricingReviewState={snapshot.pricingReviewState}
-      />
-      <OmittedContentAppendix omissions={snapshot.omittedContent} />
-      <ClientFooter />
+    <div className="slate-doc" data-deliverable-export="client-proposal-share">
+      {/* -------- Cover -------- */}
+      <section className="doc-page doc-cover">
+        <Reg />
+        <div className="doc-spread">
+          <Rail
+            items={rail}
+            variant="cover"
+            docId="Engagement Proposal"
+            companyName={companyName}
+          />
+          <div className="doc-main">
+            <h1 className="doc-h1">{heroName}</h1>
+            <p className="doc-cover-sub">
+              {options.length > 1
+                ? `${capitalize(numberWord(options.length))} ways to move the priorities from discovery into delivery — with the scope, sequencing, and trade-offs of each.`
+                : "A recommended engagement to move the priorities from discovery into delivery — scope, sequencing, and trade-offs laid out."}
+            </p>
+            <div className="doc-cover-rule" />
+            <dl className="doc-cover-meta">
+              <div><dt>Prepared for</dt><dd>{heroName}</dd></div>
+              <div><dt>Prepared by</dt><dd>Saipien Labs</dd></div>
+              <div><dt>Issued</dt><dd>{formatDeliverableDate(snapshot.generatedAt)}</dd></div>
+              <div><dt>Status</dt><dd>For discussion</dd></div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      {/* -------- How to read this -------- */}
+      <DocPage rail={rail} active={0}>
+        <div className="doc-sec-head">
+          <div className="doc-sec-title">How to read this proposal</div>
+        </div>
+        <p className="doc-lede">
+          {options.length === 1
+            ? "The option below turns the priorities identified during discovery into a delivery engagement."
+            : `The ${numberWord(options.length)} options below each turn the priorities from discovery into a delivery engagement — they differ in depth, commitment, and how much Saipien Labs owns over time.`}
+        </p>
+        <div className="doc-body">
+          <p>
+            Each option lists the situation it best fits, what the engagement
+            delivers, its timeline, and the assumptions and dependencies it rests
+            on.{" "}
+            {hasRecommended
+              ? "The option marked Recommended is where most organizations at this stage get the strongest result relative to effort. "
+              : ""}
+            {pricingHidden
+              ? "Pricing is intentionally not shown here — final pricing requires written approval and is shared separately."
+              : "Where shown, pricing is a planning estimate, subject to final approval, and is not a binding quote."}
+          </p>
+          <p>
+            This document is a commercial discussion artifact — not a binding
+            quote, not a statement of work, and not a contract. Final scope,
+            pricing, and timeline are confirmed in scoping.
+          </p>
+        </div>
+      </DocPage>
+
+      {/* -------- Options at a glance — tiered comparison (2+ only) -------- */}
+      {showTiers ? (
+        <DocPage rail={rail} active={1}>
+          <div className="doc-sec-head">
+            <div className="doc-sec-title">Options at a glance</div>
+            <div className="doc-sec-note">
+              {options.length >= 3 ? "Good · Better · Best" : "Compare the options"}
+            </div>
+          </div>
+          <TieredComparison options={options} pricingHidden={pricingHidden} />
+        </DocPage>
+      ) : null}
+
+      {/* -------- Per-option detail -------- */}
+      {options.map((option, i) => (
+        <DocPage key={`${option.optionType}-${i}`} rail={rail} active={optionBase + i}>
+          <OptionDetail option={option} pricingHidden={pricingHidden} />
+        </DocPage>
+      ))}
+
+      {/* -------- Omitted-content appendix -------- */}
+      {omissions.length > 0 ? (
+        <DocPage rail={rail} active={appendixActive}>
+          <OmittedContentAppendix omissions={omissions} />
+          <ShareFooter />
+        </DocPage>
+      ) : (
+        <DocPage rail={rail}>
+          <ShareFooter />
+        </DocPage>
+      )}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Header
+// Tiered comparison (good / better / best)
 // ---------------------------------------------------------------------------
 
-function ProposalHeader({
-  proposalTitle,
-  generatedAt,
-}: {
-  proposalTitle: string;
-  generatedAt: string;
-}) {
-  return (
-    <header className="flex flex-col gap-2 border-b border-border-subtle pb-6 print:break-after-avoid">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-        Saipien Labs · Proposal Review
-      </span>
-      <h1 className="text-2xl font-semibold tracking-tight text-text-primary sm:text-[28px]">
-        {proposalTitle}
-      </h1>
-      <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-        Generated{" "}
-        <span className="text-text-secondary">
-          {formatDate(generatedAt)}
-        </span>
-      </p>
-    </header>
-  );
-}
-
-function SafetyStrip() {
-  return (
-    <div className="flex flex-wrap items-center gap-3 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] text-text-secondary print:break-inside-avoid print:shadow-none">
-      <span className="inline-flex items-center gap-2 font-mono uppercase tracking-[0.14em] text-text-muted">
-        <ShieldCheck aria-hidden className="h-3.5 w-3.5" />
-        Commercial safety checks passed
-      </span>
-    </div>
-  );
-}
-
-function DisclosureNotice({
-  pricingReviewState,
-}: {
-  pricingReviewState: ProposalPricingReviewState;
-}) {
-  const pricingNote = (() => {
-    switch (pricingReviewState) {
-      case "manually_approved":
-      case "workflow_approved":
-        return "Where shown, pricing is framed as estimated and subject to final approval. The figures are not a binding quote.";
-      case "placeholder":
-      default:
-        return "Pricing is intentionally not shown in this document. Final pricing requires written approval and will be shared separately.";
-    }
-  })();
-  return (
-    <Card variant="base">
-      <CardBody className="flex flex-col gap-2 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Proposal discussion draft
-        </span>
-        <p className="text-xs leading-relaxed text-text-secondary">
-          This document is a commercial discussion artifact. It is not a
-          binding quote, not a statement of work, and not a contract.
-          Final scope, pricing, and timeline require written approval.
-        </p>
-        <p className="text-[11px] leading-relaxed text-text-muted">
-          {pricingNote}
-        </p>
-      </CardBody>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Options list
-// ---------------------------------------------------------------------------
-
-function OptionsList({
+function TieredComparison({
   options,
-  pricingReviewState,
+  pricingHidden,
 }: {
   options: ProposalOptionSnapshot[];
-  pricingReviewState: ProposalPricingReviewState;
+  pricingHidden: boolean;
 }) {
+  const cols = Math.min(options.length, 3);
   return (
-    <section
-      aria-label="Proposal options"
-      className="flex flex-col gap-5 print:gap-4 print:break-after-page"
+    <div
+      className="doc-tiers"
+      style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
     >
-      <header className="flex flex-col gap-1">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Options ({options.length})
-        </span>
-      </header>
-
-      {options.length === 0 ? (
-        <Card variant="base">
-          <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-            <p className="text-sm leading-relaxed text-text-secondary">
-              No options are available in this view. Contact the sender
-              for an updated link.
-            </p>
-          </CardBody>
-        </Card>
-      ) : (
-        options.map((option, idx) => (
-          <OptionCard
-            key={`${option.optionType}-${idx}`}
-            option={option}
-            pricingReviewState={pricingReviewState}
-          />
-        ))
-      )}
-    </section>
-  );
-}
-
-function OptionCard({
-  option,
-  pricingReviewState,
-}: {
-  option: ProposalOptionSnapshot;
-  pricingReviewState: ProposalPricingReviewState;
-}) {
-  const showPricing = pricingReviewState !== "placeholder";
-  return (
-    <Card variant="base">
-      <CardBody className="flex flex-col gap-3 p-5 sm:p-6 print:break-inside-avoid print:shadow-none">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-            {option.optionType.replace(/-/g, " ")}
-          </span>
-          {option.recommended ? (
-            <Badge tone="success">Recommended</Badge>
-          ) : null}
-        </div>
-        <h3 className="text-base font-semibold tracking-tight text-text-primary sm:text-lg">
-          {option.title}
-        </h3>
-        {option.bestFitScenario ? (
-          <p className="text-sm leading-relaxed text-text-secondary">
-            {option.bestFitScenario}
-          </p>
-        ) : null}
-        {option.scopeSummary ? (
-          <SectionBlock label="Scope summary" body={option.scopeSummary} />
-        ) : null}
-        {option.timeline ? (
-          <SectionBlock
-            label="Proposed timeline"
-            body={option.timeline}
-            note="Proposed range only — not a delivery guarantee."
-          />
-        ) : null}
-        {option.deliverables.length > 0 ? (
-          <BulletBlock label="Deliverables" items={option.deliverables} />
-        ) : null}
-        {option.assumptions.length > 0 ? (
-          <BulletBlock label="Assumptions" items={option.assumptions} />
-        ) : null}
-        {option.dependencies.length > 0 ? (
-          <BulletBlock label="Dependencies" items={option.dependencies} />
-        ) : null}
-        {option.risks.length > 0 ? (
-          <BulletBlock label="Risks" items={option.risks} />
-        ) : null}
-        {showPricing && option.pricingPlaceholder ? (
-          <SectionBlock
-            label="Estimated pricing"
-            body={option.pricingPlaceholder}
-            note="Estimated · subject to final approval. Not a binding quote."
-          />
-        ) : null}
-      </CardBody>
-    </Card>
-  );
-}
-
-function SectionBlock({
-  label,
-  body,
-  note,
-}: {
-  label: string;
-  body: string;
-  note?: string;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5 border-t border-border-subtle pt-3">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-        {label}
-      </span>
-      <p className="whitespace-pre-line text-sm leading-relaxed text-text-secondary">
-        {body}
-      </p>
-      {note ? (
-        <p className="text-[11px] leading-relaxed text-text-muted">{note}</p>
-      ) : null}
+      {options.map((o, idx) => {
+        const fit = toClientVoice(sanitizeClientProse(o.bestFitScenario));
+        const price = pricingHidden ? null : cleanPricing(o.pricingPlaceholder);
+        const deliverables = sanitizeClientBullets(o.deliverables).slice(0, 4);
+        return (
+          <div key={`${o.optionType}-${idx}`} className={`doc-tier${o.recommended ? " rec" : ""}`}>
+            <div className="doc-tier-flag">{o.recommended ? "Recommended" : ""}</div>
+            <div className="doc-tier-name">{optionTypeLabel(o.optionType)}</div>
+            <div className="doc-tier-fit">{fit ?? o.title}</div>
+            <div className="doc-tier-price">
+              {price ?? "Scoped to fit"}
+              <small>
+                {pricingHidden
+                  ? "Shared separately after approval"
+                  : "Planning estimate · confirmed in scoping"}
+              </small>
+            </div>
+            {deliverables.length > 0 ? (
+              <ul>
+                {deliverables.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function BulletBlock({ label, items }: { label: string; items: string[] }) {
+// ---------------------------------------------------------------------------
+// Per-option detail
+// ---------------------------------------------------------------------------
+
+function OptionDetail({
+  option,
+  pricingHidden,
+}: {
+  option: ProposalOptionSnapshot;
+  pricingHidden: boolean;
+}) {
+  const bestFit = toClientVoice(sanitizeClientProse(option.bestFitScenario));
+  const scope = toClientVoice(sanitizeClientProse(option.scopeSummary));
+  const timeline = sanitizeClientProse(option.timeline);
+  const deliverables = sanitizeClientBullets(option.deliverables);
+  const assumptions = sanitizeClientBullets(option.assumptions);
+  const dependencies = sanitizeClientBullets(option.dependencies);
+  const risks = sanitizeClientBullets(option.risks);
+  const pricing = pricingHidden ? null : cleanPricing(option.pricingPlaceholder);
+
   return (
-    <div className="flex flex-col gap-1.5 border-t border-border-subtle pt-3">
-      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-        {label}
-      </span>
-      <ul className="flex flex-col gap-1 text-sm leading-relaxed text-text-secondary">
-        {items.map((item, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <span
-              aria-hidden
-              className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-text-muted"
-            />
-            <span>{item}</span>
+    <>
+      <div className="doc-sec-head">
+        <div className="doc-sec-title">{option.title}</div>
+        <div className="doc-sec-note">
+          {optionTypeLabel(option.optionType)}
+          {option.recommended ? " · Recommended" : ""}
+        </div>
+      </div>
+
+      {bestFit ? (
+        <p
+          className="doc-body"
+          style={{ marginTop: "2px", fontSize: "15px", fontWeight: 600, color: "var(--doc-ink)", maxWidth: "42rem" }}
+        >
+          <span className="doc-sec-note">Best fit · </span>
+          {bestFit}
+        </p>
+      ) : null}
+      {scope ? (
+        <div className="doc-body">
+          {scope.split(/\n{2,}/).map((p, i) => (
+            <p key={i} style={{ whiteSpace: "pre-line" }}>{p}</p>
+          ))}
+        </div>
+      ) : null}
+
+      {timeline ? (
+        <p className="doc-body" style={{ marginTop: "16px" }}>
+          <span className="doc-sec-note">Timeline · </span>
+          {timeline}
+          <span style={{ color: "var(--doc-ink-3)" }}>
+            {" "}— proposed range, not a delivery guarantee.
+          </span>
+        </p>
+      ) : null}
+
+      {deliverables.length > 0 ? (
+        <div className="doc-plate">
+          <div className="doc-plate-fig">What it delivers</div>
+          <ul style={{ listStyle: "none", margin: "12px 0 0", padding: 0 }}>
+            {deliverables.map((d, i) => (
+              <li
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  fontSize: "13.5px",
+                  lineHeight: 1.5,
+                  color: "var(--doc-ink-2)",
+                  padding: "5px 0",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    marginTop: "7px",
+                    width: "5px",
+                    height: "5px",
+                    flex: "none",
+                    borderRadius: "50%",
+                    background: "var(--doc-accent)",
+                  }}
+                />
+                <span>{d}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {assumptions.length > 0 || dependencies.length > 0 || risks.length > 0 ? (
+        <div
+          style={{
+            marginTop: "24px",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: "24px",
+          }}
+        >
+          <OptionAside label="Assumptions" items={assumptions} />
+          <OptionAside label="Dependencies" items={dependencies} />
+          <OptionAside label="Risks" items={risks} />
+        </div>
+      ) : null}
+
+      {pricing ? (
+        <p className="doc-body" style={{ marginTop: "24px", fontSize: "12.5px", color: "var(--doc-ink-3)" }}>
+          <span className="doc-sec-note">Investment · </span>
+          {pricing} (planning estimate — subject to final approval, not a binding quote)
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function OptionAside({ label, items }: { label: string; items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div>
+      <div className="doc-sec-note" style={{ marginBottom: "8px" }}>{label}</div>
+      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "6px" }}>
+        {items.map((it, i) => (
+          <li key={i} style={{ fontSize: "12px", lineHeight: 1.5, color: "var(--doc-ink-3)" }}>
+            {it}
           </li>
         ))}
       </ul>
@@ -322,7 +362,7 @@ function BulletBlock({ label, items }: { label: string; items: string[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Omitted-content appendix — client-safe wording
+// Omitted-content appendix — client-safe wording (docs/24)
 // ---------------------------------------------------------------------------
 
 function OmittedContentAppendix({
@@ -330,40 +370,30 @@ function OmittedContentAppendix({
 }: {
   omissions: ProposalOmittedContent[];
 }) {
-  if (omissions.length === 0) return null;
-
-  // Filter the omissions list to client-safe entries only. The
-  // canonical Group-B entry always surfaces; per-option exclusions are
-  // shown in client-friendly language rather than the operator codes.
   const hasGroupB = omissions.some((o) => o.scope === "group_b_block");
   const optionExclusionCount = omissions.filter(
     (o) => o.scope !== "group_b_block",
   ).length;
 
   return (
-    <section
-      aria-label="Intentionally not included"
-      className="flex flex-col gap-3 border-t border-border-subtle pt-6 print:break-before-page print:break-after-avoid"
-    >
-      <header className="flex flex-col gap-1">
-        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
-          Intentionally not included
-        </span>
-        <p className="max-w-prose text-xs leading-relaxed text-text-muted">
-          A few topics are intentionally kept out of this proposal
-          discussion so the conversation stays grounded in what is ready
-          to commit to today.
-        </p>
-      </header>
-      <div className="flex flex-col gap-2">
+    <>
+      <div className="doc-sec-head">
+        <div className="doc-sec-title">Intentionally not included</div>
+        <div className="doc-sec-note">Appendix</div>
+      </div>
+      <p className="doc-lede">
+        A few topics are intentionally kept out of this proposal discussion so
+        the conversation stays grounded in what is ready to commit to today.
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {hasGroupB ? (
-          <ClientOmissionRow
+          <OmissionPlate
             title="Benchmark and modeled financial views"
             body="Benchmark comparisons and modeled financial views are intentionally kept in discussion-only materials until validated against your operating assumptions. They are out of scope for this proposal."
           />
         ) : null}
         {optionExclusionCount > 0 ? (
-          <ClientOmissionRow
+          <OmissionPlate
             title="Alternate option paths"
             body={
               optionExclusionCount === 1
@@ -373,42 +403,35 @@ function OmittedContentAppendix({
           />
         ) : null}
       </div>
-    </section>
+    </>
   );
 }
 
-function ClientOmissionRow({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function OmissionPlate({ title, body }: { title: string; body: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-border-subtle bg-bg-elevated/40 p-3 text-[11px] leading-relaxed text-text-secondary print:break-inside-avoid print:shadow-none">
-      <span className="font-mono uppercase tracking-[0.14em] text-text-muted">
-        {title}
-      </span>
-      <p>{body}</p>
+    <div className="doc-plate" style={{ margin: 0 }}>
+      <div className="doc-plate-fig">{title}</div>
+      <p className="doc-body" style={{ marginTop: "8px" }}>{body}</p>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Footer — mandatory disclaimer copy per docs/24
+// Footer — affirmative safety line + mandatory disclaimer copy (docs/24)
 // ---------------------------------------------------------------------------
 
-function ClientFooter() {
+function ShareFooter() {
   return (
-    <footer className="flex flex-col gap-1 border-t border-border-subtle pt-4 text-[11px] leading-relaxed text-text-muted print:break-inside-avoid">
+    <footer className="doc-footer" style={{ marginTop: "40px" }}>
+      <p>Commercial safety checks passed.</p>
       <p>
-        This document is a commercial discussion artifact. It is not a
-        binding quote. It is not a statement of work. Final scope,
-        pricing, and timeline require written approval.
+        This document is a commercial discussion artifact. It is not a binding
+        quote, not a statement of work, and not a contract. Final scope, pricing,
+        and timeline require written approval.
       </p>
       <p>
-        Not a contract, not an executed SOW, not a financial guarantee,
-        not acceptance of work.
+        Questions about this proposal? Contact the Saipien Labs team member who
+        sent you this link.
       </p>
     </footer>
   );
@@ -418,12 +441,31 @@ function ClientFooter() {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+function cleanPricing(raw: string | null | undefined): string | null {
+  const t = sanitizeClientProse(raw);
+  if (!t) return null;
+  const cleaned = t
+    .replace(/\s*[·|,-]?\s*pricing placeholder\b.*$/i, "")
+    .replace(/\s*for internal planning only\.?/gi, "")
+    .replace(/\s*[·|,-]\s*$/, "")
+    .replace(/\bplaceholder\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+function toClientVoice(t: string | null): string | null {
+  if (!t) return t;
+  return t
+    .replace(/\bthe client's\b/gi, "your organization's")
+    .replace(/\bthe client\b/gi, "your organization");
+}
+
+function numberWord(n: number): string {
+  const words = ["zero", "one", "two", "three", "four", "five", "six"];
+  return words[n] ?? String(n);
+}
+
+function capitalize(s: string): string {
+  return s.length === 0 ? s : s[0].toUpperCase() + s.slice(1);
 }

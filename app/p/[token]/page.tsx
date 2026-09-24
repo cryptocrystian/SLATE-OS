@@ -91,9 +91,8 @@ export default async function ClientProposalShareRoutePage({
   // Pull the engagement display fields via the service-role client so
   // the client-facing title shows the company name (the client viewer
   // already knows who they are). No engagement UUID surfaces.
-  const proposalTitle = await resolveClientProposalTitle(
-    lookup.snapshot.engagementId,
-  );
+  const { title: proposalTitle, companyName } =
+    await resolveClientProposalIdentity(lookup.snapshot.engagementId);
 
   await recordProposalShareTokenAccess(
     lookup.token.id,
@@ -101,13 +100,12 @@ export default async function ClientProposalShareRoutePage({
   );
 
   return (
-    <div className="slate-print-light min-h-screen bg-bg-canvas px-4 py-10 print:bg-white print:p-0 sm:px-6">
-      <div className="mx-auto flex max-w-3xl flex-col gap-8 print:max-w-none">
-        <ClientProposalShareDocument
-          snapshot={lookup.snapshot}
-          proposalTitle={proposalTitle}
-        />
-      </div>
+    <div className="slate-print-light flex min-h-screen flex-col gap-6 px-2 py-4 print:min-h-0 print:bg-white print:p-0 sm:px-4 print:sm:px-0">
+      <ClientProposalShareDocument
+        snapshot={lookup.snapshot}
+        proposalTitle={proposalTitle}
+        companyName={companyName ?? undefined}
+      />
     </div>
   );
 }
@@ -150,14 +148,16 @@ function UnavailablePage() {
 // Helpers — engagement-name fetch + request capture
 // ---------------------------------------------------------------------------
 
-async function resolveClientProposalTitle(
+async function resolveClientProposalIdentity(
   engagementId: string,
-): Promise<string> {
+): Promise<{ title: string; companyName: string | null }> {
   // Sprint H1 — fixed engagement-title fallback. See the matching
-  // comment on the report-side `resolveClientReportTitle` for the full
+  // comment on the report-side `resolveClientReportIdentity` for the full
   // rationale. Company name lives on `accounts.name`, joined via
   // `engagements.account_id`; the previous `engagements.company_name`
-  // select was a column that doesn't exist.
+  // select was a column that doesn't exist. Returns both the composed
+  // title (fallback) and the bare company name for the Register cover hero.
+  const fallback = { title: "Proposal Review", companyName: null };
   try {
     const supabase = createSupabaseServiceClient();
     const { data: engagement, error: engagementError } = await supabase
@@ -170,7 +170,7 @@ async function resolveClientProposalTitle(
         account_id: string | null;
       }>();
     if (engagementError || !engagement) {
-      return "Proposal Review";
+      return fallback;
     }
     let companyName: string | null = null;
     if (engagement.account_id) {
@@ -183,14 +183,17 @@ async function resolveClientProposalTitle(
     }
     const displayName = companyName ?? engagement.name?.trim() ?? null;
     if (!displayName) {
-      return "Proposal Review";
+      return fallback;
     }
     const type = engagement.engagement_type
       ? engagement.engagement_type.replace(/_/g, " ")
       : "Engagement";
-    return `${displayName} · ${capitalize(type)} · Proposal Review`;
+    return {
+      title: `${displayName} · ${capitalize(type)} · Proposal Review`,
+      companyName: displayName,
+    };
   } catch {
-    return "Proposal Review";
+    return fallback;
   }
 }
 
