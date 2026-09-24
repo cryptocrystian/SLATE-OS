@@ -133,21 +133,34 @@ export default async function EngagementDetailPage({
         aiAvailableStages={aiAvailable ? ["synthesis"] : undefined}
       />
 
-      <Card variant="base">
-        <CardBody className="flex flex-col gap-2 p-5 sm:p-6">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
-            Where this engagement is right now
-          </span>
-          <h2 className="text-base font-semibold tracking-tight text-text-primary">
-            {STAGE_LABEL[engagement.currentStage]}
-          </h2>
-          <p className="text-xs leading-relaxed text-text-muted">
-            {STAGE_DESCRIPTION[engagement.currentStage]}
-          </p>
-        </CardBody>
-      </Card>
+      {/* Decision-first lead — the next action comes before any scoreboard.
+          The "where you are" stage context sits alongside it as the reason
+          for that action; the pipeline metrics are demoted below. */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <EngagementRecommendedActionCard
+            engagement={engagement}
+            href={recAction.href}
+            lockedNote={recAction.lockedNote}
+          />
+        </div>
+        <Card variant="base">
+          <CardBody className="flex h-full flex-col gap-2 p-5 sm:p-6">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-text-muted">
+              Where this engagement is right now
+            </span>
+            <h2 className="text-base font-semibold tracking-tight text-text-primary">
+              {STAGE_LABEL[engagement.currentStage]}
+            </h2>
+            <p className="text-xs leading-relaxed text-text-muted">
+              {STAGE_DESCRIPTION[engagement.currentStage]}
+            </p>
+          </CardBody>
+        </Card>
+      </div>
 
-      {/* Pipeline summary metrics */}
+      {/* Pipeline summary metrics — supporting detail, demoted below the
+          decision-first lead above (no longer the page's opening scoreboard). */}
       <section
         aria-label="Engagement progress summary"
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6"
@@ -314,11 +327,6 @@ export default async function EngagementDetailPage({
 
         {/* Sidebar */}
         <aside className="flex flex-col gap-6">
-          <EngagementRecommendedActionCard
-            engagement={engagement}
-            href={recAction.href}
-            lockedNote={recAction.lockedNote}
-          />
           <EngagementContextCard engagement={engagement} />
           {isPersistedEngagement ? (
             <EngagementAttioContextCard status={crmStatus} />
