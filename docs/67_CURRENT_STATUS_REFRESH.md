@@ -153,3 +153,43 @@ don't hit contradictory canon:
 - `docs/10_SESSION_HANDOFF.md` (Latest pointer updated to this doc)
 
 Zero source code changes. Zero migrations. Zero engagement mutations. Zero mint/send.
+
+---
+
+## 10. Update — pre-self-test hardening complete (2026-09-23)
+
+The founder chose to gate the first real client behind a **founder-run realistic
+self-test** through the full pipeline, with quality review at set checkpoints,
+rather than greenlight on synthetic runs alone. Before that run, this session
+completed the pre-test hardening pass:
+
+- **`docs/68` — Advisory Methodology & Output-Quality Rubric** (new). The advisory
+  method (previously implicit in `lib/ai/*`) is now explicit canon, plus a
+  six-dimension qualitative rubric (Grounding · Specificity · Insight · Methodology
+  · Voice · **Commercial realism**), a two-gate model (quantitative `docs/35 §5`
+  gate + qualitative rubric), and the CP-0→CP-7 checkpoint protocol. Founder-ratified
+  (§7); D6 added at founder request.
+- **`docs/69` — Operator Runbook** (new). Standalone end-to-end playbook, each stage
+  carrying both its count gate and its quality checkpoint. **Corrects** `docs/58 §9`'s
+  superseded claim that `/s` doesn't exist / is a canon violation (it's built +
+  conditionally authorized per `docs/28`/`65`/`66`).
+- **Decision-first operator dashboard** — the engagement dashboard now leads with
+  the recommended action, not a 6-up KPI scoreboard (`docs/64` #2).
+- **`docs/70` — Client Deliverable Register Redesign acceptance audit** (new).
+  Closes `docs/67 §4.2` + `docs/64` #5. Found and fixed a real parity gap: the `/r`
+  and `/p` public share documents a client actually opens were still pre-redesign
+  while the operator previews had the Register skin — both rebuilt on `.slate-doc`
+  and verified with live renders. All three client surfaces (`/r`, `/p`, `/s`) now
+  on Register. **Verdict: ACCEPTED.**
+- **Output-quality guardrails** — the deterministic copy-slop critique is wired into
+  the synthesis pipeline (report-section + proposal-option), logged to run + activity
+  metadata, and surfaced to the operator as a per-draft copy-check chip.
+
+**Revised "what remains":** `docs/67 §4` item 2 (deliverable redesign) is now DONE.
+Item 1 (first real client) is now approached via the founder self-test — the
+immediate next action. Item 3 (S14–S20 consolidation) remains deferred; the
+self-test's checkpoint notes will seed its findings-quality feedback loop.
+
+**Next action:** the founder runs the realistic self-test per `docs/69`, scoring
+each artifact against `docs/68` Part B at each checkpoint. The aggregate is the
+first real greenlight evidence base for taking on live clients.
