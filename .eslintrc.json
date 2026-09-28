@@ -1,3 +1,43 @@
 {
-  "extends": "next/core-web-vitals"
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "files": ["**/*.ts", "**/*.tsx"],
+      "excludedFiles": [
+        "lib/governance/**",
+        "app/app/governance/**",
+        "components/governance/**",
+        "tests/governance/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/governance/*", "!@/lib/governance/contracts"],
+                "message": "GovernanceOS boundary (docs/72 §1.3): other SLATE modules may import only @/lib/governance/contracts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["lib/platform/**", "lib/auth/**", "lib/activity/**", "lib/supabase/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/governance/*", "@/lib/governance"],
+                "message": "Platform code never depends on GovernanceOS (docs/72 §1.3)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

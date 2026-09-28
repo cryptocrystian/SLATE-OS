@@ -4,6 +4,26 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-09-28 — GovernanceOS admitted as a first-class SLATE module + control plane; G0 platform hardening and G1 foundation built
+
+**Decision (Architect, 2026-09-25; executed 2026-09-28).** GovernanceOS is (1) a first-class SLATE module/product with its own domain model, service layer, routes, UX and lifecycle, and (2) the cross-SLATE governance control plane. It is not collapsed into shared infrastructure and its logic is not distributed across other modules. Durable governance state belongs to GovernanceOS; no lifecycle event in another module may silently destroy or invalidate it. Plan: `docs/72`.
+
+**Module canon names.** ConsultOS, BuildOS, VentureOS, GovernanceOS (machine values lowercase). AdvisoryOps / GrowthOps → ConsultOS, BuildOps → BuildOS, StudioOps → VentureOS are **legacy aliases** only (docs, no code identifiers — nothing renamed).
+
+**Platform vs module boundary.** Platform = domain-agnostic, multi-module, no governance semantics (auth, workspace membership, RLS helpers, audit/provenance tables, retention holds, durable files, share engine, tests). Everything with governance meaning is GovernanceOS. Enforced by ESLint `no-restricted-imports`: other modules import only `@/lib/governance/contracts`; platform imports nothing from GovernanceOS.
+
+**Sequencing.** G0 (platform hardening) and G1 (GovernanceOS foundation) may proceed alongside the founder self-test only if isolated: no ConsultOS code changes, production applies held. G2+ waits for self-test findings. The `docs/39 §9` no-side-sprint rule is amended for this track only.
+
+**New dev dependencies (`docs/39 §9` rule 7).** `vitest`, `@electric-sql/pglite` — test-only, no Docker (founder preference). Real-Supabase verification uses a short-lived dev branch per migration batch ($0.01344/h, deleted after).
+
+**Conventions** (`docs/76`): `program_kind` client/internal/venture (no fake CRM account); immutable superseding policy versions with RPC-only activation; fixed `rating_tier` + 1–5 ordinal inputs + per-program matrix; licensed standards (ISO/IEC 42001) stored as clause id + title + Saipien paraphrase only; activation ladder advisory (G1) → gated (G3) → enforced (only with a real adapter).
+
+**Staged RLS swap.** `0023` (singleton → membership) is authored and verified but applied only after the self-test and before any external use; it refuses to run without active memberships.
+
+**Tradeoffs accepted.** Retention holds block deletion of linked engagements (deliberate); audit rows outlive their engagement as orphans with `engagement_ref`; G1 gate evaluation is advisory-only and never denies; program-member management has no UI yet. Evidence: `docs/74`–`docs/78`.
+
+---
+
 ## 2026-05-06 — AI Synthesis Step 2: operator-triggered draft opportunities from approved/report-ready findings; server-side scoring derivation; operator selection/defer/reject is the control point
 
 **Decision.** AI Synthesis Step 2 introduces operator-triggered draft opportunity generation from approved/report-ready findings. Operators click `Generate draft opportunities` on `/app/engagements/[id]/opportunities` to invoke a server-only synthesis pipeline that drafts 2–6 opportunity candidates. The model proposes scored opportunities, but server-side validation, priority + quadrant derivation, and the existing operator selection/defer/reject flow remain the control points. Drafts persist as `status = draft` with traceability through `opportunity_finding_links`.

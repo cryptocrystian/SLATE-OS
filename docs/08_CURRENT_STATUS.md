@@ -26,6 +26,10 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## GovernanceOS G0 + G1 — built and verified, production apply held (2026-09-28)
+
+GovernanceOS admitted as a first-class SLATE module + control plane (`docs/72`, decision log 2026-09-28). **G0 platform hardening** and **G1 GovernanceOS foundation** are built in the working tree (uncommitted), verified in-process (PGlite, 61/61 tests) and on a throwaway Supabase dev branch (PRD §21 acceptance passed as real personas under RLS). **Nothing applied to production** — held for the founder self-test (`docs/71` Northpath). Findings that need the founder: **(1)** Supabase public sign-ups are enabled → any anon-key holder can mint a session that passes current RLS (not exploited; 2 known users) — flip the dashboard toggle now (`docs/74 §5`); **(2)** migration `0018` was never applied to production, so Attio CRM context is silently off (`docs/77` F-3). Apply order and remaining gaps: `docs/77 §5`, `docs/78 §4–5`. New docs: `docs/72` plan, `docs/73` Saipien AI Governance Operating Standard (draft), `docs/74` auth audit, `docs/75` durability audit, `docs/76` GovernanceOS conventions, `docs/77`/`docs/78` acceptance audits.
+
 ## Current Status Refresh + Catch-Up (2026-08-18)
 
 **Authoritative current snapshot: `docs/67_CURRENT_STATUS_REFRESH.md`.** This log

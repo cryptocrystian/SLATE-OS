@@ -15,6 +15,7 @@ import {
   BookMarked,
   Settings,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,11 @@ const sections: NavSection[] = [
       { label: "Proposals", href: "/app/proposals", icon: FileText, disabled: true },
       { label: "Delivery", href: "/app/delivery", icon: Workflow, disabled: true },
     ],
+  },
+  {
+    // GovernanceOS — first-class SLATE module (docs/72 §1).
+    label: "Govern",
+    items: [{ label: "GovernanceOS", href: "/app/governance", icon: ShieldCheck }],
   },
   {
     label: "System",
