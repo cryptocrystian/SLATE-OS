@@ -29,8 +29,8 @@
  *
  * Report-only (`/r` mint):
  *
- *   ╶ C9  `report_sections_drafted_too_few`   — drafted+approved+final report sections ≥ MIN_REPORT_SECTIONS_DRAFTED. Default: 10 (of 12).
- *   ╶ C10 `report_sections_approved_too_few`  — approved+final report sections ≥ MIN_REPORT_SECTIONS_APPROVED including `executive-summary`. Default: 8.
+ *   ╶ C9  `report_sections_drafted_too_few`   — drafted+approved+final report sections ≥ MIN_REPORT_SECTIONS_DRAFTED. Default: 8 (of 8).
+ *   ╶ C10 `report_sections_approved_too_few`  — approved+final report sections ≥ MIN_REPORT_SECTIONS_APPROVED including `executive-summary`. Default: 6 (of 8).
  *   ╶ C11 `report_snapshot_missing`           — fresh, non-draft, non-voided `report_delivery_snapshots` row exists. (`Share disabled` text on the renderer is the snapshot's `Share disabled` flag.)
  *
  * Proposal-only (`/p` mint):
@@ -156,9 +156,11 @@ export interface PreDeliveryThresholds {
   minOpportunitiesRecommended: number;
   /** docs/35 § 5 row 8. Default: 3. */
   minRoadmapItemsLinked: number;
-  /** docs/35 § 5 row 9. Default: 10 (of 12). */
+  /** docs/35 § 5 row 9. Default: 8 (of 8). Report canon was trimmed from 12
+   * to 8 sections (7 narrative + appendix, see lib/reports/helpers.ts); the
+   * old "10 of 12" was unsatisfiable and blocked every mint. */
   minReportSectionsDrafted: number;
-  /** docs/35 § 5 row 10. Default: 8 (of 12). */
+  /** docs/35 § 5 row 10. Default: 6 (of 8), incl. executive-summary. */
   minReportSectionsApproved: number;
   /** docs/35 § 5 row 14 (per-surface). Default: 0. */
   maxPreMintActiveTokens: number;
@@ -173,8 +175,8 @@ export const DEFAULT_PRE_DELIVERY_THRESHOLDS: PreDeliveryThresholds = {
   minOpportunitiesCreated: 3,
   minOpportunitiesRecommended: 1,
   minRoadmapItemsLinked: 3,
-  minReportSectionsDrafted: 10,
-  minReportSectionsApproved: 8,
+  minReportSectionsDrafted: 8,
+  minReportSectionsApproved: 6,
   maxPreMintActiveTokens: 0,
 };
 
