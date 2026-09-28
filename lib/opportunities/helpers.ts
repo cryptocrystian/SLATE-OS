@@ -82,7 +82,15 @@ export const CATEGORY_TONE: Record<
 };
 
 const HIGH_IMPACT = 70;
-const HIGH_COMPLEXITY = 60;
+// Raised from 60 -> 70 after the Northpath self-test: a 60 cutoff labeled
+// moderate-complexity, high-impact automations (e.g. AI-assisted proposal +
+// report drafting, complexity ~65) as strategic builds, pushing genuine
+// quick-wins out of the "do first" quadrant. 70 reserves strategic-build for
+// genuinely hard, multi-system integration work (e.g. cross-system
+// integration, complexity 75+). HIGH_IMPACT stays at 70; near-boundary
+// impact mis-scores are corrected by operator re-scoring, not by moving the
+// impact bar.
+const HIGH_COMPLEXITY = 70;
 
 export function computeQuadrant(
   impact: number,
