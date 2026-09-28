@@ -144,4 +144,10 @@ export interface LogActivityEventInput {
   title: string;
   summary?: string | null;
   metadata?: Record<string, unknown>;
+  /**
+   * Owning SLATE module (migration 0024). Omit for ConsultOS — the column
+   * defaults to 'consultos', and omitting it keeps existing call sites
+   * working against databases that predate 0024.
+   */
+  module?: import("@/lib/platform/modules").SlateModule;
 }

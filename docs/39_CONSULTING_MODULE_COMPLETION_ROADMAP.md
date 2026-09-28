@@ -486,3 +486,9 @@ S1 acceptance:
 - `docs/10_SESSION_HANDOFF.md` (Latest line replaced with roadmap-lock outcome + next-planned pointer to Sprint S1)
 
 **Zero source code changes. Zero migration runs. Zero engagement mutations. Zero `/r` or `/p` mint. Zero send. Zero schema or package changes. Zero Sapient Digital interaction beyond reading existing state to ground § 1.**
+
+---
+
+## Amendment (2026-09-28) — GovernanceOS track
+
+By Architect decision (2026-09-25), GovernanceOS runs as a second, isolated track alongside this roadmap (`docs/72`). §9 rules 1 and 4 are amended **for that track only**: G0 (platform hardening) and G1 (GovernanceOS foundation) may proceed in parallel with the founder self-test provided they make no ConsultOS code changes and hold production applies; G2+ waits for self-test findings. §9 rule 7 is satisfied for `vitest` and `@electric-sql/pglite` (test-only). The G0 security findings (`docs/74`, `docs/77`) are **Blocker-class for S13**: the membership RLS swap (`0023`) must be applied before any real client data enters SLATE.

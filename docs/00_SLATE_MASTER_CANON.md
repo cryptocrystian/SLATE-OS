@@ -123,3 +123,9 @@ It must stay focused on Saipien Labs’ core workflows.
 **Short Description:** SLATE is Saipien Labs’ internal operating system for turning discovery, strategy, audits, proposals, builds, and venture workflows into structured, repeatable systems.
 
 **Website-Friendly Description:** Behind Saipien Labs is SLATE — our internal operating system for AI discovery, software planning, audit workflows, delivery playbooks, and venture execution.
+
+---
+
+## Amendment — Module canon (2026-09-28)
+
+SLATE's product modules are **ConsultOS**, **BuildOS**, **VentureOS** and **GovernanceOS** (`docs/72 §1`, decision log 2026-09-28). The "Operating Tracks" above are retained as history; their names are legacy aliases: GrowthOps + AdvisoryOps → ConsultOS, BuildOps → BuildOS, StudioOps → VentureOS. GovernanceOS is both a first-class module and the cross-SLATE governance control plane; ClientOps remains an unassigned later lane (largely served by GovernanceOS "Program as a Service" + ConsultOS post-delivery).

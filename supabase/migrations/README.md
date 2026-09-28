@@ -90,3 +90,19 @@ and `SLATE_OPERATOR_DOMAIN_ALLOWLIST`; both layers should remain in
 place before Step 2 begins.
 
 No further migrations are required to exercise Step 1's `/login` flow.
+
+## From 0022 on (2026-09-28)
+
+- File names carry a layer prefix: `NNNN_platform_*.sql` (SLATE platform) or
+  `NNNN_governance_*.sql` (GovernanceOS). Checked by `npm run check:migrations`.
+- RLS in 0002–0021 used `workspace_id = (select id from public.workspaces limit 1)`
+  (any authenticated session). 0022 adds membership helpers; 0023 swaps every
+  policy to `public.is_workspace_member(workspace_id)` and **refuses to run until
+  active memberships exist** (`scripts/platform/grant-workspace-membership.cjs`).
+- New migrations state explicit grants/revokes: newer Supabase projects grant
+  nothing to API roles by default; production grants everything.
+- Apply order: 0022 → memberships → 0024 → 0025 → 0026–0029 → (after the
+  founder self-test, before external use) 0023. See `docs/77 §5`, `docs/78 §5`.
+- Verify first: `npm test` (PGlite, in-process) and a short-lived Supabase dev
+  branch. Production's `supabase_migrations` history only tracks 4 migrations, so
+  branches must replay repo migrations explicitly.

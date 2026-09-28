@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check:send-to-client-disclaimers": "node scripts/check-send-to-client-disclaimers.cjs"
+    "check:send-to-client-disclaimers": "node scripts/check-send-to-client-disclaimers.cjs",
+    "test": "vitest run",
+    "test:db": "vitest run db.test",
+    "check:migrations": "node scripts/check-migration-sequence.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
@@ -28,6 +31,7 @@
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
     "@types/node": "^20.16.11",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -36,6 +40,7 @@
     "eslint-config-next": "14.2.35",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
   }
 }

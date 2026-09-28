@@ -42,6 +42,9 @@ export async function signInWithMagicLink(formData: FormData) {
     email,
     options: {
       emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+      // Operators are pre-provisioned. Never let the sign-in path create
+      // an auth user (docs/74 — platform auth exposure audit).
+      shouldCreateUser: false,
     },
   });
 

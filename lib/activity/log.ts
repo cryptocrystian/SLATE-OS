@@ -78,6 +78,8 @@ export async function logActivityEvent(
       title: input.title,
       summary: input.summary ?? null,
       metadata: safeMetadata,
+      // Only sent when set: pre-0024 databases have no `module` column.
+      ...(input.module ? { module: input.module } : {}),
     });
     if (error) {
       console.error("[activity.log] insert-failed", {
@@ -110,7 +112,7 @@ const FORBIDDEN_KEY_PATTERNS = [
   /excerpt/i,
 ];
 
-function sanitizeMetadata(
+export function sanitizeMetadata(
   raw: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (!raw || typeof raw !== "object") return {};
