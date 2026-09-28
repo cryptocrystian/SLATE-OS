@@ -84,6 +84,20 @@ const EXHIBIT_META: {
   },
 ];
 
+// Each Group-A exhibit is a hero plate INSIDE the section it belongs to — the
+// picture next to the argument it supports — rather than a trailing dump of
+// charts. Any ready exhibit whose section isn't present falls through to a
+// short closing figures page.
+const EXHIBIT_FOR_SECTION: Partial<
+  Record<string, keyof ReportGroupAExhibitResults>
+> = {
+  opportunity_portfolio: "executiveSummary",
+  priority_recommendations: "riskPriority",
+  workflow_friction: "capabilityMaturity",
+  stakeholder_synthesis: "stakeholderCoverage",
+  roadmap: "roadmap",
+};
+
 export function ClientReportDeliverable({
   engagement,
   snapshot,
@@ -97,21 +111,49 @@ export function ClientReportDeliverable({
     (s) => s.sectionType === "executive_summary",
   );
   const exec = execIndex >= 0 ? sections[execIndex] : null;
-  const bodySections = sections.filter((_, i) => i !== execIndex);
+  // One ordered reading sequence — exec first, then the rest in position order.
+  const ordered = exec
+    ? [exec, ...sections.filter((_, i) => i !== execIndex)]
+    : sections;
 
-  const readyExhibits = EXHIBIT_META.map((meta) => ({
-    meta,
-    result: liveExhibits[meta.key],
-  })).filter((e) => e.result.status === "ready" && e.result.props);
+  type ReadyExhibit = {
+    meta: (typeof EXHIBIT_META)[number];
+    result: ReportGroupAExhibitResults[keyof ReportGroupAExhibitResults];
+  };
+  const readyByKey = new Map<keyof ReportGroupAExhibitResults, ReadyExhibit>();
+  for (const meta of EXHIBIT_META) {
+    const result = liveExhibits[meta.key];
+    if (result.status === "ready" && result.props) {
+      readyByKey.set(meta.key, { meta, result });
+    }
+  }
 
-  // Decision-journey rail — the document's contents.
-  const rail: string[] = [];
-  if (exec) rail.push(humanizeSectionType(exec.sectionType));
-  bodySections.forEach((s) => rail.push(humanizeSectionType(s.sectionType)));
-  if (readyExhibits.length > 0) rail.push("Exhibits");
+  // Assign each ready exhibit to its section, numbering figures in reading order.
+  const sectionExhibit = new Map<string, ReadyExhibit & { index: number }>();
+  let figureCount = 0;
+  for (const s of ordered) {
+    // Snapshot section types are hyphenated (e.g. "opportunity-portfolio");
+    // the map is keyed with underscores. Normalize before lookup.
+    const key = EXHIBIT_FOR_SECTION[s.sectionType.replace(/-/g, "_")];
+    if (key && readyByKey.has(key)) {
+      figureCount += 1;
+      const e = readyByKey.get(key)!;
+      sectionExhibit.set(s.sectionId, { index: figureCount, meta: e.meta, result: e.result });
+    }
+  }
+  // Any ready exhibit whose home section isn't in this artifact → closing page.
+  const placedKeys = new Set(
+    [...sectionExhibit.values()].map((v) => v.meta.key),
+  );
+  const trailingExhibits = [...readyByKey.values()].filter(
+    (e) => !placedKeys.has(e.meta.key),
+  );
 
-  const bodyBase = exec ? 1 : 0;
-  const exhibitsActive = rail.length - 1;
+  // Decision-journey rail — the document's contents (exhibits now live inside
+  // their sections, so the rail is the section list, plus a closing page).
+  const rail = ordered.map((s) => humanizeSectionType(s.sectionType));
+  if (trailingExhibits.length > 0) rail.push("Exhibits");
+  const closingActive = rail.length - 1;
 
   return (
     <div className="slate-doc" data-deliverable-export="client-report">
@@ -154,58 +196,56 @@ export function ClientReportDeliverable({
         </div>
       </section>
 
-      {/* -------- Executive summary -------- */}
-      {exec ? (
-        <DocPage rail={rail} active={0}>
-          <div className="doc-sec-head">
-            <div className="doc-sec-title">{exec.title}</div>
-            <SecNote sectionType={exec.sectionType} title={exec.title} />
-          </div>
-          {renderLede(exec.summary)}
-          {renderBody(exec.draftPreview)}
-          <p className="doc-body" style={{ marginTop: "16px", color: "var(--doc-ink-3)" }}>
-            Prepared for the leadership team at {engagement.companyName}. The
-            findings, opportunities, and roadmap that follow are drawn from
-            stakeholder discovery and reviewed by a Saipien Labs consultant
-            before release.
-          </p>
-        </DocPage>
-      ) : null}
+      {/* -------- Sections (each with its hero exhibit interleaved) -------- */}
+      {ordered.map((section, idx) => {
+        const isExec = section.sectionType === "executive_summary";
+        const fig = sectionExhibit.get(section.sectionId);
+        return (
+          <DocPage key={section.sectionId} rail={rail} active={idx}>
+            <div className="doc-sec-head">
+              <div className="doc-sec-title">{section.title}</div>
+              <SecNote sectionType={section.sectionType} title={section.title} />
+            </div>
+            {renderLede(section.summary, isExec || idx === 1)}
+            {/* Hero exhibit: the picture leads, the prose interprets it. */}
+            {fig ? (
+              <div style={{ marginTop: "22px" }}>
+                <FigurePlate index={fig.index} title={fig.meta.title} caption={fig.meta.caption}>
+                  <ExhibitBody descKey={fig.meta.key} props={fig.result.props as unknown} />
+                </FigurePlate>
+              </div>
+            ) : null}
+            {renderBody(section.draftPreview)}
+            {isExec ? (
+              <p className="doc-body" style={{ marginTop: "16px", color: "var(--doc-ink-3)" }}>
+                Prepared for the leadership team at {engagement.companyName}. The
+                findings, opportunities, and roadmap that follow are drawn from
+                stakeholder discovery and reviewed by a Saipien Labs consultant
+                before release.
+              </p>
+            ) : (
+              <BasisPlate note={section.evidenceNotes} />
+            )}
+          </DocPage>
+        );
+      })}
 
-      {/* -------- Body sections -------- */}
-      {bodySections.map((section, j) => (
-        <DocPage key={section.sectionId} rail={rail} active={bodyBase + j}>
-          <div className="doc-sec-head">
-            <div className="doc-sec-title">{section.title}</div>
-            <SecNote sectionType={section.sectionType} title={section.title} />
-          </div>
-          {renderLede(section.summary, j === 0)}
-          {renderBody(section.draftPreview)}
-          <BasisPlate note={section.evidenceNotes} />
-        </DocPage>
-      ))}
-
-      {/* -------- Exhibits -------- */}
-      {readyExhibits.length > 0 ? (
-        <DocPage rail={rail} active={exhibitsActive}>
+      {/* -------- Closing page: any unplaced exhibits + footer -------- */}
+      {trailingExhibits.length > 0 ? (
+        <DocPage rail={rail} active={closingActive}>
           <div className="doc-sec-head">
             <div className="doc-sec-title">Exhibits</div>
             <div className="doc-sec-note">Supporting analysis</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-            {readyExhibits.map((e, i) => (
-              <FigurePlate
-                key={e.meta.key}
-                index={i + 1}
-                title={e.meta.title}
-                caption={e.meta.caption}
-              >
-                <ExhibitBody
-                  descKey={e.meta.key}
-                  props={e.result.props as unknown}
-                />
-              </FigurePlate>
-            ))}
+            {trailingExhibits.map((e) => {
+              figureCount += 1;
+              return (
+                <FigurePlate key={e.meta.key} index={figureCount} title={e.meta.title} caption={e.meta.caption}>
+                  <ExhibitBody descKey={e.meta.key} props={e.result.props as unknown} />
+                </FigurePlate>
+              );
+            })}
           </div>
           <DeliverableFooter companyName={engagement.companyName} />
         </DocPage>
