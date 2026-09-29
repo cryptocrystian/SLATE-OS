@@ -32,16 +32,23 @@ export type FindingsWrjResult =
   | { ok: false; error: string; message?: string };
 
 // docs/68 findings checks, phrased for Jev over { findings, sourceContext }.
+// Thresholds validated in-domain against known-bad (gpt-4o-mini: generic,
+// dropped operations, all-high) and known-good (gpt-4o) drafts over the real
+// Northpath intake — the set separates cleanly (see docs/73). Note: coverage
+// is phrased concretely (a fuzzy "every role" barely separated, 0.52 vs 0.55;
+// naming role concerns gave 0.19 vs 0.98), calibration targets only egregious
+// over-confidence, and "insight" is deliberately NOT a findings gate —
+// findings are observations, not synthesis (insight belongs to later stages).
 const FINDINGS_CHECKS: RubricCheck[] = [
   {
     id: "coverage",
     kind: "noul",
     dimension: "methodology",
     instructions:
-      "In the provided `state`, every stakeholder role in `sourceContext.intake` that raised a material operational issue is represented by at least one entry in `findings`. In particular, operations/delivery concerns (staffing, resourcing, capacity, stale operational data) are not dropped.",
+      "Every stakeholder role represented in `sourceContext.intake` has its material operational concern reflected in at least one entry in `findings`; no role's concerns are dropped. Watch especially for operations/delivery (staffing, resourcing, capacity, stale operational data), finance (billing, cash/DSO), and sales/client-facing concerns.",
     criteria: {
-      true: "Every role with a material issue is represented in the findings.",
-      false: "At least one role's material issue is missing from the findings.",
+      true: "Every role's material operational concern is represented in the findings.",
+      false: "At least one role's material concern is missing from the findings.",
     },
     passAtOrAbove: 0.6,
   },
@@ -55,19 +62,19 @@ const FINDINGS_CHECKS: RubricCheck[] = [
       true: "All findings are grounded in the supplied intake evidence.",
       false: "At least one finding is not supported by the intake evidence.",
     },
-    passAtOrAbove: 0.6,
+    passAtOrAbove: 0.55,
   },
   {
     id: "calibration",
     kind: "noul",
     dimension: "grounding",
     instructions:
-      "Each finding's `confidence` label is justified by its evidence: a claim resting on a single stakeholder's remark is not marked `high`. Confidence is calibrated, not uniformly high.",
+      "The findings avoid egregious over-confidence: generic or single-offhand-remark claims are NOT marked `high` confidence. A set where every finding is `high` regardless of evidence strength is not calibrated.",
     criteria: {
-      true: "Confidence labels are honestly calibrated to evidence strength.",
-      false: "Confidence is over-stated (e.g. single-source claims marked high).",
+      true: "Confidence is broadly calibrated to evidence strength.",
+      false: "Confidence is uniformly or unjustifiably high.",
     },
-    passAtOrAbove: 0.6,
+    passAtOrAbove: 0.5,
   },
   {
     id: "guardrail_financial",
@@ -92,20 +99,6 @@ const FINDINGS_CHECKS: RubricCheck[] = [
       "Mostly generic with only occasional specifics.",
       "Mostly specific — names this company's systems, roles, and workflows.",
       "Highly specific — named systems, roles, and concrete numbers throughout.",
-    ],
-    minScore: 2,
-  },
-  {
-    id: "insight",
-    kind: "score",
-    dimension: "insight",
-    instructions:
-      "How insightful and decision-useful are the findings beyond restating what stakeholders said — do they synthesize across the intake into non-obvious observations a client would pay to learn?",
-    criteria: [
-      "Pure restatement of intake answers; no synthesis.",
-      "Mostly restatement with slight synthesis.",
-      "Real synthesis across stakeholders into useful observations.",
-      "Sharp, non-obvious, decision-grade insight.",
     ],
     minScore: 2,
   },
