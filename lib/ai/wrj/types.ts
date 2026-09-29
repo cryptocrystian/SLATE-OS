@@ -110,3 +110,36 @@ export interface WrjOutcome<C> {
   revisions: number;
   writerModel: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Sanitized, persisted run summary (written to ai_synthesis_runs.output_summary
+// .synthesis by the stage actions; read back for the operator verdict card).
+// Counts/bands only — no raw draft text.
+// ---------------------------------------------------------------------------
+
+export interface WrjRunCheckSummary {
+  id: string;
+  dimension?: string;
+  passed: boolean;
+  noul?: number;
+  score?: number;
+  confidence?: number;
+}
+
+export interface WrjRunSummary {
+  mode: "wrj" | "single";
+  revisions?: number;
+  reviewer?: {
+    status: string;
+    model: string | null;
+    noteCount: number;
+    highSeverity: number;
+  };
+  judge?: {
+    status: string;
+    model: string | null;
+    passed: boolean;
+    failedCount: number;
+    checks: WrjRunCheckSummary[];
+  };
+}

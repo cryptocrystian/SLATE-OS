@@ -22,6 +22,9 @@ import {
   getFindingsForEngagementPersisted,
 } from "@/lib/findings/queries";
 import { buildEvidenceBundleForEngagement } from "@/lib/findings/evidence";
+import { getLatestFindingsWrjSummary } from "@/lib/ai/wrj/queries";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
+import { WrjVerdictCard } from "@/components/ai/wrj-verdict-card";
 import {
   buildOpportunitiesReadinessSignal,
   summarizeFindingProvenance,
@@ -56,11 +59,15 @@ export default async function EngagementFindingsPage({
   let findings: Finding[];
   let candidates: Awaited<ReturnType<typeof getEvidenceCandidatesForEngagement>> = [];
   let evidenceBundle: Awaited<ReturnType<typeof buildEvidenceBundleForEngagement>> = null;
+  // WRJ verdict from the most recent findings synthesis run (present only when
+  // that run used SLATE_AI_SYNTHESIS_MODE=wrj). Advisory operator surface.
+  let wrjSummary: WrjRunSummary | null = null;
   if (isPersisted) {
-    [findings, candidates, evidenceBundle] = await Promise.all([
+    [findings, candidates, evidenceBundle, wrjSummary] = await Promise.all([
       getFindingsForEngagementPersisted(engagement.id),
       getEvidenceCandidatesForEngagement(engagement.id),
       buildEvidenceBundleForEngagement(engagement.id),
+      getLatestFindingsWrjSummary(engagement.id),
     ]);
   } else {
     findings = getMockFindings(engagement.id);
@@ -192,6 +199,7 @@ export default async function EngagementFindingsPage({
                     : null
                 }
               />
+              <WrjVerdictCard summary={wrjSummary} />
               <CreateFindingForm
                 engagementId={engagement.id}
                 candidates={candidates}
