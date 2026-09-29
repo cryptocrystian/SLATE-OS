@@ -59,7 +59,7 @@ export function getReviewerConfig(): ReviewerConfig | null {
   // Overridable; default to a strong cross-family (Anthropic) model. Set
   // SLATE_AI_REVIEWER_MODEL to the current best id for your account.
   const model =
-    process.env.SLATE_AI_REVIEWER_MODEL?.trim() || "anthropic/claude-3.7-sonnet";
+    process.env.SLATE_AI_REVIEWER_MODEL?.trim() || "anthropic/claude-sonnet-5.5";
   return {
     model,
     apiKey,

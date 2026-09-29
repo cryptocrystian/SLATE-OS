@@ -69,7 +69,34 @@ calibration 0.41 vs 0.87, specificity 1.35 vs 2.98).
   questions with in-domain-tuned thresholds discriminate; fuzzy or
   wrong-dimension questions do not.
 
+## Head-to-head A/B (findings, real Northpath approved set)
+
+Ran both paths over the run's 7 real approved findings + the real intake:
+
+- **single mode** — ships the 7 findings with **no quality signal** (operator
+  reviews blind).
+- **wrj mode** — ships the same 7 findings **plus**:
+  - **Jev judge** (jev-1.13.0): grounding 0.74 · calibration 0.76 · guardrail
+    0.11 (no financial claim) · specificity 2.62 — all PASS; **coverage 0.57 →
+    borderline FAIL**, a stable, calibrated caution to double-check stakeholder
+    coverage before approving.
+  - **cross-family reviewer** (Anthropic `claude-sonnet-5.5` via OpenRouter,
+    HTTP 200): "no defects flagged" on this (good) set.
+
+Takeaways:
+- The A/B value is concrete: WRJ hands the operator a per-dimension calibrated
+  verdict (incl. the coverage caution) that single mode never produces, and a
+  second cross-family opinion. On a bad draft (see the validation above) WRJ
+  FAILs where single ships silently.
+- Coverage sits near the 0.6 gate on genuinely-decent sets (0.57 here vs 0.98
+  on the ideal set), which is correct **co-judge** behavior — it flags for human
+  attention rather than auto-rejecting. Do not over-tune the threshold to one
+  case; the ordering is right (bad 0.19 ≪ real 0.57 < ideal 0.98).
+- Reviewer model must be a valid current id: `anthropic/claude-sonnet-5.5`
+  (the default; override via `SLATE_AI_REVIEWER_MODEL`).
+
 ## Files
 - Checks shipped: `lib/ai/wrj/findings-wrj.ts` (`FINDINGS_CHECKS`).
-- No production data mutated; validation ran read-only against the Northpath
-  intake + two in-memory findings sets.
+- Reviewer default: `lib/ai/wrj/config.ts` (`anthropic/claude-sonnet-5.5`).
+- No production data mutated; validation + A/B ran read-only against the
+  Northpath intake + findings.
