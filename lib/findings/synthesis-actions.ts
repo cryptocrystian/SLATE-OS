@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { logActivityEvent } from "@/lib/activity/log";
 import { isAiConfigured } from "@/lib/ai/provider";
 import { buildFindingsSynthesisContext } from "@/lib/ai/findings-context";
+import { isWrjMode } from "@/lib/ai/wrj/config";
+import { synthesizeDraftFindingsWrj } from "@/lib/ai/wrj/findings-wrj";
 import {
   FINDINGS_SYNTHESIS_BOUNDS,
   synthesizeDraftFindings,
@@ -199,8 +201,13 @@ export async function generateDraftFindingsForEngagement(
   }
   const runId = runRow.id;
 
-  // Call provider.
-  const synthesisResult = await synthesizeDraftFindings(context);
+  // Call provider. WRJ mode (SLATE_AI_SYNTHESIS_MODE=wrj) routes through the
+  // parallel writer→reviewer→judge path; default `single` is unchanged. Both
+  // return the same {ok, candidates, providerMeta} envelope, so everything
+  // below is identical — the WRJ path just also carries a `wrj` verdict.
+  const synthesisResult = isWrjMode()
+    ? await synthesizeDraftFindingsWrj(context)
+    : await synthesizeDraftFindings(context);
   if (!synthesisResult.ok) {
     await markRunFailed(runId, synthesisResult.error, synthesisResult.message);
     await logActivityEvent({
@@ -304,6 +311,36 @@ export async function generateDraftFindingsForEngagement(
     generated += 1;
   }
 
+  // Sanitized WRJ verdict for the run record + A/B comparison (present only in
+  // wrj mode). Counts/bands only — no raw draft text.
+  const wrjSummary =
+    "wrj" in synthesisResult && synthesisResult.wrj
+      ? {
+          mode: "wrj" as const,
+          revisions: synthesisResult.wrj.revisions,
+          reviewer: {
+            status: synthesisResult.wrj.review.status,
+            model: synthesisResult.wrj.review.model,
+            noteCount: synthesisResult.wrj.review.notes.length,
+            highSeverity: synthesisResult.wrj.review.notes.filter((n) => n.severity === "high").length,
+          },
+          judge: {
+            status: synthesisResult.wrj.verdict.status,
+            model: synthesisResult.wrj.verdict.model,
+            passed: synthesisResult.wrj.verdict.passed,
+            failedCount: synthesisResult.wrj.verdict.failedCount,
+            checks: synthesisResult.wrj.verdict.checks.map((c) => ({
+              id: c.id,
+              dimension: c.dimension,
+              passed: c.passed,
+              noul: c.noul,
+              score: c.score,
+              confidence: c.confidence,
+            })),
+          },
+        }
+      : { mode: "single" as const };
+
   const completedSummary = {
     runType: "findings_draft",
     generatedCount: generated,
@@ -312,6 +349,7 @@ export async function generateDraftFindingsForEngagement(
     insertErrorCount: insertErrors.length,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
+    synthesis: wrjSummary,
   };
 
   await supabase
