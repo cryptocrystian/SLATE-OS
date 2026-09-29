@@ -81,3 +81,14 @@
 4. **After the self-test, before any external/client use:** apply `0023`, then run
    the `docs/69` smoke check.
 5. Ratify `docs/73` (⚑ items) and `docs/76`.
+
+## 6. Production apply log (2026-09-28, founder-approved)
+
+- Founder disabled Supabase public sign-ups (verified `disable_signup: true`). F-1 config layer closed.
+- Applied to production via Supabase `apply_migration` (now recorded in `supabase_migrations`):
+  `0018` (F-3 fixed — Attio column restored), `0022`, then memberships (both existing
+  accounts granted `owner`, founder decision), `0024`, `0025`.
+- Post-apply checks: existing activity/AI-run rows fully backfilled (`*_ref`); 4 delete
+  guards live; `slate-durable-files` bucket present; ConsultOS reads + writes shaped like
+  current code succeed as an owner (probe rolled back); advisor output identical to the branch run.
+- **Still held:** `0023` (the 32 singleton policies remain) — apply after the founder self-test.

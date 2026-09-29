@@ -91,3 +91,11 @@
 `0026`–`0029` depend on `0022` (helpers) and `0024` (holds, `module` column),
 not on `0023`. G1 therefore works before the RLS swap, with the same
 program-scoped protections on every GovernanceOS table.
+
+## 6. Production apply log (2026-09-28, founder-approved)
+
+`0026`–`0029` applied to production after G0's `0022`/`0024`/`0025` and the owner grants.
+All 10 GovernanceOS + platform tables present; zero programs exist yet. **The G1 app code
+is committed (`5e81c41`) but not deployed** — `/app/governance` is reachable only in a local
+`npm run dev` against production until the branch is pushed and deployed. §4 items 1–2
+(signed-in walkthrough, Saipien internal program) remain open.
