@@ -13,17 +13,20 @@ import type { WrjRunSummary, WrjRunCheckSummary } from "@/lib/ai/wrj/types";
  * single-model mode (there is no verdict to show).
  */
 
+// Default (findings-oriented) labels. Stages with different check semantics
+// pass `labelOverrides` (e.g. opportunities: coverage = material problems).
 const CHECK_LABEL: Record<string, string> = {
   coverage: "Stakeholder coverage",
   grounding: "Grounding in evidence",
   calibration: "Confidence calibration",
   guardrail_financial: "No financial/benchmark claims",
   specificity: "Specificity to this client",
+  actionability: "Actionable implementation",
   insight: "Insight",
 };
 
-function checkLabel(id: string): string {
-  return CHECK_LABEL[id] ?? id.replace(/[-_]/g, " ");
+function checkLabel(id: string, overrides?: Record<string, string>): string {
+  return overrides?.[id] ?? CHECK_LABEL[id] ?? id.replace(/[-_]/g, " ");
 }
 
 function checkValue(c: WrjRunCheckSummary): string {
@@ -35,7 +38,13 @@ function checkValue(c: WrjRunCheckSummary): string {
   return "—";
 }
 
-export function WrjVerdictCard({ summary }: { summary: WrjRunSummary | null }) {
+export function WrjVerdictCard({
+  summary,
+  labelOverrides,
+}: {
+  summary: WrjRunSummary | null;
+  labelOverrides?: Record<string, string>;
+}) {
   if (!summary || summary.mode !== "wrj") return null;
 
   const judge = summary.judge;
@@ -80,7 +89,7 @@ export function WrjVerdictCard({ summary }: { summary: WrjRunSummary | null }) {
                       c.passed ? "bg-status-success" : "bg-status-warning"
                     }`}
                   />
-                  <span className="text-text-secondary">{checkLabel(c.id)}</span>
+                  <span className="text-text-secondary">{checkLabel(c.id, labelOverrides)}</span>
                 </span>
                 <span className="flex items-center gap-2">
                   <span className="font-mono tabular-nums text-text-muted">

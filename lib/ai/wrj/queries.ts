@@ -44,6 +44,12 @@ export function getLatestFindingsWrjSummary(
   return getLatestWrjSummary(engagementId, "findings_draft");
 }
 
+export function getLatestOpportunitiesWrjSummary(
+  engagementId: string,
+): Promise<WrjRunSummary | null> {
+  return getLatestWrjSummary(engagementId, "opportunity_draft");
+}
+
 /** Defensive parse of the persisted summary (unknown JSON → typed). */
 function parseWrjRunSummary(raw: unknown): WrjRunSummary | null {
   if (!raw || typeof raw !== "object") return null;

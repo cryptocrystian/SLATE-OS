@@ -12,11 +12,14 @@ import { OpportunitiesWorkspace } from "@/components/opportunities/opportunities
 import { CreateOpportunityForm } from "@/components/opportunities/create-opportunity-form";
 import { GenerateOpportunitiesForm } from "@/components/opportunities/generate-opportunities-form";
 import { RoadmapReadinessHint } from "@/components/opportunities/roadmap-readiness-hint";
+import { WrjVerdictCard } from "@/components/ai/wrj-verdict-card";
 import { EngagementContextCard } from "@/components/engagements/engagement-context-card";
 import { EngagementRecommendedActionCard } from "@/components/engagements/engagement-recommended-action-card";
 import { loadEngagementForSubroute } from "@/lib/engagements/load-for-subroute";
 import { isAiConfigured } from "@/lib/ai/provider";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
+import { getLatestOpportunitiesWrjSummary } from "@/lib/ai/wrj/queries";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
 import {
   getFindingCandidatesForEngagement,
   getFindingProvenanceForEngagement,
@@ -65,15 +68,24 @@ export default async function EngagementOpportunitiesPage({
     ReturnType<typeof getFindingCandidatesForEngagement>
   > = [];
   let findingProvenanceById: Map<string, FindingProvenanceSummary> = new Map();
+  // WRJ verdict from the most recent opportunity synthesis run (present only
+  // when that run used SLATE_AI_SYNTHESIS_MODE=wrj). Advisory operator surface.
+  let wrjSummary: WrjRunSummary | null = null;
 
   if (isPersisted) {
-    [opportunities, findings, findingCandidates, findingProvenanceById] =
-      await Promise.all([
-        getOpportunitiesForEngagementPersisted(engagement.id),
-        getMinimalFindingsForEngagement(engagement.id),
-        getFindingCandidatesForEngagement(engagement.id),
-        getFindingProvenanceForEngagement(engagement.id),
-      ]);
+    [
+      opportunities,
+      findings,
+      findingCandidates,
+      findingProvenanceById,
+      wrjSummary,
+    ] = await Promise.all([
+      getOpportunitiesForEngagementPersisted(engagement.id),
+      getMinimalFindingsForEngagement(engagement.id),
+      getFindingCandidatesForEngagement(engagement.id),
+      getFindingProvenanceForEngagement(engagement.id),
+      getLatestOpportunitiesWrjSummary(engagement.id),
+    ]);
   } else {
     opportunities = getOpportunitiesForEngagement(engagement.id);
     findings = getFindingsForEngagement(engagement.id);
@@ -231,6 +243,13 @@ export default async function EngagementOpportunitiesPage({
                 engagementId={engagement.id}
                 aiConfigured={aiConfigured}
                 hasApprovedFindings={findingCandidates.length > 0}
+              />
+              <WrjVerdictCard
+                summary={wrjSummary}
+                labelOverrides={{
+                  coverage: "Coverage of material problems",
+                  calibration: "Score / confidence calibration",
+                }}
               />
               <CreateOpportunityForm
                 engagementId={engagement.id}
