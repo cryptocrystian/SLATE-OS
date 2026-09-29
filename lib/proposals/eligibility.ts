@@ -187,28 +187,18 @@ export function evaluateProposalDeliveryEligibility(
     });
   }
 
-  // Decide the included-options set. Either operator-selected or
-  // recommended-by-flag. Operator selection takes precedence; if
-  // neither is present, the evaluator surfaces `no_selection`.
+  // Decide the included-options set. Operator selection takes precedence;
+  // otherwise a proposal is a good/better/best decision document, so the
+  // DEFAULT includes ALL options. The recommended flag highlights one tier
+  // in the deliverable — it does not narrow the set. (Previously the default
+  // was recommended-only, which collapsed the tiered proposal to a single
+  // option and hid the comparison entirely — Northpath self-test CP-5.)
   const selectedIds = (input.selectedOptionIds ?? []).filter((id) =>
     input.options.some((o) => o.id === id),
   );
-  const recommendedIds = input.options.filter((o) => o.recommended).map((o) => o.id);
 
-  let includedOptionIds: string[];
-  if (selectedIds.length > 0) {
-    includedOptionIds = selectedIds;
-  } else if (recommendedIds.length > 0) {
-    includedOptionIds = recommendedIds;
-  } else {
-    reasons.push({
-      code: "no_selection",
-      severity: "error",
-      message:
-        "No proposal options are marked recommended and the operator did not pass an explicit `selectedOptionIds[]`. Mark one option recommended or pass a selection.",
-    });
-    includedOptionIds = [];
-  }
+  const includedOptionIds: string[] =
+    selectedIds.length > 0 ? selectedIds : input.options.map((o) => o.id);
 
   // Per-included-option content-quality checks. A blank scope summary
   // / timeline / best-fit scenario is rejected because the client
