@@ -305,7 +305,7 @@ const SECTION_CHARTERS: Record<string, string> = {
     "A compact reference index of the findings, opportunities, and roadmap items behind the report. This is the ONE section that may enumerate. Keep it terse and factual — no new narrative. Begin directly with the index itself; do NOT open with \"This appendix…\" or any sentence describing what the appendix is.",
 };
 
-function charterFor(sectionType: string): string {
+export function charterFor(sectionType: string): string {
   return (
     SECTION_CHARTERS[sectionType] ??
     "Synthesize the supplied context through this section's specific purpose. Do not restate content that belongs to other sections."

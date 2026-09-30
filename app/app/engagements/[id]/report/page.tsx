@@ -28,6 +28,8 @@ import {
   getSectionCopySlopMap,
 } from "@/lib/reports/queries";
 import type { CopySlopSummary } from "@/lib/ai/copy-slop";
+import { getReportSectionWrjSummaries } from "@/lib/ai/wrj/queries";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
 import { getFindingsForEngagement } from "@/lib/findings/mock-findings";
 import { getFindingsForEngagementPersisted } from "@/lib/findings/queries";
 import { getOpportunitiesForEngagement } from "@/lib/opportunities/mock-opportunities";
@@ -92,10 +94,14 @@ export default async function EngagementReportPage({
   // Copy-slop critique per section (latest AI draft), keyed by section id.
   // Persisted engagements only; advisory chip in the review workspace.
   let copySlopBySectionId: Record<string, CopySlopSummary> = {};
+  // Per-section WRJ verdict from each section's most recent draft run (present
+  // only for sections drafted in wrj mode). Advisory operator surface.
+  let wrjBySectionId: Record<string, WrjRunSummary> = {};
 
   if (isPersisted) {
     let copySlopMap: Map<string, CopySlopSummary>;
-    [report, findings, opportunities, roadmap, intakeRecord, copySlopMap] =
+    let wrjMap: Map<string, WrjRunSummary>;
+    [report, findings, opportunities, roadmap, intakeRecord, copySlopMap, wrjMap] =
       await Promise.all([
         getReportForEngagementPersisted(engagement.id),
         getFindingsForEngagementPersisted(engagement.id),
@@ -103,8 +109,10 @@ export default async function EngagementReportPage({
         getRoadmapForEngagementPersisted(engagement.id),
         getIntakeRecordForEngagement(engagement.id),
         getSectionCopySlopMap(engagement.id),
+        getReportSectionWrjSummaries(engagement.id),
       ]);
     copySlopBySectionId = Object.fromEntries(copySlopMap);
+    wrjBySectionId = Object.fromEntries(wrjMap);
   } else {
     report = getReportForEngagement(engagement.id);
     findings = getFindingsForEngagement(engagement.id);
@@ -446,6 +454,7 @@ export default async function EngagementReportPage({
               showActionBar={isPersisted}
               aiAvailable={aiAvailable}
               copySlopBySectionId={copySlopBySectionId}
+              wrjBySectionId={wrjBySectionId}
             />
           )}
 

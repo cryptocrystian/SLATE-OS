@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 
 import { logActivityEvent } from "@/lib/activity/log";
 import { isAiConfigured } from "@/lib/ai/provider";
+import { isWrjMode } from "@/lib/ai/wrj/config";
+import { synthesizeReportSectionDraftWrj } from "@/lib/ai/wrj/report-section-wrj";
 import { summarizeCopySlop } from "@/lib/ai/copy-slop";
 import { buildReportSectionSynthesisContext } from "@/lib/ai/report-section-context";
 import {
@@ -192,8 +194,13 @@ export async function generateReportSectionDraftAction(args: {
   }
   const runId = runRow.id;
 
-  // Call the provider.
-  const synthesisResult = await synthesizeReportSectionDraft(context);
+  // Call the provider. WRJ mode (SLATE_AI_SYNTHESIS_MODE=wrj) routes through the
+  // writer/reviewer/Jev-judge path, which returns the SAME single-candidate
+  // envelope plus a `wrj` verdict. Everything downstream (persist, links) is
+  // identical — the WRJ path just also carries the verdict.
+  const synthesisResult = isWrjMode()
+    ? await synthesizeReportSectionDraftWrj(context)
+    : await synthesizeReportSectionDraft(context);
   if (!synthesisResult.ok) {
     await markRunFailed(runId, synthesisResult.error, synthesisResult.message);
     await logActivityEvent({
@@ -284,6 +291,38 @@ export async function generateReportSectionDraftAction(args: {
   // no matched text) so it is safe to persist in run + activity metadata.
   const copySlopMeta = summarizeCopySlop(synthesisResult.candidate.copySlop);
 
+  // Sanitized WRJ verdict for the run record + A/B comparison (present only in
+  // wrj mode). Counts/bands only — no raw draft text.
+  const wrjSummary =
+    "wrj" in synthesisResult && synthesisResult.wrj
+      ? {
+          mode: "wrj" as const,
+          revisions: synthesisResult.wrj.revisions,
+          reviewer: {
+            status: synthesisResult.wrj.review.status,
+            model: synthesisResult.wrj.review.model,
+            noteCount: synthesisResult.wrj.review.notes.length,
+            highSeverity: synthesisResult.wrj.review.notes.filter(
+              (n) => n.severity === "high",
+            ).length,
+          },
+          judge: {
+            status: synthesisResult.wrj.verdict.status,
+            model: synthesisResult.wrj.verdict.model,
+            passed: synthesisResult.wrj.verdict.passed,
+            failedCount: synthesisResult.wrj.verdict.failedCount,
+            checks: synthesisResult.wrj.verdict.checks.map((c) => ({
+              id: c.id,
+              dimension: c.dimension,
+              passed: c.passed,
+              noul: c.noul,
+              score: c.score,
+              confidence: c.confidence,
+            })),
+          },
+        }
+      : { mode: "single" as const };
+
   const completedSummary = {
     runType: "report_section_draft",
     sectionId,
@@ -298,6 +337,7 @@ export async function generateReportSectionDraftAction(args: {
     copySlop: copySlopMeta,
     provider: synthesisResult.providerMeta.provider,
     model: synthesisResult.providerMeta.model,
+    synthesis: wrjSummary,
   };
 
   await supabase

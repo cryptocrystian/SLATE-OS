@@ -13,6 +13,8 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { ReportSectionStatusChip } from "./report-status-chip";
 import { ReportSectionActionBar } from "./report-section-action-bar";
 import { CopyCheckChip } from "@/components/ai/copy-check-chip";
+import { WrjVerdictCard } from "@/components/ai/wrj-verdict-card";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
 import type { CopySlopSummary } from "@/lib/ai/copy-slop";
 import {
   CONFIDENCE_LABEL,
@@ -66,7 +68,23 @@ export interface ReportWorkspaceProps {
    * advisory and never blocks review.
    */
   copySlopBySectionId?: Record<string, CopySlopSummary>;
+  /**
+   * Latest WRJ (writer·reviewer·judge) verdict per section, keyed by
+   * `report_sections.id` (see `getReportSectionWrjSummaries`). Present only for
+   * sections whose most recent draft ran in `SLATE_AI_SYNTHESIS_MODE=wrj`. A
+   * plain JSON-safe record so it crosses the server → client boundary; the card
+   * is advisory and renders nothing when a section has no wrj verdict.
+   */
+  wrjBySectionId?: Record<string, WrjRunSummary>;
 }
+
+// Report-section check labels for the WRJ verdict card (charter_fit is
+// report-specific; the rest reuse the generic wording).
+const REPORT_WRJ_LABELS: Record<string, string> = {
+  charter_fit: "Fits the section's charter",
+  voice: "Consultant voice",
+  grounding: "No fabricated specifics",
+};
 
 export function ReportWorkspace({
   engagementId,
@@ -77,6 +95,7 @@ export function ReportWorkspace({
   showActionBar = false,
   aiAvailable = false,
   copySlopBySectionId = {},
+  wrjBySectionId = {},
 }: ReportWorkspaceProps) {
   const sections = report.sections;
   const [active, setActive] = React.useState<ReportFilterId>("all");
@@ -195,22 +214,28 @@ export function ReportWorkspace({
       {/* Selected section preview */}
       <div className="flex flex-col gap-4 lg:col-span-6">
         {selected ? (
-          <SectionPreview
-            section={selected}
-            linkedFindingsCount={linkedFindings.length}
-            linkedOpportunitiesCount={linkedOpportunities.length}
-            linkedRoadmapItemsCount={linkedRoadmapItems.length}
-            actionBar={
-              showActionBar ? (
-                <ReportSectionActionBar
-                  sectionId={selected.id}
-                  status={selected.status}
-                  engagementId={engagementId}
-                  aiAvailable={aiAvailable}
-                />
-              ) : null
-            }
-          />
+          <>
+            <SectionPreview
+              section={selected}
+              linkedFindingsCount={linkedFindings.length}
+              linkedOpportunitiesCount={linkedOpportunities.length}
+              linkedRoadmapItemsCount={linkedRoadmapItems.length}
+              actionBar={
+                showActionBar ? (
+                  <ReportSectionActionBar
+                    sectionId={selected.id}
+                    status={selected.status}
+                    engagementId={engagementId}
+                    aiAvailable={aiAvailable}
+                  />
+                ) : null
+              }
+            />
+            <WrjVerdictCard
+              summary={wrjBySectionId[selected.id] ?? null}
+              labelOverrides={REPORT_WRJ_LABELS}
+            />
+          </>
         ) : (
           <p className="rounded-md border border-dashed border-border-subtle bg-bg-surface/40 p-4 text-xs text-text-muted">
             Select a section to review.

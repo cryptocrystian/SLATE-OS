@@ -201,3 +201,104 @@ from `opportunity_finding_links`:
 - Only mutation: backfilled the A/B verdict into the existing completed
   `opportunity_draft` run's `output_summary.synthesis` for the live card (no new
   rows, no opportunity data changed); validation ran read-only.
+
+---
+
+# Report-section stage — Jev validation
+
+## Status
+- **Date:** 2026-09-30
+- **Type:** In-domain validation of Jev for the WRJ **report-section** stage,
+  before Jev gates it.
+- **Method:** replay a ground-truth section pair through the shipped section
+  checks (`lib/ai/wrj/report-section-wrj.ts`, `REPORT_SECTION_CHECKS`) over the
+  real Northpath context, then A/B the actual persisted report sections.
+  - **KNOWN-BAD** — meta-opener ("This section discusses…"), marketing filler
+    ("leverage AI", "robust", "seamless", "holistic", "unlock"), re-narrates the
+    sibling sections instead of doing its own job, a planted financial claim
+    ("reduce operational costs by 30% … payback within six months"), off-charter.
+  - **KNOWN-GOOD** — a hand-written "Current State & Operating Friction" section:
+    leads with the point, names the four systems, grounded, no financial claims.
+
+## Why report sections need different checks
+Report sections draft ONE at a time (one `report_section_draft` run per section),
+the writer already runs a HARD banned-claim scanner that rejects the candidate
+before persistence, and each section has a distinct **charter** (its specific job
+in the report). So the section gate: (1) makes the financial guardrail a
+calibrated *backstop* to the hard scanner; (2) adds **charter_fit** — does the
+section do its own job without re-narrating the earlier sections — the
+report-specific dimension; (3) adds **voice** (consultant register vs generated
+prose) since this is the client-facing artifact.
+
+## Round 1 — surfaced a grounding-design flaw
+First grounding wording ("every claim supported by the context") failed BOTH
+sets (BAD 0.03, GOOD 0.36) because good consultant writing includes *synthesis*
+that goes one inferential step beyond the raw findings. Same class of error as
+the findings/opportunities grounding lessons. Fix: reframe grounding to target
+**fabrication** specifically (invented facts/metrics/quotes/system names) while
+explicitly allowing synthesis of the supplied facts.
+
+## Round 2 — tuned checks (clean separation)
+| Check (threshold) | KNOWN-BAD | KNOWN-GOOD |
+|---|---|---|
+| grounding — no fabrication (≥0.50) | **0.03 FAIL** | **0.67 PASS** |
+| charter_fit (≥0.60) | **0.16 FAIL** | **0.63 PASS** |
+| voice (score ≥2) | **0.00 FAIL** | **2.36 PASS** |
+| guardrail financial (yes<0.50) | **0.94 FAIL** | **0.03 PASS** |
+| specificity (score ≥2) | **0.79 FAIL** | **2.91 PASS** |
+| **OVERALL** | **FAIL ❌ (5)** | **PASS ✅** |
+
+Every dimension discriminates with wide margins; the guardrail perfectly caught
+the planted financial claim.
+
+## Head-to-head A/B (real persisted Northpath sections, n=8)
+Judged all 8 sections the self-test actually persisted, over the real
+findings/opportunities/roadmap and each section's preceding-section summaries:
+
+| Section | grounding | charter | voice | guard | spec | verdict |
+|---|---|---|---|---|---|---|
+| executive_summary | 0.71 | 0.66 | **1.67** | 0.06 | **1.15** | 2 to review |
+| business_context | **0.22** | **0.49** | **1.23** | 0.11 | **1.23** | 4 to review |
+| workflow_friction | 0.91 | 0.70 | **1.18** | 0.40 | 2.57 | 1 to review |
+| stakeholder_synthesis | 0.90 | **0.45** | **0.76** | 0.08 | **1.74** | 3 to review |
+| opportunity_portfolio | 0.82 | **0.55** | **1.03** | 0.04 | **1.12** | 3 to review |
+| priority_recommendations | 0.74 | **0.58** | **1.15** | 0.07 | **1.07** | 3 to review |
+| roadmap | 0.55 | **0.47** | **0.59** | 0.05 | **1.59** | 3 to review |
+| appendix | 0.93 | **0.55** | **1.26** | 0.24 | **1.06** | 3 to review |
+
+**Key finding:** unlike the findings/opportunities sets (which cleared cleanly),
+the real single-model *report prose* fails broadly — every section on **voice**,
+most on **specificity** and **charter_fit**. Reading the drafts confirms Jev is
+right, not miscalibrated: they are competent but open with flat, descriptive,
+AI-generated prose ("faces significant challenges due to…", "is characterized
+by…", "is structured around…") and name few specifics. This directly
+corroborates the standing "AI slop" assessment and is exactly the signal WRJ
+exists to surface. The thresholds were NOT tuned to force a pass — the
+minScore-2 floor ("mostly a consultant voice / mostly specific") is the right bar
+for client-facing prose, and the validation pair confirms it discriminates.
+`workflow_friction` is the strongest real section (flagged only on voice), which
+is correct co-judge behavior.
+
+**Implication:** the report stage is the strongest case yet for the **reviser
+pass** (next WRJ item) — the writer should ingest these voice/specificity flags
+and revise, and/or the report drafting prompt needs a voice overhaul.
+
+## Verdict
+- **Jev is validated as a report-section co-judge** with the tuned checks shipped
+  in `lib/ai/wrj/report-section-wrj.ts` (`REPORT_SECTION_CHECKS`).
+- Per-section card wired at `components/reports/report-workspace.tsx` +
+  `app/app/engagements/[id]/report/page.tsx` via `getReportSectionWrjSummaries`
+  (Map keyed by section id, since report runs are per-section);
+  `WrjVerdictCard` `labelOverrides` show report-specific labels.
+- Remaining stage needing its own validation before Jev gates it: proposal
+  options.
+
+## Files (report sections)
+- Checks: `lib/ai/wrj/report-section-wrj.ts` (`REPORT_SECTION_CHECKS`);
+  `charterFor` exported from `lib/ai/report-section-synthesis.ts`.
+- Dispatcher: `lib/reports/synthesis-actions.ts` (flag-gated `isWrjMode()`).
+- Query + card: `lib/ai/wrj/queries.ts` (`getReportSectionWrjSummaries`),
+  `components/reports/report-workspace.tsx` (`wrjBySectionId`).
+- Only mutation: backfilled the per-section A/B verdicts into the existing
+  completed `report_section_draft` runs' `output_summary.synthesis` for the live
+  card (no new rows, no section prose changed); validation ran read-only.

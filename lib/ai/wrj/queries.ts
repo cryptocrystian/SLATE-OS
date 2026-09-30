@@ -50,6 +50,41 @@ export function getLatestOpportunitiesWrjSummary(
   return getLatestWrjSummary(engagementId, "opportunity_draft");
 }
 
+/**
+ * Per-section WRJ verdicts for the report stage. Unlike findings/opportunities
+ * (one synthesis run per engagement), report sections draft one at a time — one
+ * `report_section_draft` run per section. This returns the latest completed
+ * run's verdict for EACH section, keyed by section id, so the operator report
+ * page can show a per-section verdict. RLS-bound; empty map on any error.
+ */
+export async function getReportSectionWrjSummaries(
+  engagementId: string,
+): Promise<Map<string, WrjRunSummary>> {
+  const out = new Map<string, WrjRunSummary>();
+  if (!UUID_RE.test(engagementId)) return out;
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("ai_synthesis_runs")
+    .select("output_summary, completed_at")
+    .eq("engagement_id", engagementId)
+    .eq("run_type", "report_section_draft")
+    .eq("status", "completed")
+    .order("completed_at", { ascending: false })
+    .limit(200);
+  if (error || !data) return out;
+
+  for (const row of data as Array<{ output_summary: unknown }>) {
+    const os = row.output_summary as
+      | { sectionId?: unknown; synthesis?: unknown }
+      | null;
+    const sectionId = typeof os?.sectionId === "string" ? os.sectionId : null;
+    if (!sectionId || out.has(sectionId)) continue; // rows are newest-first
+    const summary = parseWrjRunSummary(os?.synthesis);
+    if (summary) out.set(sectionId, summary);
+  }
+  return out;
+}
+
 /** Defensive parse of the persisted summary (unknown JSON → typed). */
 function parseWrjRunSummary(raw: unknown): WrjRunSummary | null {
   if (!raw || typeof raw !== "object") return null;
