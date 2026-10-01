@@ -92,3 +92,15 @@
   guards live; `slate-durable-files` bucket present; ConsultOS reads + writes shaped like
   current code succeed as an owner (probe rolled back); advisor output identical to the branch run.
 - **Still held:** `0023` (the 32 singleton policies remain) — apply after the founder self-test.
+
+### 6.1 `0023` applied (2026-10-01, founder-approved, after the Northpath self-test)
+
+- Pre-flight: 2 auth users, 2 active `owner` memberships, 0 users without membership.
+- Applied via Supabase `apply_migration` (tracked). Remaining singleton (`LIMIT 1`) policies: **0**; remaining `true` policies: **0**.
+- Visibility, before vs. after, across 18 table groups (accounts, contacts, leads, scorecard,
+  engagements, findings, opportunities, roadmap, report sections, proposal options, snapshots,
+  share tokens, activity, AI runs, notes, intake, profiles, workspaces): **identical for both
+  owners**; a signed-in non-member and `anon` now see **0 rows everywhere**.
+- Owner ConsultOS write (activity insert) succeeds with `engagement_ref` filled (rolled back).
+  Live routes unchanged (`/login` 200; `/app`, `/app/governance` → `/login` when signed out).
+- **F-1 / F-2 fully closed** at the config, code and database layers.
