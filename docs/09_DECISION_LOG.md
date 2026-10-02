@@ -4,6 +4,46 @@ A running log of significant product, architecture, and design decisions. Each e
 
 ---
 
+## 2026-10-02 — BuildOS admitted as a SLATE module: SLATE is the control plane, the factory's lane is the engine; D1–D10 ruled
+
+**Decision (founder, 2026-10-02).** `docs/80` (BuildOS integration plan) is ratified. BuildOS is the SLATE module that runs governed software delivery for client (ConsultOS), venture (VentureOS) and internal projects, at multi-project scale. **It supersedes the 2026-05-01 "BuildOps stays documentation-only" boundary** and the `docs/persistence/00` "BuildOps Non-Disruption" section.
+
+**Architecture.** Two planes:
+- **Control plane (SLATE/Supabase).** Owns projects, work items, runs, verdicts, decisions, deployments, provider capacity and cost. It runs on workspace RLS. Scheduling (WIP, decomposition gate, capacity, fair share) runs inside a lease-claim RPC; there is no long-lived scheduler process.
+- **Execution plane.** Stateless pull-based workers. Each run gets an ephemeral sandbox, pushes a branch and opens a PR. Per-project merges are serialized.
+
+**Rulings.**
+- **D1** BuildOS in SLATE is the system of record for build state. This inverts the factory's `canon/buildops-canon.md §2`. Git owns code; the project repo's `canon/` owns intent; GovernanceOS owns governance state.
+- **D2** Buzz becomes a notifier adapter. Decisions are ruled in `/app/build/decisions`.
+- **D3** Client work runs on metered org/API model accounts. Subscriptions are allowed only for internal/venture work, once their terms are confirmed for automated use. At least two judge families, each with at least two accounts.
+- **D4** Sandbox substrate: a time-boxed bake-off in B2 (exe.dev vs a container service vs a managed sandbox).
+- **D5** Workers authenticate as a dedicated `buildos_worker` DB principal with RPC-only grants. Never the service role.
+- **D6** The lane engine stays Python, as a worker package ported and generalised from the factory (stack and canon profiles).
+- **D7** Routes live under `/app/build` (supersedes the `docs/03` `/app/builds` reservation).
+- **D8** Weighted round-robin fair share across projects. Client deadlines can raise a project's weight.
+- **D9** The factory VPS daemon resumes on Arxus once a judge route works, bug fixes only. It is retired at the B2 exit.
+- **D10** The second (non-Arxus) B3 proof project is chosen at B3.
+
+**Factory canon reconciliation.** The factory's invariants I1–I13 and its BuildOps-canon B7 (orchestration, not PM) and B8 (no gate auto-advances across a human decision) are adopted as BuildOS lane canon. Its claim to supersede SLATE naming is withdrawn. The ontology narrows to Project → Work item → Run (+ Decision, Deployment); "Initiative" and cross-track GTM/marketing/sales lifecycle are out of BuildOS scope.
+
+**Context.** A read-only review of the factory (`~/factory`) and its VPS deployment on 2026-10-02 found two things:
+- **The engine is proven.** Cross-family review catches real defects, the builder → architect → PM → owner ladder works, and 14 of 22 Arxus journeys have merged.
+- **The runtime does not scale.** It has no project identity, keeps state in one daemon on one host, is hard-wired to Arxus, has no sandbox, and depends on one subscription per provider. Its operations are incident-driven: a 3-week merge wedge, 18 silent days with a dead builder, a 384-run crash loop, and on 2026-10-02 a 27-cycle loop against an all-down judge chain (fixed in factory `515fbe1`, `8858e35`; daemon stopped).
+
+The plan reuses the engine and replaces the runtime.
+
+**Platform impact.** No new platform schema: `buildos` is already in every module check constraint (`0024`, `0025`). Transcripts use `stored_files` (`owner_module='buildos'`). ConsultOS origins take `retention_holds`. The lint rule is extended to cover `lib/build`.
+
+**Tradeoffs accepted.**
+- Two languages: a TypeScript/SQL control plane and a Python worker, with the worker RPC contract as the boundary.
+- Metered model spend for client work, in exchange for attribution and reliability.
+- Workers live off Vercel, so there is new infrastructure to operate.
+- The factory runs in parallel until the B2 parity exit.
+
+Phases B0–B4 with exit tests are in `docs/80 §11`.
+
+---
+
 ## 2026-09-28 — GovernanceOS admitted as a first-class SLATE module + control plane; G0 platform hardening and G1 foundation built
 
 **Decision (Architect, 2026-09-25; executed 2026-09-28).** GovernanceOS is (1) a first-class SLATE module/product with its own domain model, service layer, routes, UX and lifecycle, and (2) the cross-SLATE governance control plane. It is not collapsed into shared infrastructure and its logic is not distributed across other modules. Durable governance state belongs to GovernanceOS; no lifecycle event in another module may silently destroy or invalidate it. Plan: `docs/72`.
