@@ -134,6 +134,8 @@ This canon explicitly does **not** introduce any BuildOps surfaces:
 
 BuildOps remains documentation-only and ships as its own dedicated workstream after the persistence sprint signs off.
 
+> **Amendment (2026-10-02).** This section is superseded. BuildOS was admitted as a SLATE module by `docs/80` (decision log 2026-10-02) and ships its own `buildos_*` tables, RLS and routes under `docs/80` and `docs/81`. The list above records the boundary as it stood for the persistence workstream; it no longer constrains BuildOS.
+
 ## Acceptance Criteria
 
 The persistence + auth workstream is complete when:

@@ -129,3 +129,9 @@ It must stay focused on Saipien Labs’ core workflows.
 ## Amendment — Module canon (2026-09-28)
 
 SLATE's product modules are **ConsultOS**, **BuildOS**, **VentureOS** and **GovernanceOS** (`docs/72 §1`, decision log 2026-09-28). The "Operating Tracks" above are retained as history; their names are legacy aliases: GrowthOps + AdvisoryOps → ConsultOS, BuildOps → BuildOS, StudioOps → VentureOS. GovernanceOS is both a first-class module and the cross-SLATE governance control plane; ClientOps remains an unassigned later lane (largely served by GovernanceOS "Program as a Service" + ConsultOS post-delivery).
+
+---
+
+## Amendment — BuildOS admitted (2026-10-02)
+
+BuildOS is now a built module, not a later phase (`docs/80`, decision log 2026-10-02). It runs governed software delivery for client (ConsultOS), venture (VentureOS) and internal projects. SLATE is its control plane and system of record; stateless sandboxed workers execute. The "BuildOps" track description above is retained as history. The session-tracking framing ("Claude/Codex session tracking") is superseded by the run model in `docs/80 §4`. BuildOS remains bound by the non-goal above: it is lifecycle orchestration, never a project-management clone.
