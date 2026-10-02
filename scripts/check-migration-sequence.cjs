@@ -5,7 +5,7 @@
  * Fails when supabase/migrations has:
  *   - a gap or duplicate in the 4-digit sequence
  *   - a file not matching NNNN_<snake_case>.sql
- *   - (from 0022 on) a file without a layer prefix: platform_ | governance_
+ *   - (from 0022 on) a file without a layer prefix: platform_ | governance_ | buildos_
  *
  * The next free number is always "highest file at branch head + 1"; it is
  * re-checked against the live project's applied list before apply.
@@ -17,7 +17,7 @@ const path = require("node:path");
 
 const LAYER_PREFIX_FROM = 22;
 const NAME_RE = /^(\d{4})_([a-z0-9_]+)\.sql$/;
-const LAYER_RE = /^(platform|governance)_/;
+const LAYER_RE = /^(platform|governance|buildos)_/;
 
 function check(dir) {
   const errors = [];
@@ -36,7 +36,7 @@ function check(dir) {
     if (seen.has(n)) errors.push(`duplicate number ${m[1]}: ${seen.get(n)} and ${f}`);
     seen.set(n, f);
     if (n >= LAYER_PREFIX_FROM && !LAYER_RE.test(m[2])) {
-      errors.push(`missing layer prefix (platform_|governance_) on ${f}`);
+      errors.push(`missing layer prefix (platform_|governance_|buildos_) on ${f}`);
     }
   }
   const numbers = [...seen.keys()].sort((a, b) => a - b);
