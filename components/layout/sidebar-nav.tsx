@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  Hammer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +60,11 @@ const sections: NavSection[] = [
       { label: "Proposals", href: "/app/proposals", icon: FileText, disabled: true },
       { label: "Delivery", href: "/app/delivery", icon: Workflow, disabled: true },
     ],
+  },
+  {
+    // BuildOS — governed software delivery (docs/80).
+    label: "Build",
+    items: [{ label: "BuildOS", href: "/app/build", icon: Hammer }],
   },
   {
     // GovernanceOS — first-class SLATE module (docs/72 §1).

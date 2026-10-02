@@ -26,6 +26,14 @@ _Sprint P6-C landed earlier on 2026-05-17 — internal SOW Draft route + Past SO
 
 > **Phase boundary.** AdvisoryOps Phase 1A is the internal operating-system foundation. It does not yet certify that reports, proposals, exports, or client collateral meet top-tier consulting quality. **Phase 1B must define and build the Consulting-Grade Deliverable Engine before customer-facing output claims are made.**
 
+## BuildOS B0 + B1 — ratified, built and verified, production apply held (2026-10-02)
+
+BuildOS was admitted as a SLATE module (`docs/80`, ratified, D1–D10; decision log 2026-10-02) after a review of the software factory (`~/factory`). The review's conclusion: reuse the factory's lane engine, replace its runtime. SLATE is the control plane and system of record; stateless sandboxed workers execute.
+- **B0:** conventions in `docs/81`; amendment notes added to `docs/00` and `docs/persistence/00`.
+- **B1 (`docs/82`):** migrations `0030`–`0033` (projects, work items, runs, capacity, decisions, engine RPCs, `buildos_worker` principal); `lib/build/*`; the `/app/build` UX; the factory importer.
+- **Verification:** 103/103 tests, including all three B1 exit criteria; lint, typecheck and build are clean.
+- **Not yet done:** nothing has been applied to production. The next steps are a founder go-ahead for the apply (dev branch first), then importing the live Arxus queue. B2 (worker + lane port) follows. The factory daemon on the VPS is stopped; per D9 it resumes on Arxus once a judge route works (the xAI key is invalid and OpenRouter is out of credit).
+
 ## GovernanceOS G0 + G1 — built and verified, production apply held (2026-09-28)
 
 GovernanceOS admitted as a first-class SLATE module + control plane (`docs/72`, decision log 2026-09-28). **G0 platform hardening** and **G1 GovernanceOS foundation** are built in the working tree (uncommitted), verified in-process (PGlite, 61/61 tests) and on a throwaway Supabase dev branch (PRD §21 acceptance passed as real personas under RLS). **Nothing applied to production** — held for the founder self-test (`docs/71` Northpath). Findings that need the founder: **(1)** Supabase public sign-ups are enabled → any anon-key holder can mint a session that passes current RLS (not exploited; 2 known users) — flip the dashboard toggle now (`docs/74 §5`); **(2)** migration `0018` was never applied to production, so Attio CRM context is silently off (`docs/77` F-3). Apply order and remaining gaps: `docs/77 §5`, `docs/78 §4–5`. New docs: `docs/72` plan, `docs/73` Saipien AI Governance Operating Standard (draft), `docs/74` auth audit, `docs/75` durability audit, `docs/76` GovernanceOS conventions, `docs/77`/`docs/78` acceptance audits.

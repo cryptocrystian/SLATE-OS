@@ -538,7 +538,7 @@ lint rule extension.
 | D1 | System of record | **BuildOS in SLATE** (§1.3). This inverts the factory's `buildops-canon.md §2`. |
 | D2 | Buzz | **Notifier adapter.** Decisions are ruled in `/app/build/decisions`; Buzz optionally mirrors them. Email is the default channel. |
 | D3 | Model capacity | **Metered org/API accounts for client work.** Subscriptions are allowed only for internal/venture work, once their terms are confirmed for automated use. At least two judge families, each with at least two accounts. |
-| D4 | Sandbox substrate and secret manager | **Time-boxed bake-off in B2:** exe.dev vs one container service vs one managed sandbox. Criteria: cold start, per-run cost, egress control, Postgres-in-sandbox, API maturity. The result goes in `docs/82`. |
+| D4 | Sandbox substrate and secret manager | **Time-boxed bake-off in B2:** exe.dev vs one container service vs one managed sandbox. Criteria: cold start, per-run cost, egress control, Postgres-in-sandbox, API maturity. The result goes in `docs/83`. |
 | D5 | Worker auth | **A dedicated `buildos_worker` DB principal with RPC-only grants.** Workers never hold the service-role key. Revisit if workers run on untrusted networks. |
 | D6 | Lane engine language | **Python**, as a separate worker package ported and generalised from the factory. The control plane is TypeScript/SQL. |
 | D7 | Route root | **`/app/build`** (supersedes the `docs/03` reservation of `/app/builds`). |
@@ -567,7 +567,8 @@ lint rule extension.
 |---|---|---|
 | `docs/80` (this): integration plan | BuildOS | now |
 | `docs/81`: BuildOS domain conventions (state machine, failure classes, profiles, naming) | BuildOS | B0 |
-| `docs/82`: Execution-plane design (worker contract, sandbox bake-off result, secrets) | BuildOS | B2 |
-| `docs/83`: Provider capacity and cost standard | BuildOS / Saipien ops | B2 |
+| `docs/82`: B1 control-plane acceptance audit | BuildOS | B1 |
+| `docs/83`: Execution-plane design (worker contract, sandbox bake-off result, secrets) | BuildOS | B2 |
+| `docs/84`: Provider capacity and cost standard | BuildOS / Saipien ops | B2 |
 | B1–B4 acceptance audits | BuildOS | per phase |
 | `docs/09` entries; `docs/00`, `docs/persistence/00` amendments; `docs/08` + `docs/10` updates | Canon | B0 |

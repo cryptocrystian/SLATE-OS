@@ -7,7 +7,11 @@
         "lib/governance/**",
         "app/app/governance/**",
         "components/governance/**",
-        "tests/governance/**"
+        "tests/governance/**",
+        "lib/build/**",
+        "app/app/build/**",
+        "components/build/**",
+        "tests/build/**"
       ],
       "rules": {
         "no-restricted-imports": [
@@ -17,6 +21,42 @@
               {
                 "group": ["@/lib/governance/*", "!@/lib/governance/contracts"],
                 "message": "GovernanceOS boundary (docs/72 §1.3): other SLATE modules may import only @/lib/governance/contracts."
+              },
+              {
+                "group": ["@/lib/build/*", "!@/lib/build/contracts", "@/components/build/*"],
+                "message": "BuildOS boundary (docs/80 §1.5): other SLATE modules may import only @/lib/build/contracts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["lib/governance/**", "app/app/governance/**", "components/governance/**", "tests/governance/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/build/*", "!@/lib/build/contracts", "@/components/build/*"],
+                "message": "BuildOS boundary (docs/80 §1.5): other SLATE modules may import only @/lib/build/contracts."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["lib/build/**", "app/app/build/**", "components/build/**", "tests/build/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/lib/governance/*", "!@/lib/governance/contracts", "@/components/governance/*"],
+                "message": "BuildOS reaches GovernanceOS only via @/lib/governance/contracts (docs/80 §1.5)."
               }
             ]
           }
@@ -31,8 +71,8 @@
           {
             "patterns": [
               {
-                "group": ["@/lib/governance/*", "@/lib/governance"],
-                "message": "Platform code never depends on GovernanceOS (docs/72 §1.3)."
+                "group": ["@/lib/governance/*", "@/lib/governance", "@/lib/build/*", "@/lib/build"],
+                "message": "Platform code never depends on a module (docs/72 §1.3, docs/80 §1.5)."
               }
             ]
           }

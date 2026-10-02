@@ -334,24 +334,18 @@ begin
     raise exception 'build_work_item_engine_field' using errcode = 'P0001';
   end if;
   if new.status is distinct from old.status then
-    if engine then
-      if not (
+    -- Operator transitions (docs/81 §4): release, draft↔ready, cancel/supersede.
+    -- Privileged callers (engine RPCs, service_role) get these PLUS the engine table.
+    if not (
+         (old.status = 'draft' and new.status in ('ready', 'cancelled', 'superseded'))
+      or (old.status = 'ready' and new.status in ('draft', 'cancelled', 'superseded'))
+      or (old.status = 'held' and new.status in ('ready', 'cancelled', 'superseded'))
+      or (engine and (
            (old.status in ('ready', 'held') and new.status = 'in_progress')
         or (old.status = 'in_progress' and new.status in ('accepted', 'ready', 'held', 'escalated'))
-        or (old.status = 'escalated' and new.status in ('ready', 'cancelled', 'superseded'))
-        or (old.status = 'held' and new.status = 'ready')
-      ) then
-        raise exception 'build_work_item_invalid_transition: % -> %', old.status, new.status using errcode = 'P0001';
-      end if;
-    else
-      -- Operator transitions (docs/81 §4): release, draft↔ready, cancel/supersede.
-      if not (
-           (old.status = 'draft' and new.status in ('ready', 'cancelled', 'superseded'))
-        or (old.status = 'ready' and new.status in ('draft', 'cancelled', 'superseded'))
-        or (old.status = 'held' and new.status in ('ready', 'cancelled', 'superseded'))
-      ) then
-        raise exception 'build_work_item_invalid_transition: % -> %', old.status, new.status using errcode = 'P0001';
-      end if;
+        or (old.status = 'escalated' and new.status in ('ready', 'cancelled', 'superseded'))))
+    ) then
+      raise exception 'build_work_item_invalid_transition: % -> %', old.status, new.status using errcode = 'P0001';
     end if;
     if new.status = 'ready' then
       new.ready_since := now();
