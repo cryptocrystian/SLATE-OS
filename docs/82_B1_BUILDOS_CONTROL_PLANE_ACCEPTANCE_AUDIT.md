@@ -141,4 +141,9 @@ Two defects were found and fixed during B1, both before commit:
   - Items: 18 accepted, 4 ready (T1 → T2 → N1 → N2), 2 draft (AI1, BR1), 1 superseded (the original B3). 16 dependencies; 0 runs.
   - Claimable once activated: `jrn-t1` only.
 - **Not imported:** the two launch-gate ratifications (OPEN-S3-1, OPEN-VAL1). They are sign-offs, not build work.
+- **Site:** promoted to production on 2026-10-05.
+  - `slate-os-staging.vercel.app` serves `b45f341` (`dpl_Fcm8Ly19UH8n2SHmbAwvLRn6KD9G`).
+  - Rollback target: `dpl_59C8T3aRq3F38wWrFxTCXBk6cgmN` (`a3305c0`).
+  - Signed-out `/app/build*` requests redirect to `/login`.
+  - The signed-in walkthrough is pending with the founder.
 - **Factory overlap:** the project stays `ready` until the B2 worker passes parity. Per D9 the factory may still drain Arxus in the meantime; this avoids double-building.
