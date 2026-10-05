@@ -130,3 +130,15 @@ Two defects were found and fixed during B1, both before commit:
   - Signed-in UI walkthrough of `/app/build`. It needs a site deploy; Vercel production does not auto-deploy from this branch.
   - The live Arxus import.
   - The worker login role.
+
+## 8. Arxus import (2026-10-05)
+
+- **Source:** the live factory queue `/root/factory/backlog.live-2026-10-05.yml`, read from the VPS with the founder's authorization while the daemon was stopped. It was combined with Arxus `canon/Canonical Journeys v2.md` (arxus `0e0197c`).
+- **Generated** by `scripts/build/import-factory-project.cjs` (`c0d766d`) using `--add-from-canon 1 --accepted-extra jrn-s1,jrn-s3`. S1 and S3 were merged before backlog tracking (arxus `8e181b2`, `67f5127`).
+- **Process:** dry-run on PGlite → founder review → applied verbatim to production. SQL: `artifacts/buildos/arxus-import-2026-10-05.sql`.
+- **Result on production:**
+  - Project `arxus` (venture, **ready, not active**), attributed to the founder.
+  - Items: 18 accepted, 4 ready (T1 → T2 → N1 → N2), 2 draft (AI1, BR1), 1 superseded (the original B3). 16 dependencies; 0 runs.
+  - Claimable once activated: `jrn-t1` only.
+- **Not imported:** the two launch-gate ratifications (OPEN-S3-1, OPEN-VAL1). They are sign-offs, not build work.
+- **Factory overlap:** the project stays `ready` until the B2 worker passes parity. Per D9 the factory may still drain Arxus in the meantime; this avoids double-building.
