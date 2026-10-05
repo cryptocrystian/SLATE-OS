@@ -32,7 +32,7 @@ BuildOS was admitted as a SLATE module (`docs/80`, ratified, D1–D10; decision 
 - **B0:** conventions in `docs/81`; amendment notes added to `docs/00` and `docs/persistence/00`.
 - **B1 (`docs/82`):** migrations `0030`–`0033` (projects, work items, runs, capacity, decisions, engine RPCs, `buildos_worker` principal); `lib/build/*`; the `/app/build` UX; the factory importer.
 - **Verification:** 103/103 tests, including all three B1 exit criteria; lint, typecheck and build are clean.
-- **Not yet done:** nothing has been applied to production. The next steps are a founder go-ahead for the apply (dev branch first), then importing the live Arxus queue. B2 (worker + lane port) follows. The factory daemon on the VPS is stopped; per D9 it resumes on Arxus once a judge route works (the xAI key is invalid and OpenRouter is out of credit).
+- **Production:** migrations `0030`–`0033` were applied on 2026-10-05 (`docs/82 §7`). The next step is importing the live Arxus queue. B2 (worker + lane port) follows. The factory daemon on the VPS is stopped; per D9 it resumes on Arxus once a judge route works (the xAI key is invalid and OpenRouter is out of credit).
 
 ## GovernanceOS G0 + G1 — built and verified, production apply held (2026-09-28)
 

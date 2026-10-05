@@ -110,3 +110,23 @@ Two defects were found and fixed during B1, both before commit:
 | Importer + tests | BuildOS | ✓ |
 | Migration-guard prefix, `.gitignore`, lint boundary | Platform (domain-agnostic) | ✓ |
 | ConsultOS / GovernanceOS code | none | — (untouched) |
+
+## 7. Production apply record (2026-10-05)
+
+- **Approved by** the founder (2026-10-03). Applied by Claude via the Supabase MCP to `hhglrcvsmwaheikdvijw` (SLATE OS), verbatim from `09d7c56`.
+- **Applied, in order:** `0030_buildos_projects_work_items`, `0031_buildos_runs_capacity`, `0032_buildos_decisions_deployments`, `0033_buildos_engine_rpcs`. All four are recorded in `supabase_migrations`.
+- **Dev-branch step skipped.** The attempted branch (`buildos-b1-verify`) could not replay the base schema, because 0001–0017 predate migration tracking. It was deleted. The migrations are additive-only (new `build_*` objects plus the `buildos_worker` role), so production was verified directly:
+  1. **Catalog check.**
+     - All 12 `build_*` tables have RLS enabled.
+     - anon has no select on any of them; `buildos_worker` has no table privileges.
+     - Worker RPCs are executable only by `buildos_worker` (+ service_role); operator RPCs only by `authenticated`; internal helpers and guards by no API role.
+     - `buildos_worker` is NOLOGIN, not superuser, and has no RLS bypass.
+  2. **Functional smoke test**, inside a block that always raises, so it was fully rolled back (row counts verified at 0 afterwards):
+     - As the workspace owner: created a project and an item, and moved the project through ready → active.
+     - Operator `→ in_progress` was refused (`invalid_transition`); an operator insert into `build_runs` was refused (permission denied); an operator call to `build_claim_run` was refused (permission denied).
+     - With the judge account down, the claim returned null; with it healthy, the claim succeeded (`smoke-test/smoke-1/1`).
+  3. **Security advisors.** No errors and no RLS gaps. The only BuildOS findings are lint 0029 ("signed-in users can execute SECURITY DEFINER") on the five operator RPCs, which is intended: each authorizes internally. Pre-existing platform warnings are unchanged.
+- **Not yet done:**
+  - Signed-in UI walkthrough of `/app/build`. It needs a site deploy; Vercel production does not auto-deploy from this branch.
+  - The live Arxus import.
+  - The worker login role.
