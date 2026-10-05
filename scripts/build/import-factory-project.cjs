@@ -20,6 +20,9 @@
  *   depends_on        → build_work_item_deps (between imported items only)
  *   bindings          → the journey's `Touches:` entities (the factory's own rule,
  *                       control-plane/canon.py:bindings); foundations bind '*'
+ *   kind: remediation with a journey but no target → that journey
+ *   --add-from-canon 1 → canon journeys absent from the backlog are added: those named in
+ *                       --accepted-extra (e.g. jrn-s1,jrn-s3) as accepted, the rest as DRAFT
  *
  * The project is created in `ready` (readiness attested by the import). It is NOT
  * activated: activation is an operator act in /app/build once workers and
@@ -82,10 +85,14 @@ function buildImportSql(opts) {
       continue;
     }
     const journey = it.journey ? journeys.get(it.journey) : undefined;
+    // The factory marks some journeys `kind: remediation` because they were BUILT in remediation
+    // mode, without naming a target item. A remediation that names a journey and no target is
+    // that journey, not a chore.
     const kind =
       it.kind === "foundation" ? "foundation"
       : it.kind === "journey" ? "journey"
       : it.kind === "remediation" && it.remediates ? "remediation"
+      : it.kind === "remediation" && it.journey ? "journey"
       : "chore";
     const bindings = kind === "foundation" ? ["*"] : journey?.bindings ?? [];
     imported.push({
@@ -102,6 +109,34 @@ function buildImportSql(opts) {
       dependsOn: (it.depends_on ?? []).map(itemKey),
       remediates: it.remediates ? itemKey(it.remediates) : null,
     });
+  }
+  // Canon journeys the backlog never carried (built before backlog tracking, or never queued).
+  // --accepted-extra names those already merged; everything else is added as DRAFT so an
+  // operator decides when it becomes claimable.
+  if (opts.addFromCanon) {
+    const acceptedExtra = new Set(String(opts.acceptedExtra ?? "").split(",").map((s) => itemKey(s.trim())).filter(Boolean));
+    const covered = new Set(imported.map((i) => i.canonRef).filter(Boolean));
+    const taken = new Set(imported.map((i) => i.key));
+    for (const [jid, j] of journeys) {
+      if (covered.has(jid)) continue;
+      const key = itemKey(jid);
+      if (taken.has(key)) continue;
+      const accepted = acceptedExtra.has(key);
+      imported.push({
+        key,
+        sourceId: jid,
+        kind: "journey",
+        canonRef: jid,
+        title: j.title.slice(0, 200),
+        brief: accepted
+          ? "Accepted via the factory before backlog tracking (merge on the project's default branch). Imported from canon."
+          : "Present in canon but never queued in the factory backlog. Imported as draft from canon.",
+        bindings: j.bindings,
+        factoryStatus: accepted ? "accepted" : "draft",
+        dependsOn: [],
+        remediates: null,
+      });
+    }
   }
   const keys = new Set(imported.map((i) => i.key));
   const dupes = imported.map((i) => i.key).filter((k, i, a) => a.indexOf(k) !== i);
@@ -147,6 +182,8 @@ values (${P}, ${q(opts.workspace)}, ${q(i.key)}, ${q(remediation ? "remediation"
       lines.push(`update public.build_work_items set status = 'accepted' where id = ${I(i.key)};`);
     } else if (i.factoryStatus === "superseded") {
       lines.push(`update public.build_work_items set status = 'superseded' where id = ${I(i.key)};`);
+    } else if (i.factoryStatus === "draft") {
+      lines.push(`update public.build_work_items set status = 'draft' where id = ${I(i.key)};`);
     }
   }
   lines.push("commit;");

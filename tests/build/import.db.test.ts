@@ -104,5 +104,35 @@ describe("import SQL", () => {
     expect(deps.rows[0]).toEqual({ n: 2 });
     // Re-applying is refused (project key is unique per workspace) — the import is one-shot.
     await expect(db.exec(sql)).rejects.toThrow(/duplicate key/);
+    await db.exec("rollback"); // close the aborted transaction the refused re-apply left open
+  });
+
+  it("keeps remediation-mode journeys as journeys and fills canon gaps (accepted extras + drafts)", async () => {
+    const backlog = {
+      items: [
+        { id: "jrn-s2", repo: "arxus", kind: "remediation", journey: "JRN-S2", status: "accepted" },
+      ],
+    };
+    const { sql, imported } = buildImportSql({
+      backlog,
+      journeysMarkdown: JOURNEYS,
+      workspace: ws,
+      createdBy: founder,
+      projectKey: "arxus-gaps",
+      repo: "https://github.com/cryptocrystian/arxus",
+      addFromCanon: "1",
+      acceptedExtra: "jrn-s1",
+    });
+    expect(imported).toBe(3); // s2 from the backlog + s1, t1 from canon
+    await db.exec(sql);
+    const rows = (await db.query<{ item_key: string; kind: string; status: string }>(
+      `select i.item_key, i.kind, i.status from public.build_work_items i
+         join public.build_projects p on p.id = i.project_id where p.project_key = 'arxus-gaps' order by 1`,
+    )).rows;
+    expect(rows).toEqual([
+      { item_key: "jrn-s1", kind: "journey", status: "accepted" },
+      { item_key: "jrn-s2", kind: "journey", status: "accepted" },
+      { item_key: "jrn-t1", kind: "journey", status: "draft" },
+    ]);
   });
 });
