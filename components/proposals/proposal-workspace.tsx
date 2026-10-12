@@ -22,6 +22,8 @@ import {
   OPTION_TYPE_TONE,
 } from "@/lib/proposals/helpers";
 import { ProposalOptionActionBar } from "./proposal-option-action-bar";
+import { WrjVerdictCard } from "@/components/ai/wrj-verdict-card";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
 import type { Proposal, ProposalOption } from "@/lib/proposals/types";
 import type { Opportunity } from "@/lib/opportunities/types";
 import type { RoadmapItem } from "@/lib/roadmap/types";
@@ -30,6 +32,16 @@ const OPTION_TYPE_TONE_MAP: Record<string, BadgeTone> = {
   success: "success",
   brand: "brand",
   ai: "ai",
+};
+
+// Proposal-option check labels for the WRJ verdict card.
+const PROPOSAL_WRJ_LABELS: Record<string, string> = {
+  grounding: "No fabricated specifics",
+  differentiation: "Distinct from other options",
+  best_fit_clarity: "Clear best-fit framing",
+  voice: "Consultant voice",
+  guardrail_commercial: "No pricing/finality claims",
+  specificity: "Specificity to this client",
 };
 
 export interface ProposalWorkspaceProps {
@@ -63,6 +75,13 @@ export interface ProposalWorkspaceProps {
    * hidden in unconfigured environments. JSON-safe boolean.
    */
   aiAvailable?: boolean;
+  /**
+   * Latest WRJ verdict per option, keyed by `proposal_options.id` (see
+   * `getProposalOptionWrjSummaries`). Present only for options whose most recent
+   * draft ran in `SLATE_AI_SYNTHESIS_MODE=wrj`. JSON-safe; advisory card renders
+   * nothing when an option has no wrj verdict.
+   */
+  wrjByOptionId?: Record<string, WrjRunSummary>;
 }
 
 export function ProposalWorkspace({
@@ -72,6 +91,7 @@ export function ProposalWorkspace({
   engagementId,
   isPersisted = false,
   aiAvailable = false,
+  wrjByOptionId = {},
 }: ProposalWorkspaceProps) {
   const initialId =
     proposal.recommendedOptionId ?? proposal.options[0]?.id ?? null;
@@ -121,22 +141,28 @@ export function ProposalWorkspace({
 
       {/* Selected option detail */}
       {selected ? (
-        <ProposalOptionDetail
-          option={selected}
-          opportunities={linkedOpportunities}
-          roadmapItems={linkedRoadmapItems}
-          isPersisted={isPersisted}
-          actionBar={
-            engagementId ? (
-              <ProposalOptionActionBar
-                optionId={selected.id}
-                recommended={selected.recommended}
-                engagementId={engagementId}
-                aiAvailable={aiAvailable}
-              />
-            ) : null
-          }
-        />
+        <>
+          <ProposalOptionDetail
+            option={selected}
+            opportunities={linkedOpportunities}
+            roadmapItems={linkedRoadmapItems}
+            isPersisted={isPersisted}
+            actionBar={
+              engagementId ? (
+                <ProposalOptionActionBar
+                  optionId={selected.id}
+                  recommended={selected.recommended}
+                  engagementId={engagementId}
+                  aiAvailable={aiAvailable}
+                />
+              ) : null
+            }
+          />
+          <WrjVerdictCard
+            summary={wrjByOptionId[selected.id] ?? null}
+            labelOverrides={PROPOSAL_WRJ_LABELS}
+          />
+        </>
       ) : null}
     </div>
   );

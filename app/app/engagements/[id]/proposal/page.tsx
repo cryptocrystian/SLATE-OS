@@ -41,6 +41,8 @@ import {
   recommendedActionRoute,
 } from "@/lib/engagements/recommended-action";
 import { isAiConfigured } from "@/lib/ai/provider";
+import { getProposalOptionWrjSummaries } from "@/lib/ai/wrj/queries";
+import type { WrjRunSummary } from "@/lib/ai/wrj/types";
 import type { Proposal } from "@/lib/proposals/types";
 import type { Report } from "@/lib/reports/types";
 import type { Opportunity } from "@/lib/opportunities/types";
@@ -74,14 +76,20 @@ export default async function EngagementProposalPage({
   let opportunities: Opportunity[];
   let roadmap: RoadmapItem[];
   let report: Report | null | undefined;
+  // Per-option WRJ verdict from each option's most recent draft run (present
+  // only when that run used wrj mode). Advisory operator surface.
+  let wrjByOptionId: Record<string, WrjRunSummary> = {};
 
   if (isPersisted) {
-    [proposal, opportunities, roadmap, report] = await Promise.all([
+    let wrjMap: Map<string, WrjRunSummary>;
+    [proposal, opportunities, roadmap, report, wrjMap] = await Promise.all([
       getProposalForEngagementPersisted(engagement.id),
       getOpportunitiesForEngagementPersisted(engagement.id),
       getRoadmapForEngagementPersisted(engagement.id),
       getReportForEngagementPersisted(engagement.id),
+      getProposalOptionWrjSummaries(engagement.id),
     ]);
+    wrjByOptionId = Object.fromEntries(wrjMap);
   } else {
     proposal = getProposalForEngagement(engagement.id);
     opportunities = getOpportunitiesForEngagement(engagement.id);
@@ -319,6 +327,7 @@ export default async function EngagementProposalPage({
               engagementId={isPersisted ? engagement.id : undefined}
               isPersisted={isPersisted}
               aiAvailable={aiAvailable}
+              wrjByOptionId={wrjByOptionId}
             />
           )}
 

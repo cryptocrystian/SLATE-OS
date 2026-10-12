@@ -51,14 +51,16 @@ export function getLatestOpportunitiesWrjSummary(
 }
 
 /**
- * Per-section WRJ verdicts for the report stage. Unlike findings/opportunities
- * (one synthesis run per engagement), report sections draft one at a time — one
- * `report_section_draft` run per section. This returns the latest completed
- * run's verdict for EACH section, keyed by section id, so the operator report
- * page can show a per-section verdict. RLS-bound; empty map on any error.
+ * Per-item WRJ verdicts for a per-item stage (report sections, proposal
+ * options). Unlike findings/opportunities (one run per engagement), these stages
+ * draft one item at a time — one run per item, with the item id carried in
+ * `output_summary[idKey]`. Returns the latest completed run's verdict for EACH
+ * item, keyed by that id. RLS-bound; empty map on any error.
  */
-export async function getReportSectionWrjSummaries(
+async function getPerItemWrjSummaries(
   engagementId: string,
+  runType: string,
+  idKey: string,
 ): Promise<Map<string, WrjRunSummary>> {
   const out = new Map<string, WrjRunSummary>();
   if (!UUID_RE.test(engagementId)) return out;
@@ -67,22 +69,32 @@ export async function getReportSectionWrjSummaries(
     .from("ai_synthesis_runs")
     .select("output_summary, completed_at")
     .eq("engagement_id", engagementId)
-    .eq("run_type", "report_section_draft")
+    .eq("run_type", runType)
     .eq("status", "completed")
     .order("completed_at", { ascending: false })
     .limit(200);
   if (error || !data) return out;
 
   for (const row of data as Array<{ output_summary: unknown }>) {
-    const os = row.output_summary as
-      | { sectionId?: unknown; synthesis?: unknown }
-      | null;
-    const sectionId = typeof os?.sectionId === "string" ? os.sectionId : null;
-    if (!sectionId || out.has(sectionId)) continue; // rows are newest-first
+    const os = row.output_summary as Record<string, unknown> | null;
+    const itemId = typeof os?.[idKey] === "string" ? (os[idKey] as string) : null;
+    if (!itemId || out.has(itemId)) continue; // rows are newest-first
     const summary = parseWrjRunSummary(os?.synthesis);
-    if (summary) out.set(sectionId, summary);
+    if (summary) out.set(itemId, summary);
   }
   return out;
+}
+
+export function getReportSectionWrjSummaries(
+  engagementId: string,
+): Promise<Map<string, WrjRunSummary>> {
+  return getPerItemWrjSummaries(engagementId, "report_section_draft", "sectionId");
+}
+
+export function getProposalOptionWrjSummaries(
+  engagementId: string,
+): Promise<Map<string, WrjRunSummary>> {
+  return getPerItemWrjSummaries(engagementId, "proposal_option_draft", "optionId");
 }
 
 /** Defensive parse of the persisted summary (unknown JSON → typed). */

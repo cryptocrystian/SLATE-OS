@@ -181,11 +181,13 @@ export function scanForBannedClaims(
 
 export async function synthesizeProposalOptionDraft(
   context: ProposalOptionSynthesisContext,
+  /** Optional corrective feedback for a WRJ revise pass (lib/ai/wrj/reviser.ts). */
+  reviseFeedback?: string,
 ): Promise<ProposalOptionSynthesisResult> {
   const config = getAiProposalOptionProviderConfig();
   if (!config) return { ok: false, error: "ai-not-configured" };
 
-  const messages = buildPromptMessages(context);
+  const messages = buildPromptMessages(context, reviseFeedback);
   const response = await callChatJson({
     messages,
     temperature: 0.2,
@@ -287,7 +289,7 @@ const OPTION_CHARTERS: Record<string, string> = {
     "The most comprehensive, ongoing option: build plus continued operation, iteration, and enablement over a longer horizon. Positioned for a buyer who wants Saipien to own outcomes over time, not hand off. Emphasize the operating-partner relationship and what continuous involvement unlocks that a one-time build cannot.",
 };
 
-function charterFor(optionType: string): string {
+export function charterFor(optionType: string): string {
   // The DB stores option_type with underscores (quick_win_build); the
   // canonical union uses hyphens. Normalize so the lookup hits either way.
   const key = optionType.replace(/_/g, "-");
@@ -314,7 +316,10 @@ const SCHEMA_INSTRUCTION = [
   "}",
 ].join("\n");
 
-function buildPromptMessages(context: ProposalOptionSynthesisContext) {
+function buildPromptMessages(
+  context: ProposalOptionSynthesisContext,
+  reviseFeedback?: string,
+) {
   const userPayload = JSON.stringify(buildUserPayload(context), null, 2);
   const charter = charterFor(context.option.optionType);
 
@@ -354,6 +359,9 @@ function buildPromptMessages(context: ProposalOptionSynthesisContext) {
         "Draft this one proposal option. Use ONLY the structured context provided, ground every claim in the supplied arrays, and stay strictly within this option's charter.\n\n" +
         userPayload,
     },
+    ...(reviseFeedback
+      ? [{ role: "system" as const, content: reviseFeedback }]
+      : []),
   ];
 }
 

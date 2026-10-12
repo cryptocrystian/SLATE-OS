@@ -364,7 +364,89 @@ their gates, so their reviser is a backstop that mostly no-ops.
 - Feedback builder: `lib/ai/wrj/reviser.ts` (`buildReviseInstruction`).
 - Orchestrator guard: `lib/ai/wrj/orchestrator.ts` (keep best by `failedCount`).
 - Writers thread an optional `reviseFeedback` system message:
-  `lib/ai/{findings,opportunities,report-section}-synthesis.ts`.
+  `lib/ai/{findings,opportunities,report-section,proposal-option}-synthesis.ts`.
 - Adapters supply the `revise` callback + `maxRevisions: 1`:
-  `lib/ai/wrj/{findings,opportunities,report-section}-wrj.ts`.
+  `lib/ai/wrj/{findings,opportunities,report-section,proposal-option}-wrj.ts`.
 - No production data mutated; before/after proof ran read-only.
+
+---
+
+# Proposal-option stage — Jev validation
+
+## Status
+- **Date:** 2026-10-12
+- **Type:** In-domain validation of Jev for the WRJ **proposal-option** stage —
+  the final pipeline stage. Same method: ground-truth pair + real-set A/B.
+  - **KNOWN-BAD** — meta/brochure opener ("robust, holistic solution that
+    leverages AI to seamlessly transform…"), bestFit restates scope, same scope
+    as the sibling, planted "ready for signature" + "approved by finance" +
+    "guaranteed 40% cost reduction" + "$75,000".
+  - **KNOWN-GOOD** — a hand-written ai-workflow-system option: sharp "choose this
+    when" best-fit, named workstreams/systems, distinct from the quick-win
+    sibling, no pricing/finality claims.
+
+## Why proposal options need two extra checks
+Proposal options are the buying-decision artifact, so beyond the report-stage
+dimensions they add: **differentiation** (each option must be visibly distinct
+from its siblings per its option-type charter, not the same scope reworded) and
+**best_fit_clarity** (`bestFitScenario` is a "choose this when…" judgment, not a
+scope restatement). The guardrail also covers commercial-finality language
+("ready for signature", "binding quote") as a backstop to the writer's hard
+financial + commercial-finality scanner.
+
+## Round 1 → the voice-floor calibration
+First pass, five of six separated cleanly (grounding 0.02/0.52, differentiation
+0.17/0.91, best_fit 0.07/0.87, guardrail 0.98/0.04, specificity 0.68/2.92) but
+**voice failed the GOOD option too** (1.62, conf 0.37). Testing a punchier GOOD
+draft moved voice only to 1.87 (and cost grounding). Conclusion, evidence-based:
+Jev scores even genuinely-good, DENSE proposal prose ~1.6–1.9 on voice (with low
+confidence ~0.4), while brochure prose scores <0.5. A minScore-2 floor would
+false-positive on good prose. So the proposal **voice floor is 1.5** (not 2) —
+it cleanly separates good (1.64, pass) from brochure (0.00, fail). The report
+stage keeps 2 because its GOOD prose cleared 2.36; proposal scope is denser and
+Jev scores it lower. This is a per-stage, in-domain threshold, not a loosening.
+
+## Round 2 — tuned checks (clean separation)
+| Check (threshold) | KNOWN-BAD | KNOWN-GOOD |
+|---|---|---|
+| grounding — no fabrication (≥0.50) | **0.02 FAIL** | **0.54 PASS** |
+| differentiation (≥0.60) | **0.16 FAIL** | **0.91 PASS** |
+| best_fit_clarity (≥0.55) | **0.06 FAIL** | **0.86 PASS** |
+| voice (score ≥1.5) | **0.00 FAIL** | **1.64 PASS** |
+| guardrail commercial (yes<0.50) | **0.98 FAIL** | **0.04 PASS** |
+| specificity (score ≥2) | **0.68 FAIL** | **2.85 PASS** |
+| **OVERALL** | **FAIL ❌ (6)** | **PASS ✅** |
+
+## Head-to-head A/B (real persisted Northpath options, n=3)
+| Option | grounding | diff | best_fit | voice | spec | verdict |
+|---|---|---|---|---|---|---|
+| quick_win_build | 0.74 | **0.56** | 0.84 | **0.67** | **1.74** | 2–3 to review |
+| ai_workflow_system | 0.51 | 0.89 | 0.75 | **0.96** | 2.89 | 1 to review |
+| managed_ai_partner | **0.36** | 0.80 | 0.77 | **0.60** | 2.04 | 2 to review |
+
+Same finding as the report stage: all three real options flag **voice** (0.60–
+0.96). Reading them confirms Jev is right — the real prose opens flat ("The AI
+Workflow System engagement will systematically integrate AI into Northpath's
+core operations, focusing on…") and uses a mechanical phased structure.
+Differentiation, best-fit, and the pricing/finality guardrail all pass — the
+option prose itself carries no pricing claims (the $120k–$180k is the operator-
+set `pricing_placeholder`, read-only, never model output). The recommended
+ai-workflow option is the strongest (flagged only on voice).
+
+## Verdict
+- **Jev is validated as a proposal-option co-judge** with the tuned checks
+  shipped in `lib/ai/wrj/proposal-option-wrj.ts` (`PROPOSAL_OPTION_CHECKS`).
+- **All four synthesis stages now run WRJ** (findings, opportunities, report
+  sections, proposal options): judge validated, dispatcher flag-gated, operator
+  card, reviser. The voice ceiling (report + proposal prose) is the one open
+  quality lever — next step is a stronger writer model / few-shot voice exemplars.
+
+## Files (proposal options)
+- Checks: `lib/ai/wrj/proposal-option-wrj.ts` (`PROPOSAL_OPTION_CHECKS`);
+  `charterFor` exported from `lib/ai/proposal-option-synthesis.ts`.
+- Dispatcher: `lib/proposals/synthesis-actions.ts` (flag-gated `isWrjMode()`).
+- Query + card: `lib/ai/wrj/queries.ts` (`getProposalOptionWrjSummaries`),
+  `components/proposals/proposal-workspace.tsx` (`wrjByOptionId`).
+- Only mutation: backfilled the per-option A/B verdicts into the existing
+  completed `proposal_option_draft` runs' `output_summary.synthesis` for the live
+  card (no new rows, no option prose changed); validation ran read-only.
