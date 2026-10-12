@@ -4,6 +4,7 @@ import { synthesizeDraftFindings } from "../findings-synthesis";
 import type { FindingsSynthesisContext } from "../findings-context";
 import type { DraftFindingCandidate, ProviderInvocationResult } from "../types";
 import { runWrj } from "./orchestrator";
+import { buildReviseInstruction } from "./reviser";
 import type { RubricCheck, WrjOutcome } from "./types";
 
 /**
@@ -150,12 +151,21 @@ export async function synthesizeDraftFindingsWrj(
   if (!writerResult.ok) return writerResult;
   const candidates = writerResult.candidates;
 
-  // Reviewer + judge over the already-produced draft.
+  // Reviewer + judge over the already-produced draft, with a bounded revise
+  // pass: when the judge flags the set, feed the failed checks + reviewer notes
+  // back to the writer and re-draft once (re-validated the same way).
   const outcome = await runWrj<DraftFindingCandidate[]>({
     writer: async () => candidates,
     toState: (c) => buildState(c, context),
     checks: FINDINGS_CHECKS,
     reviewFocus: REVIEW_FOCUS,
+    maxRevisions: 1,
+    revise: async (_candidates, review, verdict) => {
+      const feedback = buildReviseInstruction(review, verdict);
+      if (!feedback) return null;
+      const revised = await synthesizeDraftFindings(context, feedback);
+      return revised.ok ? revised.candidates : null;
+    },
   });
 
   if (!outcome) {

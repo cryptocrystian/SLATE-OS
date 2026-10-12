@@ -62,6 +62,14 @@ export async function runWrj<C>(stage: WrjStage<C>): Promise<WrjOutcome<C> | nul
     judgeCandidate(stage.toState(candidate), stage.checks),
   ]);
 
+  // Track the best draft seen so a revise pass can never REGRESS quality: we
+  // return the draft with the fewest judge-failed checks. A revision only wins
+  // on a strict improvement; a tie keeps the earlier (already-accepted) draft.
+  // `failedCount` is only meaningful once the judge actually ran.
+  const score = (v: JudgeVerdict): number =>
+    v.status === "judged" ? v.failedCount : Number.POSITIVE_INFINITY;
+  let best = { candidate, review, verdict };
+
   let revisions = 0;
   const maxRevisions = stage.maxRevisions ?? 1;
   while (
@@ -79,7 +87,17 @@ export async function runWrj<C>(stage: WrjStage<C>): Promise<WrjOutcome<C> | nul
       reviewCandidate(stage.toState(candidate), stage.reviewFocus),
       judgeCandidate(stage.toState(candidate), stage.checks),
     ]);
+    if (score(verdict) < score(best.verdict)) {
+      best = { candidate, review, verdict };
+    }
   }
 
-  return { mode: "wrj", candidate, review, verdict, revisions, writerModel };
+  return {
+    mode: "wrj",
+    candidate: best.candidate,
+    review: best.review,
+    verdict: best.verdict,
+    revisions,
+    writerModel,
+  };
 }

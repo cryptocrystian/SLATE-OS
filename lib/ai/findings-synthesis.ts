@@ -80,11 +80,13 @@ const EXCERPT_LIMIT = 360;
  */
 export async function synthesizeDraftFindings(
   context: FindingsSynthesisContext,
+  /** Optional corrective feedback for a WRJ revise pass (lib/ai/wrj/reviser.ts). */
+  reviseFeedback?: string,
 ): Promise<ProviderInvocationResult> {
   const config = getAiProviderConfig();
   if (!config) return { ok: false, error: "ai-not-configured" };
 
-  const messages = buildPromptMessages(context);
+  const messages = buildPromptMessages(context, reviseFeedback);
   const response = await callChatJson({
     messages,
     temperature: 0.2,
@@ -174,7 +176,10 @@ const SCHEMA_INSTRUCTION = [
   "}",
 ].join("\n");
 
-function buildPromptMessages(context: FindingsSynthesisContext) {
+function buildPromptMessages(
+  context: FindingsSynthesisContext,
+  reviseFeedback?: string,
+) {
   const userPayload = JSON.stringify(buildUserPayload(context), null, 2);
   return [
     { role: "system" as const, content: SYSTEM_PROMPT },
@@ -185,6 +190,9 @@ function buildPromptMessages(context: FindingsSynthesisContext) {
         "Draft findings for the following engagement. Use ONLY the structured context provided.\n\n" +
         userPayload,
     },
+    ...(reviseFeedback
+      ? [{ role: "system" as const, content: reviseFeedback }]
+      : []),
   ];
 }
 

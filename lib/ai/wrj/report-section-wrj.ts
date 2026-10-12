@@ -8,6 +8,7 @@ import {
 } from "../report-section-synthesis";
 import type { ReportSectionSynthesisContext } from "../report-section-context";
 import { runWrj } from "./orchestrator";
+import { buildReviseInstruction } from "./reviser";
 import type { RubricCheck, WrjOutcome } from "./types";
 
 /**
@@ -173,12 +174,23 @@ export async function synthesizeReportSectionDraftWrj(
   if (!writerResult.ok) return writerResult;
   const candidate = writerResult.candidate;
 
-  // Reviewer + judge over the already-produced draft.
+  // Reviewer + judge over the already-produced draft, with a bounded revise
+  // pass: when the judge flags the draft, feed the failed checks + reviewer
+  // notes back to the writer and re-draft once. Report prose is the strongest
+  // case for this — voice and specificity are the recurring weak dimensions
+  // (docs/73). The re-draft runs the same validator + hard claim scanner.
   const outcome = await runWrj<ReportSectionDraftCandidate>({
     writer: async () => candidate,
     toState: (c) => buildState(c, context),
     checks: REPORT_SECTION_CHECKS,
     reviewFocus: REVIEW_FOCUS,
+    maxRevisions: 1,
+    revise: async (_candidate, review, verdict) => {
+      const feedback = buildReviseInstruction(review, verdict);
+      if (!feedback) return null;
+      const revised = await synthesizeReportSectionDraft(context, feedback);
+      return revised.ok ? revised.candidate : null;
+    },
   });
 
   if (!outcome) {

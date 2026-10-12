@@ -60,11 +60,13 @@ const UUID_RE =
 
 export async function synthesizeDraftOpportunities(
   context: OpportunitySynthesisContext,
+  /** Optional corrective feedback for a WRJ revise pass (lib/ai/wrj/reviser.ts). */
+  reviseFeedback?: string,
 ): Promise<OpportunityProviderInvocationResult> {
   const config = getAiOpportunityProviderConfig();
   if (!config) return { ok: false, error: "ai-not-configured" };
 
-  const messages = buildPromptMessages(context);
+  const messages = buildPromptMessages(context, reviseFeedback);
   const response = await callChatJson({
     messages,
     temperature: 0.2,
@@ -161,7 +163,10 @@ const SCHEMA_INSTRUCTION = [
   "}",
 ].join("\n");
 
-function buildPromptMessages(context: OpportunitySynthesisContext) {
+function buildPromptMessages(
+  context: OpportunitySynthesisContext,
+  reviseFeedback?: string,
+) {
   const userPayload = JSON.stringify(buildUserPayload(context), null, 2);
   return [
     { role: "system" as const, content: SYSTEM_PROMPT },
@@ -172,6 +177,9 @@ function buildPromptMessages(context: OpportunitySynthesisContext) {
         "Draft opportunities for the following engagement. Use ONLY the structured context provided. Every opportunity must link to one or more findings from the `findings` array.\n\n" +
         userPayload,
     },
+    ...(reviseFeedback
+      ? [{ role: "system" as const, content: reviseFeedback }]
+      : []),
   ];
 }
 

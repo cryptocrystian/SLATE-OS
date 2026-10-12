@@ -302,3 +302,69 @@ and revise, and/or the report drafting prompt needs a voice overhaul.
 - Only mutation: backfilled the per-section A/B verdicts into the existing
   completed `report_section_draft` runs' `output_summary.synthesis` for the live
   card (no new rows, no section prose changed); validation ran read-only.
+
+---
+
+# Reviser pass (WRJ self-correction)
+
+## Status
+- **Date:** 2026-10-12
+- **What:** a bounded revise step in the WRJ loop. When the judge flags a draft,
+  the failed checks + the reviewer's (high/medium) notes are turned into one
+  corrective instruction (`lib/ai/wrj/reviser.ts`, `buildReviseInstruction`) and
+  fed back to the SAME stage writer, which re-drafts once. The re-draft runs the
+  writer's normal validator (+ the report stage's hard claim scanner).
+- **Wired on all three stages** (findings, opportunities, report sections) via
+  the orchestrator's existing `revise` hook, `maxRevisions: 1`. Flag-gated with
+  the rest of WRJ; default single mode is untouched.
+
+## No-regression guard
+The orchestrator keeps the draft with the FEWEST judge-failed checks across the
+original and the revision (`lib/ai/wrj/orchestrator.ts`): a revision wins only on
+a strict improvement; a tie keeps the earlier (already-accepted) draft. So a
+revise pass can only improve or no-op the persisted draft — never regress it.
+The returned `review`/`verdict` correspond to the draft actually kept, so the
+operator card reflects what was persisted; `revisions` counts passes attempted.
+
+## Before/after proof (real Northpath sections, gpt-4o writer + feedback)
+Re-drafted two real sections that the A/B above flagged, feeding back their own
+failed-check guidance, then re-judged:
+
+| Section | grounding | charter | voice | spec | failed |
+|---|---|---|---|---|---|
+| executive_summary — before | 0.73 | 0.64 | **1.62** | **1.14** | 2 |
+| executive_summary — after | 0.91 | **0.39** | **1.27** | 2.28 ✓ | 2 (tie → original kept) |
+| opportunity_portfolio — before | 0.81 | **0.59** | **0.96** | **1.16** | 3 |
+| opportunity_portfolio — after | 0.80 | **0.45** | **1.44** | 2.37 ✓ | **2 (adopted)** |
+
+Pattern:
+- **Specificity reliably flips to PASS** — the model names the real systems
+  (PSA, CRM, time tracker, Google Workspace, QuickBooks, ChatGPT) once told to.
+  This is the biggest, most consistent win.
+- **Grounding** holds or improves.
+- **Voice** improves modestly but rarely clears the floor in ONE pass — gpt-4o
+  has a voice ceiling that corrective feedback alone doesn't break through. This
+  is a model/prompt-strength limit, not a reviser-logic one.
+- **charter_fit** can dip slightly as the specificity push pulls in detail.
+
+Net, with the no-regression guard: the reviser is a safe net positive — it
+strictly improved `opportunity_portfolio` (adopted) and tied on
+`executive_summary` (original kept). It never worsens the persisted draft.
+
+## Finding → next lever
+The hard ceiling is VOICE. One revise pass against the current writer
+(gpt-4o) does not reliably reach "mostly a consultant voice." The next levers,
+in order: (1) a stronger writer model for report prose (e.g. the reviewer-grade
+cross-family model) or few-shot human-voiced exemplars in the writer prompt;
+(2) allow `maxRevisions: 2` for the report stage specifically. Both are cheap to
+try now that the loop exists. The findings/opportunities writers already clear
+their gates, so their reviser is a backstop that mostly no-ops.
+
+## Files (reviser)
+- Feedback builder: `lib/ai/wrj/reviser.ts` (`buildReviseInstruction`).
+- Orchestrator guard: `lib/ai/wrj/orchestrator.ts` (keep best by `failedCount`).
+- Writers thread an optional `reviseFeedback` system message:
+  `lib/ai/{findings,opportunities,report-section}-synthesis.ts`.
+- Adapters supply the `revise` callback + `maxRevisions: 1`:
+  `lib/ai/wrj/{findings,opportunities,report-section}-wrj.ts`.
+- No production data mutated; before/after proof ran read-only.

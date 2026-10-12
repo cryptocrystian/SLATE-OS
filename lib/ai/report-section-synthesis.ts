@@ -172,11 +172,17 @@ export function scanForBannedClaims(
 
 export async function synthesizeReportSectionDraft(
   context: ReportSectionSynthesisContext,
+  /**
+   * Optional corrective feedback for a WRJ revise pass (see
+   * `lib/ai/wrj/reviser.ts`). Appended as a final high-priority instruction so
+   * the re-draft resolves the reviewer/judge findings. Omitted on first draft.
+   */
+  reviseFeedback?: string,
 ): Promise<ReportSectionSynthesisResult> {
   const config = getAiReportSectionProviderConfig();
   if (!config) return { ok: false, error: "ai-not-configured" };
 
-  const messages = buildPromptMessages(context);
+  const messages = buildPromptMessages(context, reviseFeedback);
   const response = await callChatJson({
     messages,
     temperature: 0.2,
@@ -328,7 +334,10 @@ const SCHEMA_INSTRUCTION = [
   "}",
 ].join("\n");
 
-function buildPromptMessages(context: ReportSectionSynthesisContext) {
+function buildPromptMessages(
+  context: ReportSectionSynthesisContext,
+  reviseFeedback?: string,
+) {
   const userPayload = JSON.stringify(buildUserPayload(context), null, 2);
   const charter = charterFor(context.section.sectionType);
   const siblingTitles = context.siblingSections
@@ -377,6 +386,9 @@ function buildPromptMessages(context: ReportSectionSynthesisContext) {
         "Draft this one report section. Use ONLY the structured context provided, ground every claim in the supplied arrays, and stay strictly within this section's charter.\n\n" +
         userPayload,
     },
+    ...(reviseFeedback
+      ? [{ role: "system" as const, content: reviseFeedback }]
+      : []),
   ];
 }
 
