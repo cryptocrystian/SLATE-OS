@@ -450,3 +450,49 @@ ai-workflow option is the strongest (flagged only on voice).
 - Only mutation: backfilled the per-option A/B verdicts into the existing
   completed `proposal_option_draft` runs' `output_summary.synthesis` for the live
   card (no new rows, no option prose changed); validation ran read-only.
+
+---
+
+# Writer-model upgrade for prose (acting on the voice ceiling)
+
+## Status
+- **Date:** 2026-10-12
+- **What:** the WRJ A/B exposed a VOICE ceiling — the real report sections and
+  proposal options, drafted by **gpt-4o**, flag voice broadly (report: all 8;
+  proposal: all 3). Since the loop now MEASURES voice, we compared writer models
+  on the same prompt + Jev checks instead of guessing.
+
+## Measurement (same section prompt, Jev-judged; grounding/charter/voice/specificity)
+Report `executive_summary` (the most voice-weak section):
+
+| Writer | grounding | charter | voice | specificity | failed |
+|---|---|---|---|---|---|
+| gpt-4o | 0.86 | 0.55 | **1.68** | **1.39** | 3 |
+| **gpt-4.1** | 0.79 | 0.62 | **2.07** | **2.52** | **0** |
+| claude-opus-4.1 (OR) | **0.12** | 0.72 | 2.23 | 2.81 | 1 (fabricates) |
+
+Generalization across sections (gpt-4o → gpt-4.1, failed-check count):
+- executive_summary 3 → 0 · opportunity_portfolio 2 → 1 · workflow_friction 1 → 0.
+- Proposal option (ai-workflow-system): voice **0.95 → 1.74** (fail → pass),
+  specificity holds, best-fit stable.
+
+gpt-4.1 improves voice and specificity on every section/option measured, lowering
+the failed-check count in all of them. Grounding dips slightly (gpt-4.1 is a bit
+more assertive) but never fails the 0.5 floor — unlike claude-opus, which wrote
+the best voice but FABRICATED (grounding 0.12). gpt-4.1 is also the SAME OpenAI
+provider as gpt-4o, so the switch is a one-env-var change with no code and no
+provider routing.
+
+## Change made
+`SLATE_AI_REPORT_SECTIONS_MODEL` and `SLATE_AI_PROPOSAL_OPTIONS_MODEL`:
+`gpt-4o` → **`gpt-4.1`** (in `.env.local`, which is gitignored). This affects both
+the single and WRJ paths (the WRJ writer reuses the stage synthesis function).
+Findings/opportunities stay on the cheaper default (no voice gate; their sets
+already clear). Revert by setting the two vars back to `gpt-4o`.
+
+## Still open
+- gpt-4.1 clears voice on most sections but `opportunity_portfolio` voice is still
+  ~1.76 (just under 2.0). The reviser pass picks up the remainder, and few-shot
+  human-voiced exemplars in the writer prompt are the next cheap lever if needed.
+- A full wrj-mode re-draft A/B over the Northpath report+proposal on gpt-4.1
+  (replacing the gpt-4o backfilled verdicts) will confirm the lift end-to-end.
