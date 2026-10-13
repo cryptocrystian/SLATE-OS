@@ -496,3 +496,74 @@ already clear). Revert by setting the two vars back to `gpt-4o`.
   human-voiced exemplars in the writer prompt are the next cheap lever if needed.
 - A full wrj-mode re-draft A/B over the Northpath report+proposal on gpt-4.1
   (replacing the gpt-4o backfilled verdicts) will confirm the lift end-to-end.
+
+---
+
+# End-to-end wrj-mode re-draft (gpt-4.1, live)
+
+## Status
+- **Date:** 2026-10-13
+- **What:** ran the REAL wrj pipeline end to end against the Northpath self-test
+  with `SLATE_AI_SYNTHESIS_MODE=wrj` and the gpt-4.1 writers — re-drafted all 8
+  report sections (bulk "Draft remaining sections", after demoting them from
+  approved → needs_review as setup) and all 3 proposal options ("Draft all
+  options"). Each ran writer(gpt-4.1) → parallel reviewer(claude-sonnet-5.5 via
+  OpenRouter) + Jev → bounded reviser (1 revision fired on every item). This
+  replaced the earlier gpt-4o backfilled verdicts with LIVE ones, and confirmed
+  the full wired path executes (dispatcher → wrj → persist draft + verdict →
+  per-item card reads it).
+
+## Report sections — gpt-4o (backfill) vs gpt-4.1 (live), failed-check counts
+| Section | gpt-4o | gpt-4.1 | voice 4o→4.1 | spec 4o→4.1 |
+|---|---|---|---|---|
+| executive_summary | 2 | 2 | 1.67 → 0.78 | 1.15✗ → **2.01✓** |
+| business_context | 4 | 3 | 1.23 → 1.42 | 1.23✗ → **2.87✓** |
+| workflow_friction | 1 | 1 | 1.18 → 0.90 | 2.57✓ → 2.40✓ |
+| stakeholder_synthesis | 3 | 2 | 0.76 → 1.23 | 1.74✗ → **2.01✓** |
+| opportunity_portfolio | 3 | 2 | 1.03 → 0.99 | 1.12✗ → **2.33✓** |
+| priority_recommendations | 3 | 2 | 1.15 → 1.99 | 1.07✗ → **2.59✓** |
+| roadmap | 3 | 2 | 0.59 → 0.96 | 1.59✗ → **2.45✓** |
+| appendix | 3 | 1 | 1.26 → **2.61✓** | 1.06✗ → **2.99✓** |
+| **TOTAL failed** | **22** | **15** | — | **1/8 → 8/8 pass** |
+
+## Proposal options — gpt-4o vs gpt-4.1 (live)
+| Option | gpt-4o | gpt-4.1 | voice | spec |
+|---|---|---|---|---|
+| quick_win_build | 3 | **0 (cleared)** | 0.67 → **1.81✓** | 1.74✗ → **2.94✓** |
+| ai_workflow_system | 1 | 1 | 0.96 → 0.74 | 2.89✓ → 2.58✓ |
+| managed_ai_partner | 2 | 2 | 0.60 → 0.83 | 2.04✓ → 2.48✓ |
+| **TOTAL failed** | **6** | **3** | — | **2/3 → 3/3 pass** |
+
+## The honest finding (and a correction)
+- **Specificity is fixed, universally.** Report specificity went 1/8 → **8/8**
+  passing; proposal 2/3 → **3/3**. gpt-4.1 names the real systems/workflows
+  reliably where gpt-4o wrote generic prose. This is the dominant, real win.
+- **Total failures dropped** — report 22 → 15 (−32%), proposal 6 → 3 (−50%) —
+  and one proposal option fully cleared Jev.
+- **Voice is NOT solved.** In the real pipeline, voice still fails on ~7/8
+  sections and 2/3 options. This **contradicts the earlier standalone model-
+  compare** (which predicted executive_summary voice 2.07; the live run got
+  0.78). The standalone harness used a condensed prompt + trimmed judge context;
+  the production path (full anti-slop system prompt, full context, preceding-
+  summary injection, full judge state) scores voice lower. **Lesson: standalone
+  measurements over-predicted; the end-to-end run is the truth** — which is
+  exactly why it was worth running.
+- The full wrj path is confirmed live: the cross-family reviewer flagged real
+  notes (e.g. 9 notes / 2 high on the quick-win option) and the reviser ran 1
+  revision on every item; the orchestrator's keep-best guard held.
+
+## Net decision + open lever
+- **Keep gpt-4.1** — net quality is clearly higher (specificity fixed, failures
+  down, one option cleared), with no grounding collapse.
+- **Voice remains the one open quality lever.** It is now proven that neither
+  gpt-4.1 nor a single reviser pass clears it in production. Next levers, cheapest
+  first: (1) **few-shot human-voiced exemplars** in the report/proposal writer
+  prompts (most promising — directly targets the register); (2) `maxRevisions: 2`
+  for the prose stages; (3) a stronger model with a grounding guardrail (opus wrote
+  the best voice but fabricated at 0.12 — would need a fabrication gate). Until
+  then voice correctly surfaces as a per-item "review" flag on the operator card
+  — advisory, never a hard gate.
+- **State note:** the 8 report sections are now `needs_review` (demoted for the
+  re-draft, then re-drafted on gpt-4.1); they await human re-approval. The 3
+  proposal options carry fresh gpt-4.1 drafts + live verdicts. No client artifact
+  was minted or sent.
