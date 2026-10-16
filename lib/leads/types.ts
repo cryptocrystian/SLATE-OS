@@ -1,4 +1,5 @@
 import type { OpportunityArea } from "@/lib/scorecard/types";
+import type { StackInventoryRow } from "@/lib/scorecard/stack";
 
 export type LeadStatus =
   | "new"
@@ -97,6 +98,8 @@ export interface Lead {
   };
   opportunityAreas: OpportunityArea[];
   riskNotes: string[];
+  /** Systems the prospect reported in the Scorecard stack questions. */
+  stackInventory: StackInventoryRow[];
   notes: string[];
   trustStatus: LeadTrustStatus;
   trustReasons: string[];

@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { scoreScorecard } from "@/lib/scorecard/scoring";
+import { stackInventoryFromAnswers, type StackInventoryRow } from "@/lib/scorecard/stack";
 import type { Answers, AnswerValue, OpportunityArea } from "@/lib/scorecard/types";
 import {
   mapFitDimensionRow,
@@ -106,6 +107,7 @@ export async function getAllLeads(): Promise<Lead[]> {
       qualificationSignals: [],
       opportunityAreas: [],
       riskNotes: [],
+      stackInventory: [],
       notes: [],
     } satisfies Lead;
   });
@@ -150,6 +152,7 @@ export async function getLeadById(id: string): Promise<Lead | null> {
     qualificationSignals: signals,
     opportunityAreas: derived.opportunityAreas,
     riskNotes: derived.riskNotes,
+    stackInventory: derived.stackInventory,
     notes: [],
   } satisfies Lead;
 }
@@ -181,13 +184,14 @@ async function fetchQualificationSignals(leadId: string) {
 interface DerivedOpportunityAndRisk {
   opportunityAreas: OpportunityArea[];
   riskNotes: string[];
+  stackInventory: StackInventoryRow[];
 }
 
 async function deriveOpportunityAndRisk(
   submissionId: string | null,
 ): Promise<DerivedOpportunityAndRisk> {
   if (!submissionId) {
-    return { opportunityAreas: [], riskNotes: [] };
+    return { opportunityAreas: [], riskNotes: [], stackInventory: [] };
   }
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
@@ -195,7 +199,7 @@ async function deriveOpportunityAndRisk(
     .select("question_id, value")
     .eq("submission_id", submissionId);
   if (error || !data) {
-    return { opportunityAreas: [], riskNotes: [] };
+    return { opportunityAreas: [], riskNotes: [], stackInventory: [] };
   }
   const answers: Answers = {};
   for (const row of data as Array<{
@@ -213,6 +217,7 @@ async function deriveOpportunityAndRisk(
   return {
     opportunityAreas: result.opportunities,
     riskNotes: result.riskNotes,
+    stackInventory: stackInventoryFromAnswers(answers),
   };
 }
 

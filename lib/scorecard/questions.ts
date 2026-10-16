@@ -194,6 +194,78 @@ export const QUESTIONS: Question[] = [
     max: 5,
     weights: { systems: 3 },
   },
+  // Stack inventory (FDE A1 playbook §11). Optional and deliberately
+  // unweighted: these questions record which platforms the prospect runs so
+  // integration patterns can be planned. They must never move the score.
+  {
+    id: "systems.stack.crm",
+    section: "systems",
+    type: "multi",
+    optional: true,
+    prompt: "Which CRM does the team run on?",
+    whyWeAsk:
+      "Knowing the systems you already run lets us point to integration patterns that fit them.",
+    choices: [
+      { value: "hubspot", label: "HubSpot" },
+      { value: "salesforce", label: "Salesforce" },
+      { value: "dynamics", label: "Microsoft Dynamics 365" },
+      { value: "zoho", label: "Zoho" },
+      { value: "pipedrive", label: "Pipedrive" },
+      { value: "other", label: "Something else" },
+      { value: "none", label: "No CRM — spreadsheets or email" },
+      { value: "unsure", label: "Not sure" },
+    ],
+  },
+  {
+    id: "systems.stack.finance",
+    section: "systems",
+    type: "multi",
+    optional: true,
+    prompt: "Which finance or ERP system runs the books?",
+    choices: [
+      { value: "quickbooks", label: "QuickBooks" },
+      { value: "xero", label: "Xero" },
+      { value: "netsuite", label: "NetSuite" },
+      { value: "sage-intacct", label: "Sage Intacct" },
+      { value: "business-central", label: "Microsoft Dynamics 365 Business Central" },
+      { value: "sap", label: "SAP" },
+      { value: "oracle", label: "Oracle" },
+      { value: "other", label: "Something else" },
+      { value: "unsure", label: "Not sure" },
+    ],
+  },
+  {
+    id: "systems.stack.workplace",
+    section: "systems",
+    type: "multi",
+    optional: true,
+    prompt: "Which workplace tools does the team use day to day?",
+    choices: [
+      { value: "m365", label: "Microsoft 365 (Outlook, SharePoint)" },
+      { value: "google-workspace", label: "Google Workspace (Gmail, Drive)" },
+      { value: "teams", label: "Microsoft Teams" },
+      { value: "slack", label: "Slack" },
+      { value: "other", label: "Something else" },
+    ],
+  },
+  {
+    id: "systems.stack.support",
+    section: "systems",
+    type: "multi",
+    optional: true,
+    prompt: "Where do customer or internal support requests get handled?",
+    choices: [
+      { value: "zendesk", label: "Zendesk" },
+      { value: "intercom", label: "Intercom" },
+      { value: "freshdesk", label: "Freshdesk" },
+      { value: "hubspot-service", label: "HubSpot Service Hub" },
+      { value: "salesforce-service", label: "Salesforce Service Cloud" },
+      { value: "jira-service", label: "Jira Service Management" },
+      { value: "servicenow", label: "ServiceNow" },
+      { value: "other", label: "Something else" },
+      { value: "none", label: "Email or shared inbox" },
+    ],
+  },
 
   // ── Section 5: AI Adoption ────────────────────────────────────────────
   {

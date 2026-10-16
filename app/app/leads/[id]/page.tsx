@@ -8,6 +8,7 @@ import { QualificationSignalsPanel } from "@/components/leads/qualification-sign
 import { RecommendedActionCard } from "@/components/leads/recommended-action-card";
 import { LeadActionsPanel } from "@/components/leads/lead-actions-panel";
 import { LeadSourceCard } from "@/components/leads/lead-source-card";
+import { StackInventoryPanel } from "@/components/leads/stack-inventory-panel";
 import { NotesPanel } from "@/components/notes/notes-panel";
 import { ActivityTimeline } from "@/components/activity/activity-timeline";
 import { OpportunityAreaCard } from "@/components/scorecard/opportunity-area-card";
@@ -98,6 +99,9 @@ export default async function LeadDetailPage({
         <aside className="flex flex-col gap-6">
           <RecommendedActionCard lead={lead} />
           <InternalFitScorePanel lead={lead} />
+          {lead.stackInventory.length > 0 ? (
+            <StackInventoryPanel rows={lead.stackInventory} />
+          ) : null}
           <LeadActionsPanel
             leadId={lead.id}
             engagementId={engagementId ?? undefined}

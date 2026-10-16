@@ -185,13 +185,14 @@ export function formatRelative(iso: string, now = new Date()): string {
 
 /** Map a DB lead row (with joined account+contact) to the partial Lead shape
  *  shared by the inbox list. The list does not need fitDimensions,
- *  qualificationSignals, opportunityAreas, riskNotes, or notes. */
+ *  qualificationSignals, opportunityAreas, riskNotes, stackInventory, or notes. */
 export function mapLeadRowToListLead(row: DbLeadRow): Omit<
   Lead,
   | "fitDimensions"
   | "qualificationSignals"
   | "opportunityAreas"
   | "riskNotes"
+  | "stackInventory"
   | "notes"
 > {
   const account = row.accounts ?? null;
