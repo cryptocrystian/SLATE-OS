@@ -66,3 +66,6 @@ supabase/.temp/
 .claude/
 .impeccable/
 artifacts/
+
+# Worktrees share the main checkout's dependencies via a symlink (docs/PARALLEL_WORK.md §1).
+/node_modules

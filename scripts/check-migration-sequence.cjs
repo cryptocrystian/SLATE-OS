@@ -1,26 +1,39 @@
 #!/usr/bin/env node
 /**
- * Migration numbering guard (docs/72 §3.5). SLATE PLATFORM.
+ * Migration numbering guard (docs/72 §3.5, docs/PARALLEL_WORK.md §2). SLATE PLATFORM.
  *
  * Fails when supabase/migrations has:
- *   - a gap or duplicate in the 4-digit sequence
- *   - a file not matching NNNN_<snake_case>.sql
- *   - (from 0022 on) a file without a layer prefix: platform_ | governance_ | buildos_
+ *   - a file not matching NNNN_<snake_case>.sql, or a duplicate number
+ *   - (from 0022 on) a file without a module prefix:
+ *       platform_ | consultos_ | governance_ | buildos_ | ventureos_
+ *   - (from 0030 on) a file whose number is not claimed in ops/claims.json,
+ *     or is claimed for a different module than its prefix
+ *   - a gap in the sequence that nobody has claimed
  *
- * The next free number is always "highest file at branch head + 1"; it is
- * re-checked against the live project's applied list before apply.
+ * Gaps that ARE claimed are allowed: they are another branch's migrations in
+ * flight. The next free number comes from the ledger, not from this branch.
  *
- * Usage: node scripts/check-migration-sequence.cjs [dir]
+ * Usage: node scripts/check-migration-sequence.cjs [dir] [claimsFile]
  */
 const fs = require("node:fs");
 const path = require("node:path");
 
 const LAYER_PREFIX_FROM = 22;
+const CLAIMS_FROM = 30;
 const NAME_RE = /^(\d{4})_([a-z0-9_]+)\.sql$/;
-const LAYER_RE = /^(platform|governance|buildos)_/;
+const MODULES = ["platform", "consultos", "governance", "buildos", "ventureos"];
+const LAYER_RE = new RegExp(`^(${MODULES.join("|")})_`);
+const pad = (n) => String(n).padStart(4, "0");
 
-function check(dir) {
+function loadClaims(claimsFile) {
+  if (!claimsFile || !fs.existsSync(claimsFile)) return null;
+  const json = JSON.parse(fs.readFileSync(claimsFile, "utf8"));
+  return json.migrations ?? {};
+}
+
+function check(dir, claimsFile = path.join(dir, "..", "..", "ops", "claims.json")) {
   const errors = [];
+  const claims = loadClaims(claimsFile);
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".sql"))
@@ -35,26 +48,37 @@ function check(dir) {
     const n = Number(m[1]);
     if (seen.has(n)) errors.push(`duplicate number ${m[1]}: ${seen.get(n)} and ${f}`);
     seen.set(n, f);
-    if (n >= LAYER_PREFIX_FROM && !LAYER_RE.test(m[2])) {
-      errors.push(`missing layer prefix (platform_|governance_|buildos_) on ${f}`);
+    const layer = LAYER_RE.exec(m[2]);
+    if (n >= LAYER_PREFIX_FROM && !layer) {
+      errors.push(`missing module prefix (${MODULES.map((x) => x + "_").join("|")}) on ${f}`);
+    }
+    if (claims && n >= CLAIMS_FROM) {
+      const claim = claims[m[1]];
+      if (!claim) errors.push(`unclaimed migration number ${m[1]} (${f}): claim it in ops/claims.json first`);
+      else if (layer && claim.module !== layer[1]) {
+        errors.push(`${f} is claimed for module '${claim.module}', not '${layer[1]}'`);
+      }
     }
   }
   const numbers = [...seen.keys()].sort((a, b) => a - b);
-  for (let i = 0; i < numbers.length; i++) {
-    if (numbers[i] !== i + 1) {
-      errors.push(`sequence gap: expected ${String(i + 1).padStart(4, "0")}, found ${String(numbers[i]).padStart(4, "0")}`);
-      break;
-    }
+  const max = numbers.at(-1) ?? 0;
+  for (let n = 1; n <= max; n++) {
+    if (seen.has(n)) continue;
+    if (claims && claims[pad(n)]) continue; // in flight on another branch
+    errors.push(`sequence gap: ${pad(n)} is missing and not claimed in ops/claims.json`);
+    break;
   }
-  const next = String((numbers.at(-1) ?? 0) + 1).padStart(4, "0");
+  const claimedMax = claims ? Math.max(0, ...Object.keys(claims).map(Number)) : 0;
+  const next = pad(Math.max(max, claimedMax) + 1);
   return { errors, next, count: numbers.length };
 }
 
-module.exports = { check };
+module.exports = { check, MODULES };
 
 if (require.main === module) {
   const dir = process.argv[2] ?? path.join(__dirname, "..", "supabase", "migrations");
-  const { errors, next, count } = check(dir);
+  const claimsFile = process.argv[3] ?? path.join(__dirname, "..", "ops", "claims.json");
+  const { errors, next, count } = check(dir, claimsFile);
   if (errors.length) {
     console.error(`✗ migration sequence check failed (${dir}):`);
     for (const e of errors) console.error(`  - ${e}`);
