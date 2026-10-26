@@ -1,24 +1,95 @@
 {
   "$comment": "SLATE number ledger — see docs/PARALLEL_WORK.md. Claim the next number HERE (commit + push to the trunk) BEFORE creating the migration or doc. scripts/check-migration-sequence.cjs enforces the migrations section.",
-  "modules": ["platform", "consultos", "governance", "buildos", "ventureos"],
+  "modules": [
+    "platform",
+    "consultos",
+    "governance",
+    "buildos",
+    "ventureos"
+  ],
   "migrations": {
-    "0030": { "module": "buildos", "name": "buildos_projects_work_items", "branch": "persistence/step-0-1-auth-shell", "status": "applied" },
-    "0031": { "module": "buildos", "name": "buildos_runs_capacity", "branch": "persistence/step-0-1-auth-shell", "status": "applied" },
-    "0032": { "module": "buildos", "name": "buildos_decisions_deployments", "branch": "persistence/step-0-1-auth-shell", "status": "applied" },
-    "0033": { "module": "buildos", "name": "buildos_engine_rpcs", "branch": "persistence/step-0-1-auth-shell", "status": "applied" },
-    "0034": { "module": "consultos", "name": "consultos_engagement_scorecard_submission_link", "branch": "persistence/step-0-1-auth-shell (unpushed, Scorecard session)", "status": "written", "note": "File is named 0034_engagement_scorecard_submission_link.sql — rename to the consultos_ prefix before merge (not yet applied anywhere)." },
-    "0035": { "module": "consultos", "name": "consultos_scorecard_submission_consent", "branch": "persistence/step-0-1-auth-shell (unpushed, Scorecard session)", "status": "written", "note": "Rename to the consultos_ prefix before merge." },
-    "0036": { "module": "consultos", "name": "consultos_scorecard_attio_push", "branch": "persistence/step-0-1-auth-shell (unpushed, Scorecard session)", "status": "written", "note": "Rename to the consultos_ prefix before merge." },
-    "0037": { "module": "governance", "name": "governance_asset_controls", "branch": "governance/launch-path", "status": "written" },
-    "0038": { "module": "platform", "name": "platform_named_approver_guard", "branch": "governance/launch-path", "status": "written" }
+    "0030": {
+      "module": "buildos",
+      "name": "buildos_projects_work_items",
+      "branch": "persistence/step-0-1-auth-shell",
+      "status": "applied"
+    },
+    "0031": {
+      "module": "buildos",
+      "name": "buildos_runs_capacity",
+      "branch": "persistence/step-0-1-auth-shell",
+      "status": "applied"
+    },
+    "0032": {
+      "module": "buildos",
+      "name": "buildos_decisions_deployments",
+      "branch": "persistence/step-0-1-auth-shell",
+      "status": "applied"
+    },
+    "0033": {
+      "module": "buildos",
+      "name": "buildos_engine_rpcs",
+      "branch": "persistence/step-0-1-auth-shell",
+      "status": "applied"
+    },
+    "0034": {
+      "module": "platform",
+      "name": "platform_engagement_scorecard_submission_link",
+      "branch": "persistence/step-0-1-auth-shell (Scorecard session)",
+      "status": "written"
+    },
+    "0035": {
+      "module": "platform",
+      "name": "platform_scorecard_submission_consent",
+      "branch": "persistence/step-0-1-auth-shell (Scorecard session)",
+      "status": "written"
+    },
+    "0036": {
+      "module": "platform",
+      "name": "platform_scorecard_attio_push",
+      "branch": "persistence/step-0-1-auth-shell (Scorecard session)",
+      "status": "written"
+    },
+    "0037": {
+      "module": "governance",
+      "name": "governance_asset_controls",
+      "branch": "governance/launch-path",
+      "status": "written"
+    },
+    "0038": {
+      "module": "platform",
+      "name": "platform_named_approver_guard",
+      "branch": "governance/launch-path",
+      "status": "written"
+    }
   },
   "docs": {
-    "80": { "module": "buildos", "title": "BuildOS integration plan" },
-    "81": { "module": "buildos", "title": "BuildOS domain conventions" },
-    "82": { "module": "buildos", "title": "B1 BuildOS control-plane acceptance audit" },
-    "83": { "module": "buildos", "title": "Execution-plane design (reserved, B2)" },
-    "84": { "module": "ventureos", "title": "VentureOS integration plan", "branch": "ventureos/v0-canon" },
-    "85": { "module": "ventureos", "title": "VentureOS evaluation model", "branch": "ventureos/v0-canon" }
+    "80": {
+      "module": "buildos",
+      "title": "BuildOS integration plan"
+    },
+    "81": {
+      "module": "buildos",
+      "title": "BuildOS domain conventions"
+    },
+    "82": {
+      "module": "buildos",
+      "title": "B1 BuildOS control-plane acceptance audit"
+    },
+    "83": {
+      "module": "buildos",
+      "title": "Execution-plane design (reserved, B2)"
+    },
+    "84": {
+      "module": "ventureos",
+      "title": "VentureOS integration plan",
+      "branch": "ventureos/v0-canon"
+    },
+    "85": {
+      "module": "ventureos",
+      "title": "VentureOS evaluation model",
+      "branch": "ventureos/v0-canon"
+    }
   },
   "known_collisions": [
     "docs/73 is used twice: 73_SAIPIEN_AI_GOVERNANCE_OPERATING_STANDARD.md and 73_JEV_JUDGE_VALIDATION.md (cite by full filename until renumbered)."
