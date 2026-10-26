@@ -56,6 +56,10 @@ export async function transitionAssetAction(
   return done(await service.transitionAsset(programId, assetId, to, reason), base(programId));
 }
 
+export async function loadStarterRegisterAction(programId: string) {
+  return done(await service.loadStarterRegister(programId), base(programId));
+}
+
 export async function createPolicyAction(programId: string, input: Record<string, unknown>) {
   return done(await service.createPolicy(programId, input), base(programId));
 }

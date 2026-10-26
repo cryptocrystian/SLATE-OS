@@ -64,6 +64,13 @@ export function mapAsset(r: Row): GovernedAsset {
     autonomyLevel: (r.autonomy_level as GovernedAsset["autonomyLevel"]) ?? null,
     humanOversightMode: (r.human_oversight_mode as GovernedAsset["humanOversightMode"]) ?? null,
     deploymentEnvironment: (r.deployment_environment as GovernedAsset["deploymentEnvironment"]) ?? null,
+    clientImpact: (r.client_impact as GovernedAsset["clientImpact"]) ?? null,
+    controlTier: ((r.control_tier as GovernedAsset["controlTier"]) ?? "unclassified"),
+    toolsAndPermissions: Array.isArray(r.tools_and_permissions)
+      ? (r.tools_and_permissions as GovernedAsset["toolsAndPermissions"])
+      : [],
+    stopMechanism: (r.stop_mechanism as string) ?? null,
+    approverName: (r.approver_name as string) ?? null,
     externalVendor: (r.external_vendor as string) ?? null,
     modelProvider: (r.model_provider as string) ?? null,
     modelIdentifier: (r.model_identifier as string) ?? null,

@@ -3,6 +3,7 @@ import { Badge, type BadgeTone } from "@/components/ui/badge";
 import {
   LABELS,
   type ActivationMode,
+  type ControlTier,
   type Criticality,
   type LifecycleStatus,
   type PolicyVersionStatus,
@@ -78,6 +79,22 @@ export function LifecycleBadge({ status, showApproval = true }: { status: Lifecy
 export function CriticalityBadge({ value }: { value: Criticality | null }) {
   if (!value) return <Badge tone="neutral" variant="outline">Unclassified</Badge>;
   return <Badge tone={CRITICALITY_TONE[value]}>{value.charAt(0).toUpperCase() + value.slice(1)}</Badge>;
+}
+
+const TIER_TONE: Record<ControlTier, BadgeTone> = {
+  unclassified: "neutral",
+  standard: "info",
+  elevated: "warning",
+  high: "critical",
+};
+
+/** GOV 02 control tier — derived by the database from the three readings. */
+export function ControlTierBadge({ tier }: { tier: ControlTier }) {
+  return (
+    <Badge tone={TIER_TONE[tier]} variant={tier === "unclassified" ? "outline" : "soft"}>
+      {tier === "unclassified" ? "Tier: unclassified" : `${LABELS.controlTier[tier]} tier`}
+    </Badge>
+  );
 }
 
 export function PolicyStatusBadge({ status }: { status: PolicyVersionStatus }) {

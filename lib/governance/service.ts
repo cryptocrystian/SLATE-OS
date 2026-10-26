@@ -32,6 +32,7 @@ import {
 
 export type ServiceError =
   | GovernanceAuthError
+  | "gov06-incomplete"
   | "invalid-input"
   | "not-found"
   | "conflict"
@@ -53,8 +54,14 @@ function mapDbError(error: { code?: string; message?: string }): ServiceError {
   return "service-error";
 }
 
-function fail(scope: string, error: { code?: string; message?: string }): { ok: false; error: ServiceError } {
+function fail(
+  scope: string,
+  error: { code?: string; message?: string },
+): { ok: false; error: ServiceError; detail?: string } {
   console.error(`[governance.service] ${scope}`, { code: error.code, message: error.message });
+  // GOV 06 go-live gate (0037): surface exactly which fields are missing.
+  const gov06 = /gov06_incomplete: (.+)$/.exec(error.message ?? "");
+  if (gov06) return { ok: false, error: "gov06-incomplete", detail: gov06[1] };
   return { ok: false, error: mapDbError(error) };
 }
 
@@ -276,6 +283,10 @@ function assetRow(v: RegisterAssetInput) {
     autonomy_level: v.autonomyLevel,
     human_oversight_mode: v.humanOversightMode,
     deployment_environment: v.deploymentEnvironment,
+    client_impact: v.clientImpact,
+    tools_and_permissions: v.toolsAndPermissions,
+    stop_mechanism: v.stopMechanism,
+    approver_name: v.approverName,
     external_vendor: v.externalVendor,
     model_provider: v.modelProvider,
     model_identifier: v.modelIdentifier,
@@ -425,6 +436,89 @@ export async function transitionAsset(
     metadata: { from: current.data.lifecycle_status, to },
   });
   return { ok: true };
+}
+
+// -----------------------------------------------------------------------------
+// Starter register (docs/73 v0.2) — internal program bootstrap
+// -----------------------------------------------------------------------------
+
+/**
+ * Registers the Saipien starter inventory as `proposed` systems and the seven
+ * GOV policies as v1 drafts in an INTERNAL program. Idempotent: systems are
+ * keyed by lineage (internal / starter_register / key), policies by policy_key.
+ * Activates nothing — every go-live and every policy activation remains a
+ * separate, reasoned human act.
+ */
+export async function loadStarterRegister(
+  programId: string,
+): Promise<ServiceResult<{ assetsCreated: number; assetsExisting: number; policiesCreated: number; policiesExisting: number }>> {
+  if (!isUuid(programId)) return { ok: false, error: "invalid-input" };
+  const auth = await requireProgramAction(programId, "program.manage_members"); // program_admin only
+  if (!auth.ok) return auth;
+  const { STARTER_ASSETS, STARTER_POLICIES, STARTER_REGISTER_VERSION } = await import("./starter-register");
+
+  const supabase = createSupabaseServerClient();
+  const { data: program } = await supabase
+    .from("governance_programs")
+    .select("program_kind, status")
+    .eq("id", programId)
+    .maybeSingle<{ program_kind: string; status: string }>();
+  if (!program) return { ok: false, error: "not-found" };
+  if (program.program_kind !== "internal") return { ok: false, error: "invalid-input", detail: "starter-register-internal-only" };
+
+  const ids = new Map<string, string>();
+  let assetsCreated = 0;
+  let assetsExisting = 0;
+  // Parents first so children can reference them.
+  const ordered = [...STARTER_ASSETS].sort((a, b) => Number(Boolean(a.parentKey)) - Number(Boolean(b.parentKey)));
+  for (const a of ordered) {
+    const r = await registerAsset(programId, {
+      ...a.input,
+      parentGovernedAssetId: a.parentKey ? ids.get(a.parentKey) ?? null : null,
+      source: { sourceSystem: "internal", sourceEntityType: "starter_register", sourceEntityId: a.key, correlationId: STARTER_REGISTER_VERSION },
+    });
+    if (!r.ok) return r;
+    ids.set(a.key, r.assetId);
+    if (r.created) assetsCreated += 1;
+    else assetsExisting += 1;
+  }
+
+  const { data: existing } = await supabase
+    .from("governance_policies")
+    .select("policy_key")
+    .eq("governance_program_id", programId);
+  const existingKeys = new Set((existing ?? []).map((p: { policy_key: string }) => p.policy_key));
+  let policiesCreated = 0;
+  let policiesExisting = 0;
+  for (const p of STARTER_POLICIES) {
+    if (existingKeys.has(p.policyKey)) {
+      policiesExisting += 1;
+      continue;
+    }
+    const r = await createPolicy(programId, {
+      name: `${p.gov} · ${p.name}`,
+      policyKey: p.policyKey,
+      policyDomain: p.policyDomain,
+      statement: p.statement,
+      rationale: p.rationale,
+      activationMode: "advisory",
+    });
+    if (!r.ok) return r;
+    policiesCreated += 1;
+  }
+
+  await recordGovernanceEvent({
+    workspaceId: auth.actor.workspaceId,
+    programId,
+    actorProfileId: auth.actor.profileId,
+    eventType: "governance_program_updated",
+    entityType: "governance_program",
+    entityId: programId,
+    title: `Starter register loaded (${STARTER_REGISTER_VERSION})`,
+    summary: `${assetsCreated} systems proposed, ${policiesCreated} policy drafts. Nothing activated.`,
+    metadata: { assetsCreated, assetsExisting, policiesCreated, policiesExisting, version: STARTER_REGISTER_VERSION },
+  });
+  return { ok: true, assetsCreated, assetsExisting, policiesCreated, policiesExisting };
 }
 
 // -----------------------------------------------------------------------------

@@ -14,8 +14,10 @@
  *   - Policies are advisory-only in G1; `gatedOrEnforcedActive` is 0 by
  *     construction, not by omission.
  */
+import { gov06Missing } from "./proportionality";
 import type {
   AssetType,
+  ControlTier,
   GovernancePolicy,
   GovernanceProgram,
   GovernedAsset,
@@ -26,6 +28,7 @@ import type {
 
 export type AttentionKind =
   | "asset_active_not_approved"
+  | "asset_gov06_incomplete"
   | "asset_unclassified"
   | "program_review_overdue"
   | "program_review_unscheduled"
@@ -51,6 +54,8 @@ export interface GovernancePosture {
     byType: Partial<Record<AssetType, number>>;
     bySource: Partial<Record<SourceSystem | "unsourced", number>>;
     activeNotApproved: number;
+    byControlTier: Record<ControlTier, number>;
+    gov06IncompleteLive: number;
     highOrCriticalLive: number;
     unclassifiedLive: number; // missing criticality or data sensitivity
     autonomousLive: number;
@@ -92,6 +97,8 @@ export function computePosture(input: {
   const bySource: Partial<Record<SourceSystem | "unsourced", number>> = {};
   const attention: AttentionItem[] = [];
   let activeNotApproved = 0;
+  let gov06IncompleteLive = 0;
+  const byControlTier: Record<ControlTier, number> = { unclassified: 0, standard: 0, elevated: 0, high: 0 };
   let highOrCriticalLive = 0;
   let unclassifiedLive = 0;
   let autonomousLive = 0;
@@ -102,6 +109,19 @@ export function computePosture(input: {
     const src = a.sourceSystem ?? "unsourced";
     bySource[src] = (bySource[src] ?? 0) + 1;
     if (a.lifecycleStatus === "retired") continue;
+    byControlTier[a.controlTier] += 1;
+    const gaps = gov06Missing(a);
+    if (gaps.length > 0) {
+      gov06IncompleteLive += 1;
+      const running = a.lifecycleStatus === "active" || a.lifecycleStatus === "restricted";
+      attention.push({
+        kind: "asset_gov06_incomplete",
+        // A running system without its go-live record is a real gap; a proposed one is just not ready yet.
+        severity: running ? "high" : "low",
+        title: `${a.name}${running ? " is running without" : " is not ready for go-live: missing"} ${gaps.join(", ")}`,
+        entityId: a.id,
+      });
+    }
     if (a.lifecycleStatus === "active" || a.lifecycleStatus === "restricted") {
       activeNotApproved += 1;
       attention.push({
@@ -182,6 +202,8 @@ export function computePosture(input: {
       byType,
       bySource,
       activeNotApproved,
+      byControlTier,
+      gov06IncompleteLive,
       highOrCriticalLive,
       unclassifiedLive,
       autonomousLive,

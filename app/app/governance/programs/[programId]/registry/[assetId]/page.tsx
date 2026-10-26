@@ -4,8 +4,10 @@ import { notFound } from "next/navigation";
 import { ChevronLeft, CircleDashed, Pencil } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CriticalityBadge, LifecycleBadge } from "@/components/governance/badges";
+import { ControlTierBadge, CriticalityBadge, LifecycleBadge } from "@/components/governance/badges";
 import { AssetLifecycleControls } from "@/components/governance/controls";
+import { RequiredControls } from "@/components/governance/required-controls";
+import { requiredControls } from "@/lib/governance/proportionality";
 import { getProgramRole } from "@/lib/governance/authorization";
 import { can } from "@/lib/governance/permissions";
 import { computeAssetPosture } from "@/lib/governance/posture";
@@ -56,6 +58,7 @@ export default async function AssetDetailPage({ params }: { params: { programId:
           <h2 className="text-xl font-semibold tracking-tight text-text-primary">{asset.name}</h2>
           <div className="flex flex-wrap items-center gap-2">
             <LifecycleBadge status={asset.lifecycleStatus} />
+            <ControlTierBadge tier={asset.controlTier} />
             <CriticalityBadge value={asset.criticality} />
           </div>
           {asset.description ? <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">{asset.description}</p> : null}
@@ -88,6 +91,8 @@ export default async function AssetDetailPage({ params }: { params: { programId:
               <dl className="flex flex-col gap-2">
                 <Row label="Data sensitivity" value={humanizeToken(asset.dataSensitivity)} />
                 <Row label="Autonomy level" value={humanizeToken(asset.autonomyLevel)} />
+                <Row label="Client impact" value={asset.clientImpact ? LABELS.clientImpact[asset.clientImpact] : "—"} />
+                <Row label="Named approver" value={asset.approverName} />
                 <Row label="Human oversight" value={humanizeToken(asset.humanOversightMode)} />
                 <Row label="Deployment environment" value={humanizeToken(asset.deploymentEnvironment)} />
                 <Row label="Model" value={[asset.modelProvider, asset.modelIdentifier].filter(Boolean).join(" · ") || "—"} />
@@ -95,6 +100,26 @@ export default async function AssetDetailPage({ params }: { params: { programId:
                 <Row label="Business owner" value={asset.businessOwnerName} />
                 <Row label="Technical owner" value={asset.technicalOwnerName} />
               </dl>
+            </section>
+            <section className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold text-text-primary">Tools and permissions</h3>
+              {asset.toolsAndPermissions.length ? (
+                <ul className="flex flex-col gap-1 text-xs leading-relaxed text-text-secondary">
+                  {asset.toolsAndPermissions.map((t) => (
+                    <li key={`${t.tool}-${t.permission}`}>
+                      <span className="text-text-primary">{t.tool}</span> — {t.permission}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-text-muted">Not listed yet (required before go-live).</p>
+              )}
+            </section>
+            <section className="flex flex-col gap-1">
+              <h3 className="text-sm font-semibold text-text-primary">Stop mechanism</h3>
+              <p className="text-xs leading-relaxed text-text-secondary">
+                {asset.stopMechanism ?? <span className="text-text-muted">Not documented yet (required before go-live).</span>}
+              </p>
             </section>
             {asset.intendedUse ? (
               <section className="flex flex-col gap-1">
@@ -116,6 +141,7 @@ export default async function AssetDetailPage({ params }: { params: { programId:
         </Card>
 
         <div className="flex flex-col gap-4">
+          <RequiredControls tier={asset.controlTier} controls={requiredControls(asset)} />
           <Card>
             <CardBody className="flex flex-col gap-2">
               <h3 className="text-sm font-semibold text-text-primary">Source lineage</h3>
@@ -139,7 +165,7 @@ export default async function AssetDetailPage({ params }: { params: { programId:
                 <Row label="Governance approval" value="None yet (G3)" />
               </dl>
               <ul className="flex flex-col gap-1 pt-1">
-                {["Risks", "Controls", "Evidence", "Exceptions & incidents"].map((l) => (
+                {["Risks", "Evidence links", "Exceptions & incidents"].map((l) => (
                   <li key={l} className="flex items-center justify-between text-xs text-text-disabled">
                     <span className="flex items-center gap-1.5">
                       <CircleDashed className="h-3 w-3" aria-hidden />

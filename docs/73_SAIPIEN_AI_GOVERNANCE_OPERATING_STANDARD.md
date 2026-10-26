@@ -2,104 +2,138 @@
 
 ## Status
 
-- **Date:** 2026-09-28
-- **Version:** 0.1 — **DRAFT for founder ratification**
+- **Version:** 0.2 — **DRAFT for founder ratification** (v0.1: 2026-09-28)
+- **Date:** 2026-10-26
 - **Owner:** Saipien Labs (GovernanceOS / internal operations)
 - **Applies to:** every AI system, model, agent, automation and AI-assisted
-  workflow that Saipien Labs builds, operates or uses on client work.
+  workflow Saipien Labs builds, operates, or uses on client work.
 - **System of record:** the "Saipien Labs — Internal AI Governance" program in
-  GovernanceOS (`/app/governance`, `program_kind = 'internal'`). The policies
-  in §2, §3 and §5 are encoded there as `advisory` policies in G1.
-- **Items marked ⚑ need a founder decision before ratification.**
+  GovernanceOS (`/app/governance`, `program_kind = 'internal'`). The starter
+  register (§4) and the seven GOV policies (§1) load into it as proposals and
+  drafts; **ratification = the founder activating each policy with a reason.**
+- **Public version:** the controls GOV 01–07 are published on saipienlabs.com
+  (Governance, "How we govern our own AI"). This document is the full internal
+  standard behind them.
+- **What changed from v0.1:** facts re-verified against production on
+  2026-10-24/26; GOV 01–07 numbered to match the public site; Attio fixed
+  (`0018`); WRJ, BuildOS/factory agents and `gpt-4.1` added to the inventory;
+  GOV 02 and GOV 06 are now **enforced by SLATE** (migrations `0037`/`0038`);
+  open decisions consolidated in §9.
 
 ---
 
-## 1. Scope and principles
+## 1. The controls
 
-1. **Human authority.** AI drafts, classifies, maps and recommends. A named
-   human approves anything consequential: client-facing output, production AI
-   changes, risk acceptance, exceptions. This extends the permanent SLATE rule
-   in `PRODUCT.md`.
-2. **Evidence first.** Governance claims point at evidence (records, runs,
-   files, decisions), not at assertion.
-3. **Proportionality.** Controls scale with data sensitivity, autonomy and client impact.
-4. **We govern ourselves with our own product.** Saipien's AI footprint is
-   GovernanceOS's first program. Anything we sell, we operate on ourselves first.
-
-## 2. Approved AI providers and data handling
-
-| Provider / tool | Status | Use | Data allowed |
+| Tag | Control | What it requires | How SLATE makes it true |
 |---|---|---|---|
-| OpenAI API (`api.openai.com`), models per `SLATE_AI_*_MODEL` | **Approved — in production use** (SLATE synthesis) | Findings, opportunities, roadmap, report-section and proposal drafting | Client engagement content **needed for the task**. No credentials, no payment data, no special-category personal data. ⚑ Confirm the org account's data-retention/zero-retention setting. |
-| Anthropic Claude (Claude Code, Claude apps) | **Approved — in use** for engineering and internal work | Code, docs, analysis | Repo content and internal docs. Client confidential material only inside an approved engagement workspace. ⚑ |
-| Vercel AI Gateway, OpenRouter | **Configured, not in use** (keys present; no code path) | — | None until approved via §5. Remove unused keys or approve a use. ⚑ |
-| Attio (CRM, read-only) | Approved vendor service | CRM context for synthesis | Account/deal context (`docs/42`). |
-| Any other AI tool | **Not approved** until registered in GovernanceOS and approved per §3 | — | — |
+| **GOV 01** | Human authority | AI drafts, classifies, maps and recommends. A named person approves anything consequential: client-facing output, production AI changes, risk acceptance, exceptions. | Client output can't be delivered without approval (pre-delivery audit). **`0038`: the database refuses any approval with no signed-in person and stamps the approver** on findings, opportunities, report sections, reports, proposals and proposal/SOW snapshots. Risk acceptance and exceptions get decision records in G3. |
+| **GOV 02** | Proportionality | Controls scale with three readings per system: data sensitivity, autonomy, client impact. | **`0037`: the control tier is derived by the database** from the three readings (highest wins: standard / elevated / high). GovernanceOS lists the controls each tier requires and shows which are on record. |
+| **GOV 03** | Evidence first | Claims point at records, runs, files and decisions, never at assertion. | AI runs logged (`ai_synthesis_runs`); approvals name the approver (`0038`); lifecycle changes carry a reason (DB-written history); policy versions immutable once active; durable file store with checksums. Evidence links per claim: G3. |
+| **GOV 04** | Approved tools register | No AI tool touches client work until it is on the register and approved. No client data in consumer AI accounts. | The register is the internal program's registry; approval is the active **GOV 04 policy version** listing approved tools, activated by the founder with a reason. |
+| **GOV 05** | Model and provider changes | Proposed with cost and data affected, tested on a sample run, approved, then changed. The next live run is spot-checked. | Procedure (§5) recorded against the **GOV 05 policy**; each change is a new asset record update or policy version with a reason. G4 adds monitoring signals for drift. |
+| **GOV 06** | Before anything goes live | Owner, autonomy, oversight mode, data sensitivity (and client impact) recorded; tools and permissions listed; a stop mechanism documented; a named approver. | **`0037`: GovernanceOS refuses to mark a system `active` until every field is recorded**, naming what is missing. Applies to Saipien's systems and every system built for a client (Governed Delivery, `docs/80 §9`). |
+| **GOV 07** | Incidents | Stop, record, notify, remediate. The lesson becomes a control or a policy change. | Procedure (§6); lessons recorded as policy versions with a reason. Incident records in GovernanceOS: G4. |
 
-**Rules:**
-- No client data goes into consumer AI accounts.
-- Provider keys live only in server-side env vars; never `NEXT_PUBLIC_`.
-- Prompts and outputs aren't logged in activity metadata (the `sanitizeMetadata` rule).
+---
 
-## 3. AI decision rights
+## 2. AI providers and data handling (verified 2026-10-24)
+
+| Provider / tool | Where | Status | Data allowed |
+|---|---|---|---|
+| **OpenAI API** — `gpt-4o-mini` (findings default), `gpt-4o`, `gpt-4.1` (report sections + proposals since 2026-10-13) | SLATE synthesis; production key in Vercel | Approved — in production use | Client engagement content **needed for the task**. No credentials, payment data or special-category personal data. ⚑ §9-1 |
+| **Anthropic Claude** (Claude Code; Claude apps) | Engineering on SLATE and client software | Approved — in use | Repo content and internal docs; client confidential material only inside an approved engagement workspace. ⚑ §9-2 |
+| **OpenRouter** (reviewer, default an Anthropic model) and **TypeSafe "Jev"** (judge) | WRJ (flag-gated); **not configured in Vercel production**; runs only from a local machine | **Not approved for client data** | None until approved. ⚑ §9-3 |
+| **Factory model roster** — OpenAI Codex, Google Gemini, xAI, OpenRouter, Anthropic | BuildOS / software factory (`arxus-factory`, stopped since 2026-10-02) | **Not yet registered/approved** | Code and specs of the project being built. ⚑ §9-4 |
+| **Vercel AI Gateway** | Key in `.env.local` only; no code path | Not in use | None. ⚑ §9-3 |
+| **Attio** (CRM) | Read context; Scorecard push (flag-gated outbox) | Approved vendor service | Account, contact and deal context; Scorecard submissions when the push is on. |
+
+**Rules**
+- No client data in consumer AI accounts (GOV 04).
+- Provider keys live only in server-side environment variables, never `NEXT_PUBLIC_`.
+- Prompts and outputs are not written into activity metadata (`sanitizeMetadata`).
+- **A local override that writes to production data is a production change.**
+  2026-10-13: `gpt-4.1` ran on production data from a local `.env.local`
+  override with no record. Under GOV 05 that needs a proposal and approval.
+
+## 3. Decision rights
 
 | Decision | Who decides | Record |
 |---|---|---|
-| Adopt a new AI provider or tool | Founder | GovernanceOS decision (G3+); until then, a `docs/09` entry + a registry asset |
-| Change a production model or provider (any `SLATE_AI_*_MODEL`, provider swap) | Founder, or a delegated operator with founder sign-off | Same, plus a monitoring signal (G4) |
-| Release client-facing AI output | The consultant on the engagement (existing SLATE approval gates) | SLATE approvals + pre-delivery audit |
-| Deploy an AI system/agent to a client (Governed Delivery) | Engagement lead + founder | Registry asset + approval decision (G3+) |
-| Accept a governance risk or grant an exception | Founder | GovernanceOS decision (G3+) |
+| Approve a new AI provider/tool for client work | Founder | New GOV 04 policy version, activated with a reason |
+| Change a production model/provider (env var, code default, or local override against production data) | Founder | GOV 05 procedure; asset record updated with a reason |
+| Release client-facing AI output | The consultant on the engagement | SLATE approval (named, enforced by `0038`) + pre-delivery audit |
+| Put a system live (Saipien or client) | The named approver on its record (client approver for client systems) | GOV 06 record complete; lifecycle → active with a reason |
+| Accept a risk / grant an exception | Founder | GovernanceOS decision record (G3); until then a policy note with a reason |
 
-## 4. Internal AI inventory (registry seed for G1)
+## 4. Internal inventory — the starter register
 
-| Asset | Type | Parent | Owner | Lifecycle (honest) |
-|---|---|---|---|---|
-| SLATE AI synthesis pipeline (`lib/ai/*`) | `ai_system` | — | Founder | active · not yet governance-approved |
-| OpenAI chat-completions model(s) per `SLATE_AI_*_MODEL` | `model` | SLATE AI synthesis pipeline | Founder | active · not yet governance-approved |
-| SLATE client delivery engine (`/r`, `/p`, `/s`) | `workflow` | — | Founder | active · not yet governance-approved |
-| Claude Code / coding agents on SLATE and client builds | `agent` | — | Founder | active · not yet governance-approved |
-| Attio CRM read integration (`lib/crm/attio`) | `vendor_service` | — | Founder | active · not yet governance-approved. ⚑ Currently non-functional in production (`0018` not applied; see `docs/77 §4`). |
-| Internal MCP servers and automations | `agent` / `workflow` | — | Founder | ⚑ to be inventoried |
+Loaded with **"Load Saipien starter register"** on the internal program. Each
+lands as `proposed`; the named approver is left blank on purpose so the GOV 06
+gate requires a person to complete each record before it can be marked active.
 
-## 5. Model and provider change procedure
+| System | Type | Readings (sensitivity / autonomy / client impact) | Derived tier |
+|---|---|---|---|
+| SLATE AI synthesis pipeline | AI system | confidential / assistive / direct | elevated |
+| ↳ OpenAI API | Vendor service | confidential / none / indirect | elevated |
+| WRJ writer / reviewer / judge | AI system | confidential / assistive / indirect | elevated |
+| SLATE client delivery engine (`/r`, `/p`, `/s`) | Workflow | confidential / none / critical | high |
+| BuildOS / factory agents | Agent | confidential / conditional / ⚑ §9-4 | unclassified until §9-4 |
+| Claude Code | Agent | confidential / supervised / indirect | elevated |
+| Attio CRM integration | Vendor service | confidential / none / indirect | elevated |
 
-1. Propose the change: what, why, cost, and the data classes affected.
-2. Register or update the asset in GovernanceOS; state the model/provider change.
-3. Run the `docs/68` quality rubric on a fixture engagement (Meridian) with the new model.
-4. Get approval per §3. Then change the env var.
-5. Post-change: spot-check the next real run, and record the result as evidence (G3+).
+Not AI, so not registered: the Scorecard (deterministic scoring, no model
+calls). ⚑ §9-5 for the contact-form n8n workflow and internal MCP servers.
 
-## 6. AI output incident procedure
+## 5. Model and provider change procedure (GOV 05)
 
-**What counts as an incident:**
-- AI-generated content reaches a client with a factual error, fabricated claim,
-  or leaked internal/other-client data
-- a provider exposes data
-- a model change degrades output in a way a client could see
+1. **Propose:** what changes, why, cost, and which data classes it touches.
+2. **Test:** run the Meridian fixture on the new model; score it against the `docs/68` rubric.
+3. **Approve:** founder approval, recorded as an asset update with a reason (or a new GOV 04 version for a new provider).
+4. **Change:** update the env var or code default. Never point a local override at production data.
+5. **Spot-check** the next live run and record the result.
 
-**Steps:**
-1. **Stop:** revoke affected share links (`/r`, `/p`, `/s` revoke), and pause the
-   AI path if needed. The `docs/69` stop conditions apply.
-2. **Record:** create a GovernanceOS incident (G4). Until then, a `docs/09` entry.
-3. **Notify** the client if their data or deliverable was affected (founder decides the channel).
-4. **Remediate** and verify. Record the lesson as a control or policy change.
+## 6. Incident procedure (GOV 07)
 
-## 7. Governed Delivery checklist (BuildOS / FDE client deployments)
+An incident is any of these:
+- AI-generated content reaching a client with a factual error, a fabricated
+  claim, or another client's data
+- a provider data exposure
+- a model change that degrades client-visible output
+- an AI system acting outside its recorded permissions
 
-Before any Saipien-built AI system, agent or automation goes live for a client:
+1. **Stop:** revoke share links (`/r`, `/p`, `/s`), switch off the path (§4 stop mechanisms). The `docs/69` stop conditions apply.
+2. **Record:** a dated entry against the GOV 07 policy (GovernanceOS incident records arrive in G4).
+3. **Notify** anyone affected. The founder decides the channel.
+4. **Remediate** and verify.
+5. **Learn:** the lesson becomes a control or a policy change, activated with a reason.
 
-- [ ] Registered in the client's GovernanceOS program: owner, `autonomy_level`,
-      `human_oversight_mode`, `data_sensitivity`, `deployment_environment`.
-- [ ] Tools, permissions and credentials listed. Least privilege confirmed.
-- [ ] Escalation path and stop mechanism documented.
-- [ ] Evaluation evidence attached (tests, sample outputs, known limits).
-- [ ] Client approver named. Approval recorded (G3+ decision).
-- [ ] Monitoring owner and review cadence set.
+## 7. Governed Delivery (client builds)
+
+Before any Saipien-built system goes live for a client, its record in the
+client's program must pass the GOV 06 gate:
+- owner
+- the three readings
+- oversight mode
+- tools and permissions
+- stop mechanism
+- the **client** approver, named
+
+BuildOS registers the systems it builds through `registerGovernedAsset` (`docs/80 §9`).
 
 ## 8. Review cadence
 
-- **Quarterly internal governance review.** Registry changes, model/provider
-  changes, incidents, policy updates. Run on the GovernanceOS review surface (G4).
-  Until then, it's a dated note on the internal program.
-- This standard is reviewed with that quarterly review.
+A quarterly internal governance review covers registry changes, model and
+provider changes, incidents and policy updates. It runs on the internal
+program's next-review date, and this standard is reviewed with it.
+
+## 9. Decisions needed to ratify (founder)
+
+1. **OpenAI data controls:** confirm the organization's data-retention / zero-retention setting.
+2. **Claude scope:** confirm the rule for client confidential material in Claude (approved workspaces only).
+3. **OpenRouter, TypeSafe, Vercel AI Gateway:** approve for client data (and enable "no training" provider filtering on OpenRouter), or keep them off client data. If kept off, remove the unused Gateway key.
+4. **Factory roster and Arxus:** is Arxus client work? That sets the factory agents' client-impact reading and whether Codex, Gemini, xAI and OpenRouter need GOV 04 approval before the daemon restarts.
+5. **Other automations:** does the contact-form n8n workflow use an AI model? Which internal MCP servers or automations touch client data?
+6. **Named approvers:** who approves go-live for each internal system (§4)?
+
+Ratification means loading the starter register, completing each record,
+editing the GOV 04 draft to match decisions 1–4, and activating the seven policies.

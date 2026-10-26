@@ -110,7 +110,12 @@ describe("membership RLS (after 0022–0025)", () => {
 
   it("2. authenticated non-member reads zero rows (except their own profile)", async () => {
     for (const t of await publicTables(db)) {
-      const n = await count(db, { kind: "authenticated", userId: stranger }, t);
+      // Tables with no `authenticated` grant at all (e.g. service-role-only
+      // outboxes) refuse outright — a stronger result than zero rows.
+      const n = await count(db, { kind: "authenticated", userId: stranger }, t).catch((e: Error) => {
+        if (/permission denied/.test(e.message)) return 0;
+        throw e;
+      });
       expect(n, `stranger rows in ${t}`).toBe(t === "profiles" ? 1 : 0);
     }
   });

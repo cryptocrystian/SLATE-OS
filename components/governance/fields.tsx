@@ -143,6 +143,8 @@ export function describeServiceError(error: string, detail?: string): string {
       return "A record with the same identity already exists (e.g. duplicate policy key or source lineage).";
     case "program-archived":
       return "This program is archived. Archived programs are read-only.";
+    case "gov06-incomplete":
+      return `GOV 06: this system can't go live until its record has: ${detail ?? "the required fields"}. Edit the details, then try again.`;
     case "invalid-transition":
       return "That change is not allowed from the record's current state.";
     case "invalid-input":

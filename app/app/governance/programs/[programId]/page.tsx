@@ -5,6 +5,8 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { Card, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { StarterRegisterButton } from "@/components/governance/starter-register-button";
+import { getProgramRole } from "@/lib/governance/authorization";
 import { getProgram, listAssets, listEngagementLinks, listPolicies } from "@/lib/governance/queries";
 import { computePosture, type AttentionItem } from "@/lib/governance/posture";
 import { LABELS, LIFECYCLE_STATUSES, type SourceSystem } from "@/lib/governance/types";
@@ -17,6 +19,7 @@ function attentionHref(programId: string, item: AttentionItem): string {
   const root = `/app/governance/programs/${programId}`;
   switch (item.kind) {
     case "asset_active_not_approved":
+    case "asset_gov06_incomplete":
     case "asset_unclassified":
       return item.entityId ? `${root}/registry/${item.entityId}` : `${root}/registry`;
     case "policy_draft_pending":
@@ -35,17 +38,33 @@ const SEVERITY_TONE = { high: "critical", medium: "warning", low: "neutral" } as
 export default async function ProgramOverviewPage({ params }: { params: { programId: string } }) {
   const program = await getProgram(params.programId);
   if (!program) notFound();
-  const [assets, policies, links] = await Promise.all([
+  const [assets, policies, links, role] = await Promise.all([
     listAssets(program.id),
     listPolicies(program.id),
     listEngagementLinks(program.id),
+    getProgramRole(program.id),
   ]);
+  const canLoadStarter = program.programKind === "internal" && role === "program_admin" && program.status !== "archived";
   const posture = computePosture({ program, assets, policies, links });
   const root = `/app/governance/programs/${program.id}`;
   const top = posture.attention.slice(0, 6);
 
   return (
     <div className="flex flex-col gap-8">
+      {canLoadStarter && (assets.length === 0 || policies.length === 0) ? (
+        <Card>
+          <CardBody className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <h2 className="text-sm font-semibold text-text-primary">Start from the Saipien operating standard</h2>
+              <p className="max-w-2xl text-xs leading-relaxed text-text-muted">
+                Load Saipien&apos;s AI systems as proposed records and the seven GOV policies as drafts. You complete and activate
+                each one; nothing goes live on load.
+              </p>
+            </div>
+            <StarterRegisterButton programId={program.id} assetCount={assets.length} policyCount={policies.length} />
+          </CardBody>
+        </Card>
+      ) : null}
       {/* Decision-first (docs/64 #2): what needs a human now, before any scoreboard. */}
       <section aria-label="Needs attention" className="flex flex-col gap-3">
         <h2 className="text-sm font-semibold tracking-tight text-text-primary">What needs attention</h2>
@@ -95,10 +114,10 @@ export default async function ProgramOverviewPage({ params }: { params: { progra
           tone={posture.assets.activeNotApproved > 0 ? "warning" : "neutral"}
         />
         <MetricCard
-          label="High / critical assets"
-          value={String(posture.assets.highOrCriticalLive)}
-          hint={`${posture.assets.unclassifiedLive} unclassified`}
-          tone={posture.assets.highOrCriticalLive > 0 ? "risk" : "neutral"}
+          label="GOV 06 record incomplete"
+          value={String(posture.assets.gov06IncompleteLive)}
+          hint={`Tiers: ${posture.assets.byControlTier.high} high · ${posture.assets.byControlTier.elevated} elevated · ${posture.assets.byControlTier.standard} standard · ${posture.assets.byControlTier.unclassified} unclassified`}
+          tone={posture.assets.gov06IncompleteLive > 0 ? "warning" : "success"}
         />
         <MetricCard
           label="Active policies"

@@ -8,6 +8,7 @@ import {
   ACTIVATION_MODES_AVAILABLE,
   ASSET_TYPES,
   AUTONOMY_LEVELS,
+  CLIENT_IMPACTS,
   CRITICALITIES,
   DATA_SENSITIVITIES,
   DEPLOYMENT_ENVIRONMENTS,
@@ -20,6 +21,7 @@ import {
   type ActivationMode,
   type AssetType,
   type AutonomyLevel,
+  type ClientImpact,
   type Criticality,
   type DataSensitivity,
   type DeploymentEnvironment,
@@ -135,6 +137,10 @@ export interface RegisterAssetInput {
   autonomyLevel: AutonomyLevel | null;
   humanOversightMode: OversightMode | null;
   deploymentEnvironment: DeploymentEnvironment | null;
+  clientImpact: ClientImpact | null;
+  toolsAndPermissions: Array<{ tool: string; permission: string }>;
+  stopMechanism: string | null;
+  approverName: string | null;
   externalVendor: string | null;
   modelProvider: string | null;
   modelIdentifier: string | null;
@@ -161,6 +167,8 @@ export function validateRegisterAsset(raw: Record<string, unknown>): Result<Regi
     businessOwnerName: 160,
     technicalOwnerName: 160,
     externalRuntimeId: 200,
+    stopMechanism: 2000,
+    approverName: 160,
   };
   const t: Record<string, string | null> = {};
   for (const [k, max] of Object.entries(texts)) {
@@ -174,9 +182,13 @@ export function validateRegisterAsset(raw: Record<string, unknown>): Result<Regi
   const autonomyLevel = optEnum(AUTONOMY_LEVELS, raw.autonomyLevel);
   const humanOversightMode = optEnum(OVERSIGHT_MODES, raw.humanOversightMode);
   const deploymentEnvironment = optEnum(DEPLOYMENT_ENVIRONMENTS, raw.deploymentEnvironment);
-  if ([criticality, dataSensitivity, autonomyLevel, humanOversightMode, deploymentEnvironment].includes(false)) {
+  const clientImpact = optEnum(CLIENT_IMPACTS, raw.clientImpact);
+  if ([criticality, dataSensitivity, autonomyLevel, humanOversightMode, deploymentEnvironment, clientImpact].includes(false)) {
     return { ok: false, error: "invalid-dimension" };
   }
+
+  const tools = validateToolsAndPermissions(raw.toolsAndPermissions);
+  if (tools === false) return { ok: false, error: "invalid-tools-and-permissions" };
 
   let prohibitedUses: string[] = [];
   if (raw.prohibitedUses !== undefined && raw.prohibitedUses !== null) {
@@ -209,6 +221,10 @@ export function validateRegisterAsset(raw: Record<string, unknown>): Result<Regi
       autonomyLevel: autonomyLevel || null,
       humanOversightMode: humanOversightMode || null,
       deploymentEnvironment: deploymentEnvironment || null,
+      clientImpact: clientImpact || null,
+      toolsAndPermissions: tools,
+      stopMechanism: t.stopMechanism,
+      approverName: t.approverName,
       externalVendor: t.externalVendor,
       modelProvider: t.modelProvider,
       modelIdentifier: t.modelIdentifier,
@@ -221,6 +237,38 @@ export function validateRegisterAsset(raw: Record<string, unknown>): Result<Regi
       parentGovernedAssetId: parent,
     },
   };
+}
+
+/**
+ * GOV 06 tools and permissions. Accepts an array of {tool, permission} or of
+ * "tool: permission" strings (one per line in the form). Max 30 entries.
+ */
+export function validateToolsAndPermissions(raw: unknown): Array<{ tool: string; permission: string }> | false {
+  if (raw === undefined || raw === null || raw === "") return [];
+  if (!Array.isArray(raw)) return false;
+  const out: Array<{ tool: string; permission: string }> = [];
+  for (const item of raw) {
+    let tool: string;
+    let permission: string;
+    if (typeof item === "string") {
+      const line = item.trim();
+      if (!line) continue;
+      const idx = line.indexOf(":");
+      tool = (idx >= 0 ? line.slice(0, idx) : line).trim();
+      permission = (idx >= 0 ? line.slice(idx + 1) : "").trim();
+    } else if (item && typeof item === "object") {
+      const r = item as Record<string, unknown>;
+      if (typeof r.tool !== "string") return false;
+      tool = r.tool.trim();
+      permission = typeof r.permission === "string" ? r.permission.trim() : "";
+    } else {
+      return false;
+    }
+    if (!tool) continue;
+    if (tool.length > 120 || permission.length > 300) return false;
+    out.push({ tool, permission: permission || "unspecified" });
+  }
+  return out.length > 30 ? false : out;
 }
 
 /** Lineage is all-or-nothing and never an authorization input (docs/76 §5). */

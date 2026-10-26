@@ -46,6 +46,20 @@ export type OversightMode = (typeof OVERSIGHT_MODES)[number];
 export const DEPLOYMENT_ENVIRONMENTS = ["development", "staging", "production", "client_hosted", "other"] as const;
 export type DeploymentEnvironment = (typeof DEPLOYMENT_ENVIRONMENTS)[number];
 
+/** GOV 02 third reading (migration 0037). */
+export const CLIENT_IMPACTS = ["none", "indirect", "direct", "critical"] as const;
+export type ClientImpact = (typeof CLIENT_IMPACTS)[number];
+
+/** Derived by the database from the three GOV 02 readings (0037). Never set by app code. */
+export const CONTROL_TIERS = ["unclassified", "standard", "elevated", "high"] as const;
+export type ControlTier = (typeof CONTROL_TIERS)[number];
+
+/** GOV 06: one tool the system can use, and what it is allowed to do with it. */
+export interface ToolPermission {
+  tool: string;
+  permission: string;
+}
+
 /** Cross-SLATE lineage (docs/76 §5). Canon module names, lowercase. */
 export const SOURCE_SYSTEMS = [
   "consultos",
@@ -121,6 +135,11 @@ export interface GovernedAsset {
   autonomyLevel: AutonomyLevel | null;
   humanOversightMode: OversightMode | null;
   deploymentEnvironment: DeploymentEnvironment | null;
+  clientImpact: ClientImpact | null;
+  controlTier: ControlTier;
+  toolsAndPermissions: ToolPermission[];
+  stopMechanism: string | null;
+  approverName: string | null;
   externalVendor: string | null;
   modelProvider: string | null;
   modelIdentifier: string | null;
@@ -231,6 +250,18 @@ export const LABELS = {
     other: "Other",
   } satisfies Record<PolicyDomain, string>,
   activationMode: { advisory: "Advisory", gated: "Gated", enforced: "Enforced" } satisfies Record<ActivationMode, string>,
+  clientImpact: {
+    none: "None",
+    indirect: "Indirect",
+    direct: "Direct",
+    critical: "Critical",
+  } satisfies Record<ClientImpact, string>,
+  controlTier: {
+    unclassified: "Unclassified",
+    standard: "Standard",
+    elevated: "Elevated",
+    high: "High",
+  } satisfies Record<ControlTier, string>,
   role: {
     program_admin: "Program admin",
     governance_manager: "Governance manager",

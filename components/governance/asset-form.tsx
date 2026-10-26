@@ -9,6 +9,7 @@ import { registerAssetAction, updateAssetAction } from "@/lib/governance/actions
 import {
   ASSET_TYPES,
   AUTONOMY_LEVELS,
+  CLIENT_IMPACTS,
   CRITICALITIES,
   DATA_SENSITIVITIES,
   DEPLOYMENT_ENVIRONMENTS,
@@ -45,6 +46,10 @@ export function AssetForm({
     autonomyLevel: asset?.autonomyLevel ?? "",
     humanOversightMode: asset?.humanOversightMode ?? "",
     deploymentEnvironment: asset?.deploymentEnvironment ?? "",
+    clientImpact: asset?.clientImpact ?? "",
+    toolsAndPermissions: (asset?.toolsAndPermissions ?? []).map((t) => `${t.tool}: ${t.permission}`).join("\n"),
+    stopMechanism: asset?.stopMechanism ?? "",
+    approverName: asset?.approverName ?? "",
     externalVendor: asset?.externalVendor ?? "",
     modelProvider: asset?.modelProvider ?? "",
     modelIdentifier: asset?.modelIdentifier ?? "",
@@ -70,6 +75,7 @@ export function AssetForm({
     const payload = {
       ...f,
       prohibitedUses: f.prohibitedUses.split("\n").map((s) => s.trim()).filter(Boolean),
+      toolsAndPermissions: f.toolsAndPermissions.split("\n").map((s) => s.trim()).filter(Boolean),
       source: f.sourceSystem
         ? {
             sourceSystem: f.sourceSystem,
@@ -126,10 +132,21 @@ export function AssetForm({
         </div>
       </FieldGroup>
 
-      <FieldGroup title="Governance dimensions" description="These drive posture. Unset dimensions are flagged as unclassified — never assumed low.">
-        <SelectField label="Criticality" value={f.criticality} onChange={set("criticality")} options={opts(CRITICALITIES)} placeholder="Unclassified" />
+      <FieldGroup
+        title="GOV 02 readings"
+        description="Data sensitivity, autonomy and client impact set this system's control tier (derived by SLATE, highest reading wins). Unset readings leave it unclassified — never assumed low."
+      >
         <SelectField label="Data sensitivity" value={f.dataSensitivity} onChange={set("dataSensitivity")} options={opts(DATA_SENSITIVITIES)} placeholder="Unclassified" />
         <SelectField label="Autonomy level" value={f.autonomyLevel} onChange={set("autonomyLevel")} options={opts(AUTONOMY_LEVELS)} placeholder="Not set" />
+        <SelectField
+          label="Client impact"
+          value={f.clientImpact}
+          onChange={set("clientImpact")}
+          options={opts(CLIENT_IMPACTS, (v) => LABELS.clientImpact[v])}
+          placeholder="Not set"
+          hint="None · indirect (internal tooling that shapes client work) · direct (output reaches clients after approval) · critical (acts on or for a client)."
+        />
+        <SelectField label="Criticality" value={f.criticality} onChange={set("criticality")} options={opts(CRITICALITIES)} placeholder="Unclassified" />
         <SelectField label="Human oversight" value={f.humanOversightMode} onChange={set("humanOversightMode")} options={opts(OVERSIGHT_MODES)} placeholder="Not set" />
         <SelectField label="Deployment environment" value={f.deploymentEnvironment} onChange={set("deploymentEnvironment")} options={opts(DEPLOYMENT_ENVIRONMENTS)} placeholder="Not set" />
         <Input label="External vendor" value={f.externalVendor} onChange={(e) => set("externalVendor")(e.target.value)} maxLength={200} />
@@ -146,6 +163,38 @@ export function AssetForm({
       <FieldGroup title="Ownership" description="Accountable people (names are stored as snapshots).">
         <Input label="Business owner" value={f.businessOwnerName} onChange={(e) => set("businessOwnerName")(e.target.value)} maxLength={160} />
         <Input label="Technical owner" value={f.technicalOwnerName} onChange={(e) => set("technicalOwnerName")(e.target.value)} maxLength={160} />
+      </FieldGroup>
+
+      <FieldGroup
+        title="GOV 06 go-live record"
+        description="SLATE refuses to mark a system active until all of this is recorded: owner, the three readings, oversight mode, tools and permissions, a stop mechanism and a named approver."
+      >
+        <div className="md:col-span-2">
+          <TextAreaField
+            label="Tools and permissions (one per line, 'tool: permission')"
+            value={f.toolsAndPermissions}
+            onChange={set("toolsAndPermissions")}
+            rows={4}
+            placeholder={"OpenAI chat completions API: send engagement context, receive drafts\nSLATE database: insert drafts in unapproved states only"}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <TextAreaField
+            label="Stop mechanism"
+            value={f.stopMechanism}
+            onChange={set("stopMechanism")}
+            rows={2}
+            placeholder="How a person stops this system quickly, and what happens to work in flight."
+            maxLength={2000}
+          />
+        </div>
+        <Input
+          label="Named approver"
+          value={f.approverName}
+          onChange={(e) => set("approverName")(e.target.value)}
+          maxLength={160}
+          hint="The person who approves go-live: the client approver for a client system, a Saipien senior leader for an internal one."
+        />
       </FieldGroup>
 
       <FieldGroup

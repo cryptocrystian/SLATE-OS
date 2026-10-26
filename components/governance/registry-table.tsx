@@ -13,7 +13,7 @@ import {
   humanizeToken,
   type GovernedAsset,
 } from "@/lib/governance/types";
-import { CriticalityBadge, LifecycleBadge } from "./badges";
+import { ControlTierBadge, CriticalityBadge, LifecycleBadge } from "./badges";
 
 type LifecycleFilter = "live" | "all" | (typeof LIFECYCLE_STATUSES)[number];
 
@@ -109,6 +109,7 @@ export function RegistryTable({ programId, assets }: { programId: string; assets
                     </span>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <ControlTierBadge tier={a.controlTier} />
                     <CriticalityBadge value={a.criticality} />
                     <LifecycleBadge status={a.lifecycleStatus} />
                   </div>

@@ -310,6 +310,19 @@ describe("asset lifecycle", () => {
     await expect(
       asUser(founder, (tx) => tx.query(`select public.governance_transition_asset($1, 'active', '')`, [assetId])),
     ).rejects.toThrow(/governance_reason_required/);
+    // GOV 06 (0037): go-live refused until the record is complete.
+    await expect(
+      asUser(founder, (tx) => tx.query(`select public.governance_transition_asset($1, 'active', 'Already in production')`, [assetId])),
+    ).rejects.toThrow(/gov06_incomplete/);
+    await asUser(founder, (tx) =>
+      tx.query(
+        `update public.governed_assets set operator_owner_profile_id = $2, autonomy_level = 'assistive',
+           human_oversight_mode = 'human_in_the_loop', data_sensitivity = 'confidential', client_impact = 'direct',
+           tools_and_permissions = '[{"tool":"OpenAI API","permission":"drafts"}]', stop_mechanism = 'Remove the API key',
+           approver_name = 'Founder' where id = $1`,
+        [assetId, founder],
+      ),
+    );
     await asUser(founder, (tx) =>
       tx.query(`select public.governance_transition_asset($1, 'active', 'Already in production')`, [assetId]),
     );
