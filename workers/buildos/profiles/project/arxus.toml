@@ -1,0 +1,9 @@
+# Interim project overlay for Arxus (docs/83 §4) until the Arxus repo carries its own
+# buildos.toml. These are the factory's Arxus L0 gates (factory lanes/feature.py:520-522),
+# kept in the same order: the gate fixture suite runs first.
+[gates]
+extra_l0 = [
+  { name = "test:gates", command = "npm run test:gates" },
+  { name = "check:tokens", command = "npm run gen:tokens >/dev/null 2>&1; npm run check:tokens" },
+  { name = "check:composition", command = "npm run check:composition" },
+]

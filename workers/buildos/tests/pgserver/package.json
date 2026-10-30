@@ -1,0 +1,10 @@
+{
+  "name": "buildos-worker-test-pgserver",
+  "private": true,
+  "description": "Test-only Postgres-17 server for the BuildOS worker contract tests: PGlite over the wire protocol (docs/83 §10). Not part of the SLATE app.",
+  "type": "module",
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.13",
+    "@electric-sql/pglite-socket": "0.2.16"
+  }
+}

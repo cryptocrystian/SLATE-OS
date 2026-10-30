@@ -569,6 +569,6 @@ lint rule extension.
 | `docs/81`: BuildOS domain conventions (state machine, failure classes, profiles, naming) | BuildOS | B0 |
 | `docs/82`: B1 control-plane acceptance audit | BuildOS | B1 |
 | `docs/83`: Execution-plane design (worker contract, sandbox bake-off result, secrets) | BuildOS | B2 |
-| `docs/84`: Provider capacity and cost standard | BuildOS / Saipien ops | B2 |
+| Provider capacity and cost standard (number to be claimed in `ops/claims.json`; `docs/84`–`85` are VentureOS) | BuildOS / Saipien ops | B2 |
 | B1–B4 acceptance audits | BuildOS | per phase |
 | `docs/09` entries; `docs/00`, `docs/persistence/00` amendments; `docs/08` + `docs/10` updates | Canon | B0 |

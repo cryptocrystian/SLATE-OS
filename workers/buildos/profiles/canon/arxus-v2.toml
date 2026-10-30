@@ -1,0 +1,16 @@
+# Canon profile: Arxus canon v2 (docs/83 §4). Reproduces factory control-plane/canon.py
+# exactly — verified by tests/test_canon_parity.py against the live Arxus canon.
+key = "arxus-v2"
+
+[files]
+journeys = "canon/Canonical Journeys v2.md"
+acceptance = "canon/Acceptance Criteria v2.md"
+decisions = "canon/Decision Log.md"
+ontology = "canon/Canonical Ontology v2.md"
+
+[patterns]
+journey_heading = "### {id} "
+acceptance_heading = "## {id} "
+touches = '\*\*Touches:\*\*\s*([^\n]*)'
+binding_separator = "·"
+binding_token = '`([^`]+)`'

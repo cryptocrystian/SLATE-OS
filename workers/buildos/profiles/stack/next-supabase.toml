@@ -1,0 +1,14 @@
+# Stack profile: Next.js + Supabase (docs/83 §4). Generic to the stack; project-specific
+# gates (e.g. Arxus's test:gates / check:tokens / check:composition) live in the project
+# overlay, not here.
+key = "next-supabase"
+install_command = "npm ci"
+test_command = "npm run test:unit"
+protected_paths = ["supabase/migrations/**", "canon/**", ".git/**"]
+# Applies every migration to an in-sandbox throwaway Postgres (factory validate_migrations.sh).
+migration_gate = "buildos-migration-gate supabase/migrations"
+sandbox_image = "node20-pg15"
+
+[[l0_gates]]
+name = "typecheck"
+command = "npm run typecheck"
